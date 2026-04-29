@@ -1,0 +1,72 @@
+"""User model — covers all six roles via a discriminator column.
+
+Seeker/landlord/agent live in the public platform. Inspector/trusted_agent/admin
+are internal staff accounts created only by admins (no self-registration).
+"""
+
+import uuid
+from datetime import date, datetime
+
+from sqlalchemy import Boolean, Date, DateTime, Enum, String
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.database import Base
+from app.models._enums import AccountType, Gender, UserRole
+from app.models._mixins import TimestampMixin, UUIDPrimaryKeyMixin
+
+
+class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "users"
+
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), nullable=False)
+
+    # Identity (all roles)
+    first_name: Mapped[str | None] = mapped_column(String(100))
+    last_name: Mapped[str | None] = mapped_column(String(100))
+    phone: Mapped[str | None] = mapped_column(String(32))
+
+    # Landlord / agent onboarding
+    account_type: Mapped[AccountType | None] = mapped_column(Enum(AccountType, name="account_type"))
+    nin: Mapped[str | None] = mapped_column(String(11))             # not retained, only verified flag kept
+    nin_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    bvn_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    date_of_birth: Mapped[date | None] = mapped_column(Date)
+
+    # Agency-specific
+    business_name: Mapped[str | None] = mapped_column(String(255))
+    cac_number: Mapped[str | None] = mapped_column(String(32))
+    cac_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    agency_logo_url: Mapped[str | None] = mapped_column(String(500))
+
+    # Profile
+    profile_photo_url: Mapped[str | None] = mapped_column(String(500))
+    bio: Mapped[str | None] = mapped_column(String(1000))
+    operating_area: Mapped[str | None] = mapped_column(String(255))
+
+    # Seeker preferences — multi-select of ListingCategory values. JSONB keeps
+    # the column simple on Neon and avoids a separate join table for what is
+    # essentially a filter hint.
+    category_preferences: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    institution: Mapped[str | None] = mapped_column(String(255))      # student seekers
+    academic_level: Mapped[str | None] = mapped_column(String(64))
+    gender: Mapped[Gender | None] = mapped_column(Enum(Gender, name="gender"))
+
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_suspended: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Inspector / trusted-agent activation. Both must acknowledge the conduct
+    # standards before they can access their portal (dev plan §8.1, §13.3).
+    # Set to the activation timestamp; null means not-yet-activated.
+    conduct_acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Relationships
+    listings: Mapped[list["Listing"]] = relationship(
+        back_populates="owner",
+        foreign_keys="Listing.owner_id",
+    )
+
+
+# Forward-ref imports for relationship typing (deferred to avoid circular imports).
+from app.models.listing import Listing  # noqa: E402

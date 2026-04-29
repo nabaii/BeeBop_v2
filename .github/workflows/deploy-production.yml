@@ -1,0 +1,21 @@
+name: Deploy — Production
+
+# Manual trigger only. Production deploys require a human pressing the button
+# after the Phase gate review has passed and staging has been soak-tested.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type PROMOTE to confirm production deployment'
+        required: true
+
+jobs:
+  promote:
+    if: ${{ inputs.confirm == 'PROMOTE' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Poke Render production deploy hook
+        env:
+          RENDER_PRODUCTION_DEPLOY_HOOK: ${{ secrets.RENDER_PRODUCTION_DEPLOY_HOOK }}
+        run: curl -fsSL -X POST "$RENDER_PRODUCTION_DEPLOY_HOOK"
