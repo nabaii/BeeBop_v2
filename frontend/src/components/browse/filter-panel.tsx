@@ -72,6 +72,24 @@ export function FilterPanel({ value, onChange, children }: Props) {
     <aside className="space-y-5 rounded-xl border border-slate-200 bg-white p-4">
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Keywords
+        </h3>
+        <div className="mt-2">
+          <Input
+            value={value.q ?? ''}
+            placeholder="Generator, duplex, balcony..."
+            onChange={(e) =>
+              onChange({
+                ...value,
+                q: e.target.value.trim() ? e.target.value : undefined,
+              })
+            }
+          />
+        </div>
+      </section>
+
+      <section>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           Location
         </h3>
         <div className="mt-2 flex gap-2">

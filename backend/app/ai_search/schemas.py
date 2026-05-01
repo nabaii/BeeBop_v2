@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 
 from app.models._enums import ListingCategory
 
-
 Intent = Literal["search", "clarification", "information", "transactional"]
 VerificationTier = Literal["fully_verified", "doc_verified", "unverified"]
 
@@ -56,8 +55,8 @@ class ChatTurn(BaseModel):
 class SessionStateView(BaseModel):
     session_id: str
     parameters: ExtractedParameters | None = None
-    last_result_listing_ids: list[str] = []
-    turns: list[ChatTurn] = []
+    last_result_listing_ids: list[str] = Field(default_factory=list)
+    turns: list[ChatTurn] = Field(default_factory=list)
 
 
 class ChatRequestPayload(BaseModel):
@@ -89,7 +88,7 @@ class ChatResponse(BaseModel):
     missing_parameter_prompt: str | None = None
     reference_resolution: ReferenceResolution | None = None
     assistant_message: str
-    results: list[ResultListingSummary] = []
+    results: list[ResultListingSummary] = Field(default_factory=list)
     used_fallback: bool = False
     prompt_version: str
     query_id: str

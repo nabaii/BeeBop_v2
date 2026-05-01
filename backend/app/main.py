@@ -1,7 +1,7 @@
 """FastAPI application entry point."""
 
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import sentry_sdk
 from fastapi import FastAPI, Request
@@ -12,10 +12,15 @@ from app.admin.inspector_routes import router as admin_inspector_router
 from app.admin.routes import router as admin_router
 from app.agents.routes import (
     admin_router as admin_agents_router,
+)
+from app.agents.routes import (
     agent_router as agents_router,
+)
+from app.agents.routes import (
     cancel_router as agents_cancel_router,
 )
 from app.agreements.routes import router as agreements_router
+from app.ai_search.routes import router as ai_search_router
 from app.auth.routes import router as auth_router
 from app.bookings.routes import router as bookings_router
 from app.bookmarks.routes import router as bookmarks_router
@@ -31,6 +36,8 @@ from app.search.routes import router as search_router
 from app.users.routes import router as users_router
 from app.visits.routes import (
     admin_router as admin_visits_router,
+)
+from app.visits.routes import (
     landlord_router as visits_router,
 )
 
@@ -132,3 +139,4 @@ app.include_router(payments_router)
 # Sprint 11 — short-let bookings.
 app.include_router(bookings_router)
 # Sprint 12 — chat, ai_search.
+app.include_router(ai_search_router)

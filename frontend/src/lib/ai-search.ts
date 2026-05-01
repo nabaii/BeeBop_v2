@@ -1,0 +1,67 @@
+/**
+ * Typed client for the Sprint 13 conversational search endpoints.
+ */
+
+import { api } from './api';
+import type { ListingCategory } from './listings';
+
+export type ChatIntent = 'search' | 'clarification' | 'information' | 'transactional';
+export type VerificationTier = 'fully_verified' | 'doc_verified' | 'unverified';
+
+export interface ExtractedParameters {
+  listing_category: ListingCategory | null;
+  raw_query: string;
+  locations: string[];
+  amenities: string[];
+  min_price?: number | null;
+  max_price?: number | null;
+  bedroom_count?: number | null;
+  verification_tiers: VerificationTier[];
+  duration_years?: number | null;
+  urgency?: 'immediate' | 'soon' | 'flexible' | null;
+}
+
+export interface ReferenceResolution {
+  kind: string;
+  index?: number | null;
+  amenity?: string | null;
+  action_kind?: string | null;
+}
+
+export interface ResultListingSummary {
+  id: string;
+  title: string;
+  category: ListingCategory;
+  status: string;
+  price: number | null;
+  district: string | null;
+  cover_url: string | null;
+  rating: number | null;
+  review_count: number;
+  rank_score: number;
+  rank_signals: Record<string, unknown>;
+}
+
+export interface ChatResponse {
+  session_id: string;
+  intent: ChatIntent;
+  parameters: ExtractedParameters | null;
+  missing_parameter_prompt: string | null;
+  reference_resolution: ReferenceResolution | null;
+  assistant_message: string;
+  results: ResultListingSummary[];
+  used_fallback: boolean;
+  prompt_version: string;
+  query_id: string;
+}
+
+export function sendChatQuery(args: {
+  query: string;
+  session_id?: string | null;
+}): Promise<ChatResponse> {
+  return api.post('/ai-search/chat', args);
+}
+
+export async function clearChatSession(sessionId: string): Promise<void> {
+  await api.delete<void>(`/ai-search/sessions/${sessionId}`);
+}

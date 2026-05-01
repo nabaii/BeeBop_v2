@@ -8,40 +8,50 @@
  */
 import { create } from 'zustand';
 
+import type {
+  OffCampusFilters,
+  RentFilters,
+  SalesFilters,
+  ShortLetFilters,
+} from '@/lib/search';
+
 export type ListingCategory = 'off_campus' | 'short_let' | 'rent' | 'sales';
 
-export type VerificationTier = 'fully_verified' | 'doc_verified' | 'unverified';
-
-export interface SharedFilters {
-  locations: string[];
-  verificationTiers: VerificationTier[];
-  amenities: string[];
-  sort: 'relevance' | 'price_asc' | 'price_desc' | 'newest' | 'highest_rated';
-}
+export type SearchSeedFilters = Partial<
+  OffCampusFilters & ShortLetFilters & RentFilters & SalesFilters
+>;
 
 interface SearchState {
   category: ListingCategory | null;
-  filters: SharedFilters;
+  filters: SearchSeedFilters;
   sessionId: string | null;
-  setCategory: (c: ListingCategory | null) => void;
-  setFilters: (updater: (f: SharedFilters) => SharedFilters) => void;
+  setSessionContext: (args: {
+    category: ListingCategory | null;
+    filters: SearchSeedFilters;
+    sessionId: string | null;
+  }) => void;
   clearSession: () => void;
 }
 
-const defaultFilters: SharedFilters = {
-  locations: [],
-  // Default checks pre-selected to nudge seekers toward verified listings —
-  // matches dev plan §7.3 (Category browse pages story).
-  verificationTiers: ['fully_verified', 'doc_verified'],
-  amenities: [],
+const defaultFilters: SearchSeedFilters = {
+  verification: ['fully_verified', 'doc_verified'],
   sort: 'relevance',
+  page: 1,
+  page_size: 24,
 };
 
 export const useSearch = create<SearchState>((set) => ({
   category: null,
   filters: defaultFilters,
   sessionId: null,
-  setCategory: (category) => set({ category }),
-  setFilters: (updater) => set((s) => ({ filters: updater(s.filters) })),
-  clearSession: () => set({ sessionId: null, filters: defaultFilters }),
+  setSessionContext: ({ category, filters, sessionId }) =>
+    set({
+      category,
+      filters: {
+        ...defaultFilters,
+        ...filters,
+      },
+      sessionId,
+    }),
+  clearSession: () => set({ category: null, sessionId: null, filters: defaultFilters }),
 }));

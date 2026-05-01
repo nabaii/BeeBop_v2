@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from app.ai_search.schemas import (
@@ -36,7 +36,7 @@ def _key(session_id: str) -> str:
 
 
 class SessionStore:
-    def __init__(self, redis: "Redis") -> None:
+    def __init__(self, redis: Redis) -> None:
         self._redis = redis
 
     async def load(self, session_id: str) -> SessionStateView:
@@ -83,7 +83,7 @@ class SessionStore:
             ChatTurn(
                 role=role,           # type: ignore[arg-type]
                 content=content,
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
                 intent=intent,        # type: ignore[arg-type]
             )
         )
