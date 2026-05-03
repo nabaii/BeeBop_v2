@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { ListingCard } from '@/components/listing/listing-card';
@@ -23,12 +24,15 @@ export function FeaturedCarousel() {
 
   return (
     <section className="space-y-3">
-      <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
-        Featured verified listings
-      </h2>
-      <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold text-slate-900">Popular right now</h2>
+        <Link href="/browse/rent" className="text-sm font-medium text-brand hover:text-brand-700">
+          See all &rsaquo;
+        </Link>
+      </div>
+      <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2">
         {items.map((r) => (
-          <div key={r.id} className="w-72 shrink-0">
+          <div key={r.id} className="w-64 shrink-0">
             <ListingCard
               data={{
                 id: r.id,

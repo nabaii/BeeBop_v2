@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +16,7 @@ from app.auth.schemas import (
     TokenPair,
     VerifyResponse,
 )
+from app.config import get_settings
 from app.core.dependencies import get_current_user
 from app.core.redis_client import get_redis
 from app.database import get_db
@@ -76,6 +77,20 @@ async def refresh(
     return await service.rotate_refresh_token(
         refresh_token=payload.refresh_token, db=db, redis=redis
     )
+
+
+@router.post("/dev-login", response_model=VerifyResponse)
+async def dev_login(
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> VerifyResponse:
+    """Dev-only OTP bypass — signs in as `landlord-super@beebop.ng`. Returns
+    404 outside the development environment so it cannot be triggered in
+    staging or production even if the route is accidentally deployed.
+    """
+    if get_settings().environment != "development":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return await service.dev_login_as_landlord_super(db=db, redis=redis)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

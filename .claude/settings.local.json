@@ -18,7 +18,13 @@
       "Bash(.venv/Scripts/alembic upgrade *)",
       "Bash(.venv/Scripts/alembic current *)",
       "Bash(docker exec *)",
-      "Bash(python -c \"import ast; ast.parse\\(open\\('scripts/seed_listings.py'\\).read\\(\\)\\); print\\('parsed ok'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('scripts/seed_listings.py'\\).read\\(\\)\\); print\\('parsed ok'\\)\")",
+      "Bash(docker compose *)",
+      "Bash(.venv/Scripts/python.exe -m alembic upgrade head)",
+      "Bash(.venv/Scripts/python.exe -m alembic current)",
+      "Bash(.venv/Scripts/python.exe -m scripts.seed_listings)",
+      "Bash(git check-ignore *)",
+      "Bash(npm run *)"
     ]
   }
 }

@@ -39,7 +39,7 @@ from app.models.student_accommodation import Room, UnitType
 from app.models.user import User
 
 SEED_PREFIX = "[seed]"
-DEFAULT_OWNER_EMAIL = "landlord-seed@beebop.ng"
+DEFAULT_OWNER_EMAIL = "landlord-super@beebop.ng"
 
 
 def _amenities(**groups: dict[str, bool]) -> dict:
@@ -500,8 +500,8 @@ async def _ensure_owner(db, email: str) -> User:
     user = User(
         email=email,
         role=UserRole.LANDLORD,
-        first_name="Bee",
-        last_name="Seed",
+        first_name="Landlord",
+        last_name="Super",
         phone="+2348000000000",
         account_type=AccountType.INDIVIDUAL,
         nin_verified=True,

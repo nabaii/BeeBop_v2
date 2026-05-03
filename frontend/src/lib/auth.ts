@@ -61,6 +61,27 @@ export async function verifyOtp(args: {
   return { user, isNewUser: data.is_new_user };
 }
 
+export async function devLoginAsLandlordSuper(): Promise<{
+  user: SessionUser;
+  isNewUser: boolean;
+}> {
+  const data = await api.post<VerifyResponse>('/auth/dev-login', {});
+  const user: SessionUser = {
+    id: data.user.id,
+    email: data.user.email,
+    role: data.user.role,
+    firstName: data.user.first_name ?? null,
+    lastName: data.user.last_name ?? null,
+    onboardingComplete: data.user.onboarding_complete,
+  };
+  useSession.getState().setSession({
+    user,
+    accessToken: data.tokens.access_token,
+    refreshToken: data.tokens.refresh_token,
+  });
+  return { user, isNewUser: data.is_new_user };
+}
+
 export async function logout(): Promise<void> {
   try {
     await api.post('/auth/logout', undefined, { auth: true });

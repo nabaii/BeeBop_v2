@@ -10,8 +10,12 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 import { OtpFlow } from '@/components/auth/otp-flow';
+import { Button } from '@/components/ui/button';
+import { ApiError } from '@/lib/api';
+import { devLoginAsLandlordSuper } from '@/lib/auth';
 import type { SessionUser } from '@/stores/session';
 
 type RoleHomeRoute =
@@ -39,6 +43,8 @@ function roleHome(user: SessionUser): RoleHomeRoute {
 
 export default function LoginPage() {
   const router = useRouter();
+  const [devBusy, setDevBusy] = useState(false);
+  const [devError, setDevError] = useState<string | null>(null);
 
   function handleAuthenticated({ user }: { user: SessionUser; isNewUser: boolean }) {
     if (!user.onboardingComplete) {
@@ -53,6 +59,21 @@ export default function LoginPage() {
     router.replace(destination);
   }
 
+  async function handleDevLogin() {
+    setDevError(null);
+    setDevBusy(true);
+    try {
+      const res = await devLoginAsLandlordSuper();
+      handleAuthenticated(res);
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : 'Dev login failed. Is the backend in dev mode?';
+      setDevError(msg);
+    } finally {
+      setDevBusy(false);
+    }
+  }
+
   return (
     <div>
       <h1 className="mb-6 text-xl font-semibold text-slate-900">Sign in</h1>
@@ -63,6 +84,22 @@ export default function LoginPage() {
           Create an account
         </Link>
       </p>
+      {process.env.NODE_ENV !== 'production' && (
+        <div className="mt-8 rounded-md border border-dashed border-amber-300 bg-amber-50 p-4">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-amber-800">
+            Dev only
+          </p>
+          <Button
+            type="button"
+            onClick={() => void handleDevLogin()}
+            disabled={devBusy}
+            className="w-full"
+          >
+            {devBusy ? 'Signing in…' : 'Log in as landlord-super'}
+          </Button>
+          {devError && <p className="mt-2 text-sm text-red-600">{devError}</p>}
+        </div>
+      )}
     </div>
   );
 }

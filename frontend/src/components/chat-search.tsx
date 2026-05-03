@@ -1,10 +1,21 @@
 'use client';
 
 import type { Route } from 'next';
-import { ArrowRight, Loader2, MoreHorizontal, Sparkles } from 'lucide-react';
+import {
+  ArrowRight,
+  Banknote,
+  Briefcase,
+  Clock,
+  Home,
+  Loader2,
+  MoreHorizontal,
+  Tag,
+  type LucideIcon,
+} from 'lucide-react';
 import { startTransition, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { FeaturedCarousel } from '@/components/featured-carousel';
 import { ListingCard } from '@/components/listing/listing-card';
 import { ApiError } from '@/lib/api';
 import {
@@ -17,11 +28,11 @@ import type { ListingCategory, PhotoView } from '@/lib/listings';
 import type { SearchSeedFilters } from '@/stores/search';
 import { useSearch } from '@/stores/search';
 
-const SUGGESTIONS = [
-  '2-bedroom apartment in Wuse under N300k',
-  'Gwarinpa short-let for next weekend',
-  'Self-contain near UniAbuja',
-  '3-bed for sale in Guzape',
+const SUGGESTIONS: { text: string; icon: LucideIcon }[] = [
+  { text: 'Hostels near Baze', icon: Home },
+  { text: 'Short-let in Jahi', icon: Clock },
+  { text: '1-bedroom under N500k', icon: Banknote },
+  { text: 'Houses for sale in Maitama', icon: Tag },
 ];
 
 interface ChatEntry {
@@ -91,34 +102,97 @@ export function ChatSearchPanel() {
 
   const empty = entries.length === 0 && !loading;
 
+  if (empty) {
+    return (
+      <div className="h-full overflow-y-auto px-4 py-6">
+        <div className="space-y-6">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-slate-900">
+              What kind of place are you looking for?
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              I&apos;ll find verified options in Abuja for you.
+            </p>
+          </div>
+
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submit(value);
+            }}
+          >
+            <div className="flex items-center gap-3 rounded-3xl bg-white p-2 shadow-md">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white">
+                <Briefcase className="h-5 w-5" aria-hidden />
+              </div>
+              <input
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                placeholder="2-bedroom in Wuse under N300k"
+                className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+              />
+              <button
+                type="submit"
+                disabled={loading || !value.trim()}
+                aria-label="Send message"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ArrowRight className="h-5 w-5" aria-hidden />
+              </button>
+            </div>
+          </form>
+
+          <ul className="grid grid-cols-2 gap-2">
+            {SUGGESTIONS.map(({ text, icon: Icon }) => (
+              <li key={text}>
+                <button
+                  type="button"
+                  onClick={() => void submit(text)}
+                  className="flex h-full w-full items-start gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left text-xs text-slate-700 transition hover:border-brand/40 hover:bg-brand-50"
+                >
+                  <Icon className="h-4 w-4 shrink-0 text-brand" aria-hidden />
+                  <span>{text}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <FeaturedCarousel />
+
+          {error && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
-        {empty ? (
-          <EmptyState onPick={(q) => void submit(q)} />
-        ) : (
-          <ul className="space-y-5">
-            {entries.map((entry) => (
-              <li key={entry.response.query_id} className="space-y-3">
-                <UserBubble text={entry.query} />
-                <BotBubble text={entry.response.assistant_message} />
-                {entry.response.results.length > 0 && (
-                  <ResultsPanel
-                    results={entry.response.results}
-                    onOpenBrowse={() => openBrowse(entry.response)}
-                    canOpenBrowse={Boolean(entry.response.parameters?.listing_category)}
-                  />
-                )}
-                {entry.response.used_fallback && (
-                  <p className="ml-12 text-[11px] font-medium text-amber-700">
-                    Dev fallback mode
-                  </p>
-                )}
-              </li>
-            ))}
-            {loading && <SearchingIndicator />}
-          </ul>
-        )}
+        <ul className="space-y-5">
+          {entries.map((entry) => (
+            <li key={entry.response.query_id} className="space-y-3">
+              <UserBubble text={entry.query} />
+              <BotBubble text={entry.response.assistant_message} />
+              {entry.response.results.length > 0 && (
+                <ResultsPanel
+                  results={entry.response.results}
+                  onOpenBrowse={() => openBrowse(entry.response)}
+                  canOpenBrowse={Boolean(entry.response.parameters?.listing_category)}
+                />
+              )}
+              {entry.response.used_fallback && (
+                <p className="ml-12 text-[11px] font-medium text-amber-700">
+                  Dev fallback mode
+                </p>
+              )}
+            </li>
+          ))}
+          {loading && <SearchingIndicator />}
+        </ul>
 
         {error && (
           <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -138,7 +212,7 @@ export function ChatSearchPanel() {
           <input
             value={value}
             onChange={(event) => setValue(event.target.value)}
-            placeholder={entries.length > 0 ? 'Ask follow up...' : 'Ask BeeBop...'}
+            placeholder="Ask follow up..."
             className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
           />
           <button
@@ -159,31 +233,6 @@ export function ChatSearchPanel() {
   );
 }
 
-function EmptyState({ onPick }: { onPick: (q: string) => void }) {
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
-        <p className="text-sm text-slate-700">
-          Tell BeeBop what you&apos;re looking for — area, budget, bedrooms, or amenities.
-        </p>
-      </div>
-      <ul className="space-y-2">
-        {SUGGESTIONS.map((suggestion) => (
-          <li key={suggestion}>
-            <button
-              type="button"
-              onClick={() => onPick(suggestion)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 transition hover:border-brand/40 hover:bg-brand-50"
-            >
-              {suggestion}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 function UserBubble({ text }: { text: string }) {
   return (
     <div className="flex justify-end">
@@ -198,7 +247,7 @@ function BotBubble({ text }: { text: string }) {
   return (
     <div className="flex items-start gap-2">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-white">
-        <Sparkles className="h-4 w-4" aria-hidden />
+        <Briefcase className="h-4 w-4" aria-hidden />
       </div>
       <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm text-slate-900 shadow-sm">
         {text}

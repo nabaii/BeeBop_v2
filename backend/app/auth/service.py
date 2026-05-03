@@ -18,8 +18,10 @@ from app.core.security import (
     decode_token,
     user_id_from_claims,
 )
-from app.models._enums import UserRole
+from app.models._enums import AccountType, UserRole
 from app.models.user import User
+
+DEV_LANDLORD_EMAIL = "landlord-super@beebop.ng"
 
 
 def _is_onboarded(user: User) -> bool:
@@ -102,6 +104,36 @@ async def rotate_refresh_token(
         raise UnauthorisedError("User not found or inactive.", code="user_inactive")
 
     return await _issue_token_pair(user=user, refresh_store=store)
+
+
+async def dev_login_as_landlord_super(
+    *, db: AsyncSession, redis: Redis
+) -> VerifyResponse:
+    """Dev-only bypass: load or create `landlord-super@beebop.ng` and issue a
+    real token pair. Owns the listings created by `scripts.seed_listings`.
+    """
+    result = await db.execute(select(User).where(User.email == DEV_LANDLORD_EMAIL))
+    user = result.scalar_one_or_none()
+
+    is_new = False
+    if user is None:
+        is_new = True
+        user = User(
+            email=DEV_LANDLORD_EMAIL,
+            role=UserRole.LANDLORD,
+            first_name="Landlord",
+            last_name="Super",
+            account_type=AccountType.INDIVIDUAL,
+            nin_verified=True,
+            bvn_verified=True,
+        )
+        db.add(user)
+        await db.flush()
+
+    refresh_store = RefreshTokenStore(redis)
+    tokens = await _issue_token_pair(user=user, refresh_store=refresh_store)
+    await db.commit()
+    return VerifyResponse(tokens=tokens, user=_to_authenticated(user), is_new_user=is_new)
 
 
 async def logout(*, user_id: uuid.UUID, redis: Redis) -> None:
