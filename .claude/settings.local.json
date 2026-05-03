@@ -3,7 +3,11 @@
     "allow": [
       "Bash(where python *)",
       "Bash(where uvicorn *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(psql --version)",
+      "Bash(redis-cli --version)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)"
     ]
   }
 }
