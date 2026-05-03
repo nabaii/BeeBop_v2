@@ -20,7 +20,8 @@ interface Props {
 
 export function RouteGuard({ roles, redirectTo = '/login', children }: Props) {
   const router = useRouter();
-  const { user, hydrated } = useSession((s) => ({ user: s.user, hydrated: s.hydrated }));
+  const user = useSession((s) => s.user);
+  const hydrated = useSession((s) => s.hydrated);
 
   useEffect(() => {
     if (!hydrated) return;

@@ -28,7 +28,7 @@ export function MainSidebar({ onNewChat }: { onNewChat?: () => void }) {
   return (
     <aside
       className={cn(
-        'flex shrink-0 flex-col border-r border-slate-200 bg-white transition-all',
+        'hidden shrink-0 flex-col border-r border-slate-200 bg-white transition-all lg:flex',
         collapsed ? 'w-[56px]' : 'w-[240px]',
       )}
     >

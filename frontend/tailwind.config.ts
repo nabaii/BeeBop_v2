@@ -12,12 +12,13 @@ const config: Config = {
           unverified: '#94a3b8', // grey — unverified
         },
         brand: {
-          DEFAULT: '#1e40af',
-          50: '#eff6ff',
-          100: '#dbeafe',
-          500: '#3b82f6',
-          700: '#1d4ed8',
-          900: '#1e3a8a',
+          DEFAULT: '#f59e0b',
+          50: '#fffbeb',
+          100: '#fef3c7',
+          500: '#f59e0b',
+          600: '#d97706',
+          700: '#b45309',
+          900: '#78350f',
         },
       },
       fontFamily: {

@@ -15,7 +15,8 @@ import { useSession } from '@/stores/session';
 
 export function SessionButton() {
   const router = useRouter();
-  const { user, hydrated } = useSession((s) => ({ user: s.user, hydrated: s.hydrated }));
+  const user = useSession((s) => s.user);
+  const hydrated = useSession((s) => s.hydrated);
 
   if (!hydrated) return null;
 

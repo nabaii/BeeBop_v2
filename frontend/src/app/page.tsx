@@ -1,20 +1,9 @@
 'use client';
 
-/**
- * Main page — conversational front door. Sprint 3 builds the visible shell
- * with:
- *   • Left sidebar (categories + New Chat)
- *   • Ask BeeBop input with suggestion pills (stub routed to Rent browse)
- *   • Featured verified-listings carousel
- *
- * Sprint 13 replaces the chat stub with the real conversational pipeline and adds
- * the three-state results window.
- */
-
 import { useState } from 'react';
 
+import { BottomNav } from '@/components/bottom-nav';
 import { ChatSearchPanel } from '@/components/chat-search';
-import { FeaturedCarousel } from '@/components/featured-carousel';
 import { MainSidebar } from '@/components/main-sidebar';
 import { SessionButton } from '@/components/session-button';
 import { clearChatSession } from '@/lib/ai-search';
@@ -38,27 +27,31 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[radial-gradient(circle_at_top,_rgba(219,234,254,0.7),_rgba(248,250,252,1)_42%,_rgba(255,255,255,1)_100%)]">
+    <div className="flex min-h-screen bg-slate-100">
       <MainSidebar onNewChat={() => void handleNewChat()} />
-      <main className="flex-1 overflow-y-auto">
-        <header className="flex items-center justify-end gap-3 border-b border-slate-200/70 bg-white/80 px-6 py-3 backdrop-blur">
+      <div className="mx-auto flex h-screen w-full max-w-[440px] flex-col bg-slate-50 shadow-xl">
+        <header className="flex items-center justify-between border-b border-slate-100 bg-white px-4 py-3">
+          <div className="flex items-center gap-2">
+            <BeeBopMark />
+            <span className="text-lg font-bold text-slate-900">BeeBop</span>
+          </div>
           <SessionButton />
         </header>
-        <div className="mx-auto max-w-5xl space-y-10 p-6 sm:p-10">
-          <section className="pt-8 text-center">
-            <h1 className="text-3xl font-bold text-slate-900 sm:text-5xl">
-              Find a verified home in Abuja.
-            </h1>
-            <p className="mx-auto mt-3 max-w-2xl text-base text-slate-600">
-              Describe the area, budget, or amenities you want. BeeBop keeps the conversation session-scoped and can hand the same filters into the full browse pages.
-            </p>
-            <div className="mt-6">
-              <ChatSearchPanel key={chatKey} />
-            </div>
-          </section>
-          <FeaturedCarousel />
-        </div>
-      </main>
+        <main className="flex-1 overflow-hidden">
+          <ChatSearchPanel key={chatKey} />
+        </main>
+        <BottomNav />
+      </div>
     </div>
+  );
+}
+
+function BeeBopMark() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden>
+      <circle cx="6" cy="9" r="3" fill="#f59e0b" />
+      <circle cx="14" cy="6" r="3" fill="#f59e0b" />
+      <circle cx="10" cy="15" r="3" fill="#fbbf24" />
+    </svg>
   );
 }
