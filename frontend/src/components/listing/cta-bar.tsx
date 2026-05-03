@@ -38,7 +38,7 @@ export function CtaBar({ listing }: Props) {
   const loggedOutCta = (
     <Link
       href={`/login?return_to=${encodeURIComponent(pathname ?? '/')}`}
-      className="inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white"
+      className="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white"
     >
       Sign in to continue
     </Link>
@@ -49,8 +49,8 @@ export function CtaBar({ listing }: Props) {
   return (
     <>
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40">
-        <div className="mx-auto max-w-5xl px-4 pb-4">
-          <div className="pointer-events-auto flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg">
+        <div className="mx-auto max-w-[430px] px-4 pb-4 sm:max-w-5xl">
+          <div className="pointer-events-auto flex flex-col gap-4 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_16px_42px_rgba(15,23,42,0.16)] sm:flex-row sm:items-center sm:justify-between">
             {listing.category === 'short_let' && (
               <ShortLetCta listing={listing} disabled={!user} onBook={() => setBookingModalOpen(true)}>
                 {loggedOutCta}
@@ -153,7 +153,7 @@ function ShortLetCta({
           {quote ? (
             <>
               <span className="font-semibold text-slate-900">
-                ₦{quote.subtotal.toLocaleString('en-NG')}
+                {formatPrice(quote.subtotal)}
               </span>{' '}
               for {quote.nights} night{quote.nights === 1 ? '' : 's'}
             </>
@@ -182,7 +182,7 @@ function OffCampusCta({
     <>
       <div className="text-sm text-slate-600">
         <span className="font-semibold text-slate-900">
-          {listing.price ? `₦${Number(listing.price).toLocaleString('en-NG')}` : 'Price on request'}
+          {formatPrice(listing.price)}
         </span>
         <span className="ml-2 text-xs text-slate-500">starting rate</span>
       </div>
@@ -219,7 +219,7 @@ function RentCta({
         </label>
         <div className="text-xs text-slate-500">
           <span className="font-semibold text-slate-900">
-            {listing.price ? `₦${Number(listing.price).toLocaleString('en-NG')}` : '—'}
+            {formatPrice(listing.price)}
           </span>{' '}
           per year
         </div>
@@ -244,7 +244,7 @@ function SalesCta({
     <>
       <div className="text-sm">
         <span className="font-semibold text-slate-900">
-          {listing.price ? `₦${Number(listing.price).toLocaleString('en-NG')}` : 'Price on request'}
+          {formatPrice(listing.price)}
         </span>
       </div>
       {disabled ? children : <Button onClick={onMakeOffer}>Make offer</Button>}

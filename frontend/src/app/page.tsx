@@ -1,12 +1,12 @@
 'use client';
 
-import { Menu } from 'lucide-react';
+import { UserRound } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 
 import { BottomNav } from '@/components/bottom-nav';
 import { ChatSearchPanel } from '@/components/chat-search';
 import { MainSidebar } from '@/components/main-sidebar';
-import { SessionButton } from '@/components/session-button';
 import { clearChatSession } from '@/lib/ai-search';
 import { useSearch } from '@/stores/search';
 
@@ -35,21 +35,19 @@ export default function HomePage() {
         mobileOpen={drawerOpen}
         onMobileClose={() => setDrawerOpen(false)}
       />
-      <div className="mx-auto flex h-screen w-full max-w-[440px] flex-col bg-slate-50 shadow-xl">
-        <header className="flex items-center justify-between border-b border-slate-100 bg-white px-3 py-3">
+      <div className="mx-auto flex h-screen w-full max-w-[390px] flex-col bg-slate-50 shadow-xl">
+        <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-slate-100 bg-white px-6">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 lg:hidden"
-              aria-label="Open menu"
-            >
-              <Menu className="h-5 w-5" aria-hidden />
-            </button>
             <BeeBopMark />
-            <span className="text-lg font-bold text-slate-900">BeeBop</span>
+            <span className="text-lg font-bold text-brand-700">BeeBop</span>
           </div>
-          <SessionButton />
+          <Link
+            href="/dashboard/seeker"
+            aria-label="Open profile"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+          >
+            <UserRound className="h-5 w-5" aria-hidden />
+          </Link>
         </header>
         <main className="flex-1 overflow-hidden">
           <ChatSearchPanel key={chatKey} />
