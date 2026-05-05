@@ -24,7 +24,32 @@
       "Bash(.venv/Scripts/python.exe -m alembic current)",
       "Bash(.venv/Scripts/python.exe -m scripts.seed_listings)",
       "Bash(git check-ignore *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(curl -s -X POST http://localhost:8000/auth/dev-login -H \"Content-Type: application/json\" -d \"{}\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('user:', d['user']['email'], '|', d['user']['role']\\); print\\('onboarded:', d['user']['onboarding_complete']\\); print\\('access_token starts:', d['tokens']['access_token'][:30] + '...'\\)\")",
+      "Bash(curl -s -i -X POST http://localhost:8000/auth/dev-login -H \"Content-Type: application/json\" -d \"{}\")",
+      "Bash(curl -v -X POST http://localhost:8000/auth/dev-login -H \"Content-Type: application/json\" -d \"{}\")",
+      "Bash(tasklist)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/health)",
+      "Bash(curl -s -X POST http://localhost:8000/auth/dev-login -H \"Content-Type: application/json\" -d \"{}\" -o /tmp/dev-login.json)",
+      "Read(//tmp/**)",
+      "Bash(python -c \"import json, sys; d = json.load\\(sys.stdin\\); u = d['user']; t = d['tokens']; print\\(f'user.email: {u[\\\\\"email\\\\\"]}'\\); print\\(f'user.role: {u[\\\\\"role\\\\\"]}'\\); print\\(f'user.id: {u[\\\\\"id\\\\\"]}'\\); print\\(f'onboarding_complete: {u[\\\\\"onboarding_complete\\\\\"]}'\\); print\\(f'is_new_user: {d[\\\\\"is_new_user\\\\\"]}'\\); print\\(f'access_token: {t[\\\\\"access_token\\\\\"][:60]}...'\\)\")",
+      "Bash(xxd /tmp/dev-login.json)",
+      "Bash(curl -i -s -X POST http://localhost:8000/auth/dev-login -H \"Content-Type: application/json\" -d \"{}\")",
+      "Bash(\"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")",
+      "Bash(python -c \"import json,sys; data=json.load\\(sys.stdin\\); items=data if isinstance\\(data,list\\) else data.get\\('items',data\\); print\\(f'count: {len\\(items\\)}'\\); [print\\(f'  - [{l[\\\\\"category\\\\\"]}] {l[\\\\\"title\\\\\"]}'\\) for l in items[:10]]\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(curl -s -o /dev/null -w \"backend: %{http_code}\\\\n\" http://localhost:8000/health)",
+      "Bash(netstat -ano)",
+      "Bash(awk '{print $5}')",
+      "Bash(taskkill //PID 8616 //F)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); u=d['user']; print\\(f\\\\\"user: {u['email']} | role={u['role']} | onboarded={u['onboarding_complete']} | new={d['is_new_user']}\\\\\"\\)\")",
+      "Bash(curl -s -X POST http://localhost:8000/auth/dev-login -H \"Content-Type: application/json\")",
+      "Bash(python -c \"import app.admin.routes, app.admin.service, app.users.routes, app.users.service, app.notifications.templates; print\\('OK'\\)\")",
+      "Bash(python -c \"import importlib.util; spec = importlib.util.spec_from_file_location\\('m', 'alembic/versions/1a3f9c2b5e7d_add_nin_document_fields.py'\\); m = importlib.util.module_from_spec\\(spec\\); spec.loader.exec_module\\(m\\); print\\('migration imports OK, revision:', m.revision, 'down_revision:', m.down_revision\\)\")",
+      "Bash(python -c \"import importlib.util; spec = importlib.util.spec_from_file_location\\('m', 'alembic/versions/1a3f9c2b5e7d_add_nin_document_fields.py'\\); m = importlib.util.module_from_spec\\(spec\\); spec.loader.exec_module\\(m\\); print\\('migration OK, revision:', m.revision, 'down:', m.down_revision\\)\")",
+      "Bash(cd /c/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2/frontend/src && find . -name \"layout.tsx\" -path \"*/dashboard/*\" -o -name \"layout.tsx\" -path \"*/app/*\" | head -5)",
+      "Read(//c/c/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2/frontend/**)"
     ]
   }
 }

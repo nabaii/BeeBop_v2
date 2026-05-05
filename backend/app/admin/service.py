@@ -26,6 +26,8 @@ from app.admin.schemas import (
     AdminListingsResponse,
     DocReviewQueue,
     DocReviewQueueRow,
+    NinReviewQueue,
+    NinReviewQueueRow,
 )
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.models._enums import ListingStatus, UserRole
@@ -327,6 +329,102 @@ async def soft_delete_listing(
         db=db,
     )
     return listing
+
+
+# ---------------------------------------------------------------------------
+# Manual NIN review (MVP) — landlord uploaded ID image, admin verifies
+# ---------------------------------------------------------------------------
+
+
+async def nin_review_queue(*, db: AsyncSession) -> NinReviewQueue:
+    stmt = (
+        select(User)
+        .where(
+            User.nin_document_url.is_not(None),
+            User.nin_verified.is_(False),
+        )
+        .order_by(User.nin_document_uploaded_at.asc())
+    )
+    rows = (await db.execute(stmt)).scalars().unique().all()
+    items = [
+        NinReviewQueueRow(
+            user_id=str(r.id),
+            full_name=_full_name(r),
+            email=r.email,
+            role=r.role.value,
+            account_type=r.account_type.value if r.account_type else None,
+            nin_document_url=r.nin_document_url or "",
+            uploaded_at=r.nin_document_uploaded_at or r.updated_at,
+        )
+        for r in rows
+    ]
+    return NinReviewQueue(items=items, total=len(items))
+
+
+async def _load_nin_subject(db: AsyncSession, user_id: uuid.UUID) -> User:
+    result = await db.execute(select(User).where(User.id == user_id))
+    target = result.scalar_one_or_none()
+    if target is None:
+        raise NotFoundError("User not found.", code="user_not_found")
+    if target.nin_document_url is None:
+        raise ConflictError(
+            "No NIN document is awaiting review for this user.",
+            code="nin_not_pending",
+        )
+    if target.nin_verified:
+        raise ConflictError(
+            "NIN is already verified for this user.",
+            code="nin_already_verified",
+        )
+    return target
+
+
+async def approve_nin(
+    *, admin: User, user_id: uuid.UUID, db: AsyncSession
+) -> User:
+    target = await _load_nin_subject(db, user_id)
+    target.nin_verified = True
+    target.nin_review_note = None
+    await audit.record(
+        admin_id=admin.id,
+        entity_type="user",
+        entity_id=target.id,
+        action="user.nin_approve",
+        payload={"nin_document_url": target.nin_document_url},
+        db=db,
+    )
+    await dispatch_notification(
+        user_id=target.id,
+        event_type="landlord.nin_verified",
+        payload={"first_name": target.first_name or ""},
+        db=db,
+    )
+    return target
+
+
+async def reject_nin(
+    *, admin: User, user_id: uuid.UUID, note: str, db: AsyncSession
+) -> User:
+    target = await _load_nin_subject(db, user_id)
+    rejected_url = target.nin_document_url
+    target.nin_document_url = None
+    target.nin_document_uploaded_at = None
+    target.nin_review_note = note
+    await audit.record(
+        admin_id=admin.id,
+        entity_type="user",
+        entity_id=target.id,
+        action="user.nin_reject",
+        payload={"note": note, "rejected_url": rejected_url},
+        db=db,
+    )
+    await dispatch_notification(
+        user_id=target.id,
+        event_type="landlord.nin_rejected",
+        payload={"first_name": target.first_name or "", "note": note},
+        db=db,
+    )
+    return target
 
 
 # ---------------------------------------------------------------------------

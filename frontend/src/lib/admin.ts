@@ -109,6 +109,21 @@ export interface DocumentPresignedView {
   content_type: string;
 }
 
+export interface NinReviewQueueRow {
+  user_id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  account_type: string | null;
+  nin_document_url: string;
+  uploaded_at: string;
+}
+
+export interface NinReviewQueue {
+  items: NinReviewQueueRow[];
+  total: number;
+}
+
 export const admin = {
   docReviewQueue: () => api.get<DocReviewQueue>('/internal/admin/doc-review', { auth: true }),
   approve: (listingId: string, note?: string) =>
@@ -178,4 +193,10 @@ export const admin = {
     api.post(`/internal/admin/listings/${listingId}/restore`, undefined, { auth: true }),
   softDelete: (listingId: string) =>
     api.delete(`/internal/admin/listings/${listingId}`, { auth: true }),
+  ninReviewQueue: () =>
+    api.get<NinReviewQueue>('/internal/admin/nin-review', { auth: true }),
+  approveNin: (userId: string) =>
+    api.post(`/internal/admin/nin-review/${userId}/approve`, undefined, { auth: true }),
+  rejectNin: (userId: string, note: string) =>
+    api.post(`/internal/admin/nin-review/${userId}/reject`, { note }, { auth: true }),
 };

@@ -21,7 +21,20 @@ from app.core.security import (
 from app.models._enums import AccountType, UserRole
 from app.models.user import User
 
-DEV_LANDLORD_EMAIL = "landlord-super@beebop.ng"
+DEV_USERS: dict[UserRole, dict[str, str | bool]] = {
+    UserRole.LANDLORD: {
+        "email": "landlord-super@beebop.ng",
+        "first_name": "Landlord",
+        "last_name": "Super",
+        "needs_account_type": True,
+    },
+    UserRole.ADMIN: {
+        "email": "admin-super@beebop.ng",
+        "first_name": "Admin",
+        "last_name": "Super",
+        "needs_account_type": False,
+    },
+}
 
 
 def _is_onboarded(user: User) -> bool:
@@ -106,24 +119,30 @@ async def rotate_refresh_token(
     return await _issue_token_pair(user=user, refresh_store=store)
 
 
-async def dev_login_as_landlord_super(
-    *, db: AsyncSession, redis: Redis
+async def dev_login_as(
+    *, role: UserRole, db: AsyncSession, redis: Redis
 ) -> VerifyResponse:
-    """Dev-only bypass: load or create `landlord-super@beebop.ng` and issue a
-    real token pair. Owns the listings created by `scripts.seed_listings`.
+    """Dev-only bypass: load or create a canonical `<role>-super@beebop.ng`
+    user and issue a real token pair. Currently supports landlord and admin —
+    the landlord account owns listings created by `scripts.seed_listings`.
     """
-    result = await db.execute(select(User).where(User.email == DEV_LANDLORD_EMAIL))
+    spec = DEV_USERS.get(role)
+    if spec is None:
+        raise ValueError(f"dev-login does not support role={role}")
+
+    email = str(spec["email"])
+    result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
     is_new = False
     if user is None:
         is_new = True
         user = User(
-            email=DEV_LANDLORD_EMAIL,
-            role=UserRole.LANDLORD,
-            first_name="Landlord",
-            last_name="Super",
-            account_type=AccountType.INDIVIDUAL,
+            email=email,
+            role=role,
+            first_name=str(spec["first_name"]),
+            last_name=str(spec["last_name"]),
+            account_type=AccountType.INDIVIDUAL if spec["needs_account_type"] else None,
             nin_verified=True,
             bvn_verified=True,
         )

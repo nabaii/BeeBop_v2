@@ -15,10 +15,10 @@ const TABS = [
     match: (p: string) => p.startsWith('/browse'),
   },
   {
-    href: '/dashboard/seeker',
+    href: '/profile',
     label: 'Profile',
     icon: User,
-    match: (p: string) => p.startsWith('/dashboard'),
+    match: (p: string) => p.startsWith('/profile') || p.startsWith('/dashboard'),
   },
 ] as const;
 

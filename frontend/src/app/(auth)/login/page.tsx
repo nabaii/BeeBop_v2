@@ -15,7 +15,7 @@ import { useState } from 'react';
 import { OtpFlow } from '@/components/auth/otp-flow';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/lib/api';
-import { devLoginAsLandlordSuper } from '@/lib/auth';
+import { devLoginAs, type DevRole } from '@/lib/auth';
 import type { SessionUser } from '@/stores/session';
 
 type RoleHomeRoute =
@@ -43,7 +43,7 @@ function roleHome(user: SessionUser): RoleHomeRoute {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [devBusy, setDevBusy] = useState(false);
+  const [devBusyRole, setDevBusyRole] = useState<DevRole | null>(null);
   const [devError, setDevError] = useState<string | null>(null);
 
   function handleAuthenticated({ user }: { user: SessionUser; isNewUser: boolean }) {
@@ -59,18 +59,18 @@ export default function LoginPage() {
     router.replace(destination);
   }
 
-  async function handleDevLogin() {
+  async function handleDevLogin(role: DevRole) {
     setDevError(null);
-    setDevBusy(true);
+    setDevBusyRole(role);
     try {
-      const res = await devLoginAsLandlordSuper();
+      const res = await devLoginAs(role);
       handleAuthenticated(res);
     } catch (err) {
       const msg =
         err instanceof ApiError ? err.message : 'Dev login failed. Is the backend in dev mode?';
       setDevError(msg);
     } finally {
-      setDevBusy(false);
+      setDevBusyRole(null);
     }
   }
 
@@ -85,17 +85,26 @@ export default function LoginPage() {
         </Link>
       </p>
       {process.env.NODE_ENV !== 'production' && (
-        <div className="mt-8 rounded-md border border-dashed border-amber-300 bg-amber-50 p-4">
+        <div className="mt-8 space-y-2 rounded-md border border-dashed border-amber-300 bg-amber-50 p-4">
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-amber-800">
             Dev only
           </p>
           <Button
             type="button"
-            onClick={() => void handleDevLogin()}
-            disabled={devBusy}
+            onClick={() => void handleDevLogin('landlord')}
+            disabled={devBusyRole !== null}
             className="w-full"
           >
-            {devBusy ? 'Signing in…' : 'Log in as landlord-super'}
+            {devBusyRole === 'landlord' ? 'Signing in…' : 'Log in as landlord-super'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void handleDevLogin('admin')}
+            disabled={devBusyRole !== null}
+            className="w-full"
+          >
+            {devBusyRole === 'admin' ? 'Signing in…' : 'Log in as admin-super'}
           </Button>
           {devError && <p className="mt-2 text-sm text-red-600">{devError}</p>}
         </div>

@@ -15,6 +15,7 @@ import { useSession } from '@/stores/session';
 
 const SECTIONS = [
   { href: '/internal/admin', label: 'Doc review queue' },
+  { href: '/internal/admin/nin', label: 'NIN review' },
   { href: '/internal/admin/inspections', label: 'Inspection review' },
   { href: '/internal/admin/visits', label: 'Visit queue' },
   { href: '/internal/admin/visit-reports', label: 'Visit reports' },

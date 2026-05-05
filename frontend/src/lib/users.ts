@@ -17,6 +17,9 @@ export interface UserView {
   phone?: string | null;
   account_type?: 'individual' | 'agency' | null;
   nin_verified: boolean;
+  nin_document_url?: string | null;
+  nin_document_uploaded_at?: string | null;
+  nin_review_note?: string | null;
   cac_verified: boolean;
   business_name?: string | null;
   cac_number?: string | null;
@@ -112,4 +115,45 @@ export async function getPhotoUploadSignature(): Promise<{
   folder: string;
 }> {
   return api.post('/users/me/photo-upload', undefined, { auth: true });
+}
+
+export interface CloudinarySignature {
+  cloud_name: string;
+  api_key: string;
+  timestamp: number;
+  signature: string;
+  folder: string;
+}
+
+export async function getNinDocumentUploadSignature(): Promise<CloudinarySignature> {
+  return api.post('/users/me/nin-document/signature', undefined, { auth: true });
+}
+
+export async function uploadFileToCloudinary(
+  signature: CloudinarySignature,
+  file: File,
+): Promise<{ secure_url: string }> {
+  // Mirrors uploadPhotoToCloudinary in lib/listings — kept distinct so the
+  // user-side imports do not depend on listings.
+  if (signature.cloud_name === 'stub') {
+    return { secure_url: URL.createObjectURL(file) };
+  }
+  const form = new FormData();
+  form.append('file', file);
+  form.append('api_key', signature.api_key);
+  form.append('timestamp', String(signature.timestamp));
+  form.append('signature', signature.signature);
+  form.append('folder', signature.folder);
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${signature.cloud_name}/image/upload`,
+    { method: 'POST', body: form },
+  );
+  if (!res.ok) throw new Error('Cloudinary upload failed');
+  return res.json() as Promise<{ secure_url: string }>;
+}
+
+export async function registerNinDocument(
+  url: string,
+): Promise<{ nin_document_url: string; nin_document_uploaded_at: string }> {
+  return api.post('/users/me/nin-document', { url }, { auth: true });
 }

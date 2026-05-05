@@ -7,6 +7,8 @@ returns). Service code never calls commit — it only stages changes.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, ForbiddenError, ValidationError
@@ -19,6 +21,8 @@ from app.users.schemas import (
     CacVerifyResponse,
     IdentityPayload,
     LandlordAccountTypePayload,
+    NinDocumentRegisterPayload,
+    NinDocumentRegisterResponse,
     NinVerifyPayload,
     NinVerifyResponse,
     ProfilePayload,
@@ -43,6 +47,9 @@ def _view(user: User) -> UserView:
         phone=user.phone,
         account_type=user.account_type,
         nin_verified=user.nin_verified,
+        nin_document_url=user.nin_document_url,
+        nin_document_uploaded_at=user.nin_document_uploaded_at,
+        nin_review_note=user.nin_review_note,
         cac_verified=user.cac_verified,
         business_name=user.business_name,
         cac_number=user.cac_number,
@@ -162,6 +169,37 @@ async def verify_landlord_nin(
 
     # Failure path — timeout or not-found after retries. Admin review flag.
     return NinVerifyResponse(verified=False, admin_review=result.is_timeout)
+
+
+async def register_nin_document(
+    *, user: User, payload: NinDocumentRegisterPayload, db: AsyncSession
+) -> NinDocumentRegisterResponse:
+    """Manual NIN review path. The browser uploads an ID image to Cloudinary;
+    this endpoint records the resulting URL on the user. Already-verified users
+    do not need to re-upload.
+    """
+    is_individual_landlord = (
+        user.role == UserRole.LANDLORD and user.account_type == AccountType.INDIVIDUAL
+    )
+    is_internal_field_role = user.role in (UserRole.INSPECTOR, UserRole.TRUSTED_AGENT)
+    if not (is_individual_landlord or is_internal_field_role):
+        raise ForbiddenError(
+            "NIN verification applies to individual landlords, inspectors, and trusted agents.",
+            code="nin_not_applicable",
+        )
+    if user.nin_verified:
+        raise ConflictError(
+            "NIN is already verified.", code="nin_already_verified"
+        )
+    user.nin_document_url = payload.url.strip()
+    user.nin_document_uploaded_at = datetime.now(timezone.utc)
+    # Clear any previous rejection note so the landlord sees a fresh submission.
+    user.nin_review_note = None
+    await db.flush()
+    return NinDocumentRegisterResponse(
+        nin_document_url=user.nin_document_url,
+        nin_document_uploaded_at=user.nin_document_uploaded_at,
+    )
 
 
 async def verify_landlord_cac(

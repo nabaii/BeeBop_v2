@@ -61,11 +61,13 @@ export async function verifyOtp(args: {
   return { user, isNewUser: data.is_new_user };
 }
 
-export async function devLoginAsLandlordSuper(): Promise<{
+export type DevRole = 'landlord' | 'admin';
+
+export async function devLoginAs(role: DevRole = 'landlord'): Promise<{
   user: SessionUser;
   isNewUser: boolean;
 }> {
-  const data = await api.post<VerifyResponse>('/auth/dev-login', {});
+  const data = await api.post<VerifyResponse>('/auth/dev-login', { role });
   const user: SessionUser = {
     id: data.user.id,
     email: data.user.email,

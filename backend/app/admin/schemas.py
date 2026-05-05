@@ -116,6 +116,25 @@ class AreaScoreUpdatePayload(BaseModel):
         return self
 
 
+class NinReviewQueueRow(BaseModel):
+    user_id: str
+    full_name: str
+    email: str
+    role: str
+    account_type: str | None = None
+    nin_document_url: str
+    uploaded_at: datetime
+
+
+class NinReviewQueue(BaseModel):
+    items: list[NinReviewQueueRow]
+    total: int
+
+
+class NinReviewRejectPayload(BaseModel):
+    note: str = Field(..., min_length=1, max_length=2000)
+
+
 class InspectionReviewQueueRow(BaseModel):
     report_id: str
     listing_id: str

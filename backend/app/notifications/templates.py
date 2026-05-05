@@ -458,7 +458,47 @@ def _renewal_prompt_email(p: dict) -> EmailContent:
     )
 
 
+def _landlord_nin_verified_email(p: dict) -> EmailContent:
+    name = p.get("first_name") or "there"
+    return EmailContent(
+        subject="BeeBop: your identity has been verified",
+        html=(
+            f"<p>Hi {name},</p><p>Your NIN has been verified. You can now "
+            f"submit listings for review from your landlord dashboard.</p>"
+        ),
+        text=(
+            f"Hi {name}, your NIN has been verified. You can now submit "
+            f"listings for review from your landlord dashboard."
+        ),
+    )
+
+
+def _landlord_nin_rejected_email(p: dict) -> EmailContent:
+    name = p.get("first_name") or "there"
+    note = p.get("note") or "Please re-upload a clearer photo of your ID."
+    return EmailContent(
+        subject="BeeBop: identity verification needs another look",
+        html=(
+            f"<p>Hi {name},</p><p>We could not verify the ID image you "
+            f"uploaded.</p><p><em>{note}</em></p><p>Re-upload a clearer image "
+            f"from your landlord dashboard to try again.</p>"
+        ),
+        text=(
+            f"Hi {name}, we could not verify the ID you uploaded: {note} "
+            f"Re-upload a clearer image from your landlord dashboard."
+        ),
+    )
+
+
 REGISTRY: dict[str, Template] = {
+    "landlord.nin_verified": Template(
+        channels=(NotificationChannel.EMAIL, NotificationChannel.IN_APP),
+        render_email=_landlord_nin_verified_email,
+    ),
+    "landlord.nin_rejected": Template(
+        channels=(NotificationChannel.EMAIL, NotificationChannel.IN_APP),
+        render_email=_landlord_nin_rejected_email,
+    ),
     "badge.issued": Template(
         channels=(NotificationChannel.EMAIL, NotificationChannel.WHATSAPP, NotificationChannel.IN_APP),
         render_email=_badge_issued_email,

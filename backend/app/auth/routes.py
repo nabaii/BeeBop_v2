@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import service
 from app.auth.otp_service import OtpService
 from app.auth.schemas import (
+    DevLoginPayload,
     OtpRequestPayload,
     OtpRequestResponse,
     OtpVerifyPayload,
@@ -81,16 +82,19 @@ async def refresh(
 
 @router.post("/dev-login", response_model=VerifyResponse)
 async def dev_login(
+    payload: DevLoginPayload | None = None,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ) -> VerifyResponse:
-    """Dev-only OTP bypass — signs in as `landlord-super@beebop.ng`. Returns
-    404 outside the development environment so it cannot be triggered in
-    staging or production even if the route is accidentally deployed.
+    """Dev-only OTP bypass — signs in as the canonical `<role>-super@beebop.ng`
+    user (landlord or admin). Returns 404 outside the development environment
+    so it cannot be triggered in staging or production even if the route is
+    accidentally deployed.
     """
     if get_settings().environment != "development":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    return await service.dev_login_as_landlord_super(db=db, redis=redis)
+    role = UserRole(payload.role) if payload else UserRole.LANDLORD
+    return await service.dev_login_as(role=role, db=db, redis=redis)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

@@ -7,7 +7,7 @@ are internal staff accounts created only by admins (no self-registration).
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, String
+from sqlalchemy import Boolean, Date, DateTime, Enum, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,6 +31,13 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     account_type: Mapped[AccountType | None] = mapped_column(Enum(AccountType, name="account_type"))
     nin: Mapped[str | None] = mapped_column(String(11))             # not retained, only verified flag kept
     nin_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Manual NIN review (MVP). Landlord uploads an ID image; admin reviews and
+    # flips `nin_verified`. The Cloudinary URL and uploaded_at are cleared on
+    # rejection so the landlord knows to resubmit. The note is the admin's
+    # rejection reason and is shown back on the landlord card.
+    nin_document_url: Mapped[str | None] = mapped_column(String(500))
+    nin_document_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    nin_review_note: Mapped[str | None] = mapped_column(Text)
     bvn_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     date_of_birth: Mapped[date | None] = mapped_column(Date)
 

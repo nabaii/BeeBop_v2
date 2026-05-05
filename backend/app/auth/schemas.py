@@ -68,3 +68,10 @@ class VerifyResponse(BaseModel):
 
 class RefreshPayload(BaseModel):
     refresh_token: str
+
+
+class DevLoginPayload(BaseModel):
+    """Body for `/auth/dev-login`. Only landlord and admin are wired up — the
+    service raises if any other role is passed."""
+
+    role: Literal["landlord", "admin"] = "landlord"

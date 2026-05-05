@@ -15,6 +15,8 @@ from app.users.schemas import (
     CacVerifyResponse,
     IdentityPayload,
     LandlordAccountTypePayload,
+    NinDocumentRegisterPayload,
+    NinDocumentRegisterResponse,
     NinVerifyPayload,
     NinVerifyResponse,
     ProfilePayload,
@@ -82,6 +84,34 @@ async def verify_nin(
     db: AsyncSession = Depends(get_db),
 ) -> NinVerifyResponse:
     result = await service.verify_landlord_nin(user=user, payload=payload, db=db)
+    await db.commit()
+    return result
+
+
+@router.post("/me/nin-document/signature")
+async def nin_document_upload_signature(
+    user: User = Depends(get_current_user),
+) -> dict[str, str | int]:
+    """Cloudinary signed upload payload for a NIN ID image. The browser uploads
+    directly to Cloudinary and then calls POST /me/nin-document with the URL.
+    """
+    sig = build_signed_upload_params(folder=f"users/{user.id}/nin")
+    return {
+        "cloud_name": sig.cloud_name,
+        "api_key": sig.api_key,
+        "timestamp": sig.timestamp,
+        "signature": sig.signature,
+        "folder": sig.folder,
+    }
+
+
+@router.post("/me/nin-document", response_model=NinDocumentRegisterResponse)
+async def register_nin_document(
+    payload: NinDocumentRegisterPayload,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> NinDocumentRegisterResponse:
+    result = await service.register_nin_document(user=user, payload=payload, db=db)
     await db.commit()
     return result
 

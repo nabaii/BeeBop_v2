@@ -18,6 +18,8 @@ from app.admin.schemas import (
     DocReviewActionPayload,
     DocReviewQueue,
     DocumentPresignedView,
+    NinReviewQueue,
+    NinReviewRejectPayload,
     SuspendPayload,
 )
 from app.core.dependencies import require_role
@@ -84,6 +86,41 @@ async def reject_doc(
     )
     await db.commit()
     return {"status": listing.status.value}
+
+
+# ---------------------------------------------------------------------------
+# Manual NIN review (MVP)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/nin-review", response_model=NinReviewQueue)
+async def nin_review_queue(db: AsyncSession = Depends(get_db)) -> NinReviewQueue:
+    return await service.nin_review_queue(db=db)
+
+
+@router.post("/nin-review/{user_id}/approve")
+async def approve_nin(
+    user_id: uuid.UUID,
+    admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    target = await service.approve_nin(admin=admin, user_id=user_id, db=db)
+    await db.commit()
+    return {"user_id": str(target.id), "nin_verified": "true"}
+
+
+@router.post("/nin-review/{user_id}/reject")
+async def reject_nin(
+    user_id: uuid.UUID,
+    payload: NinReviewRejectPayload,
+    admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    target = await service.reject_nin(
+        admin=admin, user_id=user_id, note=payload.note, db=db
+    )
+    await db.commit()
+    return {"user_id": str(target.id), "nin_verified": "false"}
 
 
 # ---------------------------------------------------------------------------

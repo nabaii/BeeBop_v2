@@ -10,6 +10,7 @@
  * straight to `live_unverified` (off-campus; no doc-badge gate).
  */
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { use, useEffect, useState } from 'react';
 
@@ -88,6 +89,12 @@ function EditingShell({ id }: { id: string }) {
 
   return (
     <main className="mx-auto max-w-3xl space-y-8 p-6 sm:p-10">
+      <Link
+        href="/dashboard/landlord"
+        className="inline-flex items-center text-sm text-brand hover:underline"
+      >
+        ← Back to dashboard
+      </Link>
       <header className="flex items-start justify-between gap-4">
         <div>
           <div className="text-xs uppercase tracking-wide text-slate-500">
@@ -128,6 +135,12 @@ function EditingShell({ id }: { id: string }) {
           </div>
         </section>
       )}
+
+      <div className="flex justify-end pt-4">
+        <Link href="/dashboard/landlord">
+          <Button variant="secondary">Done</Button>
+        </Link>
+      </div>
     </main>
   );
 }

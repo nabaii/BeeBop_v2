@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -24,6 +24,9 @@ class UserView(BaseModel):
 
     account_type: AccountType | None = None
     nin_verified: bool = False
+    nin_document_url: str | None = None
+    nin_document_uploaded_at: datetime | None = None
+    nin_review_note: str | None = None
     cac_verified: bool = False
     business_name: str | None = None
     cac_number: str | None = None
@@ -82,6 +85,19 @@ class NinVerifyPayload(BaseModel):
 class NinVerifyResponse(BaseModel):
     verified: bool
     admin_review: bool = False   # set when retries exhausted or timeout
+
+
+class NinDocumentRegisterPayload(BaseModel):
+    """Manual NIN review — landlord uploads an ID image to Cloudinary, then
+    posts the resulting URL here. Admin reviews via /internal/admin/nin-review.
+    """
+
+    url: str = Field(..., min_length=1, max_length=500)
+
+
+class NinDocumentRegisterResponse(BaseModel):
+    nin_document_url: str
+    nin_document_uploaded_at: datetime
 
 
 class CacVerifyPayload(BaseModel):

@@ -251,3 +251,8 @@ function SalesCta({
     </>
   );
 }
+
+function formatPrice(value: number | null): string {
+  if (value == null) return '—';
+  return `₦${value.toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
+}
