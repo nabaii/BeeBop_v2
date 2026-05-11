@@ -22,7 +22,7 @@ class ExtractedParameters(BaseModel):
     max_price: float | None = None
     bedroom_count: int | None = None
     verification_tiers: list[VerificationTier] = Field(
-        default_factory=lambda: ["fully_verified", "doc_verified"]
+        default_factory=lambda: ["fully_verified", "doc_verified", "unverified"]
     )
     duration_years: int | None = None
     urgency: Literal["immediate", "soon", "flexible"] | None = None

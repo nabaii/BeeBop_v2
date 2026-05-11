@@ -5,9 +5,8 @@
  * auto-saving sections. The order of sections is identical across
  * categories; category-specific controls switch inside the relevant block.
  *
- * Submission runs the backend's `ready-for-submission` validator and either
- * transitions the listing to `under_doc_review` (rent/sales/short_let) or
- * straight to `live_unverified` (off-campus; no doc-badge gate).
+ * Submission runs the backend's `ready-for-submission` validator and, during
+ * the test phase, publishes as `live_unverified`.
  */
 
 import Link from 'next/link';
@@ -123,9 +122,7 @@ function EditingShell({ id }: { id: string }) {
         <section className="rounded-xl border border-slate-200 bg-white p-6">
           <h2 className="text-base font-semibold text-slate-900">Submit for review</h2>
           <p className="mt-1 text-sm text-slate-500">
-            {listing.category === 'off_campus'
-              ? 'Off-campus listings go live as unverified. A physical inspection can upgrade them later.'
-              : 'An admin will review your documents and issue a verification badge.'}
+            Listings go live as unverified during this test phase. Verification badges can be added later.
           </p>
           {submitError && <p className="mt-3 text-sm text-red-600">{submitError}</p>}
           <div className="mt-4">

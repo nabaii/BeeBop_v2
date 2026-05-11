@@ -95,7 +95,7 @@ _AMENITY_SYNONYMS: dict[str, str] = {
     "external line": "laundry:external_line",
 }
 
-_DEFAULT_VERIFICATION = ["fully_verified", "doc_verified"]
+_DEFAULT_VERIFICATION = ["fully_verified", "doc_verified", "unverified"]
 
 
 @dataclass(frozen=True)
@@ -1074,7 +1074,8 @@ def _search_message(
     budget = _budget_label(parameters)
     if not results:
         return f"I could not find any {category}{where}{budget} yet. Try widening the area, budget, or verification filter."
-    qualifier = "verified " if parameters.verification_tiers == _DEFAULT_VERIFICATION else ""
+    selected_tiers = set(parameters.verification_tiers or [])
+    qualifier = "verified " if selected_tiers and "unverified" not in selected_tiers else ""
     return (
         f"I found {len(results)} {qualifier}{category}{where}{budget}. "
         "You can ask for a specific one, compare amenities, or open the full browse view."

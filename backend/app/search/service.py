@@ -41,8 +41,8 @@ def _base_visibility_stmt():  # type: ignore[no-untyped-def]
 def _verification_clause(tiers: list[str]):  # type: ignore[no-untyped-def]
     """Build the OR clause that matches any of the requested verification tiers.
 
-    Seekers default to Fully Verified + Doc Verified pre-checked (dev plan §7.3).
-    Explicitly adding 'unverified' to the list opts them into live_unverified.
+    During the test phase, seekers see unverified listings by default so newly
+    posted landlord listings are discoverable before badge review is enabled.
     """
     if not tiers:
         # No tiers selected = no results (client bug, but don't fall back to

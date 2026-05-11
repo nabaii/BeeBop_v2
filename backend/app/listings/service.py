@@ -1,4 +1,4 @@
-"""Listing business logic — create, draft auto-save, submit for review.
+"""Listing business logic — create, draft auto-save, submit/publish.
 
 Service functions never commit — the route handler commits once per request.
 Submission validation lives here (not in the schema layer) so draft partial
@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import get_settings
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.listings.schemas import (
     AMENITY_GROUPS,
@@ -232,11 +233,25 @@ def _validate_ready_for_submission(listing: Listing) -> list[str]:
     if not listing.photos:
         missing.append("photos")
 
-    if listing.category != ListingCategory.OFF_CAMPUS and not listing.documents:
-        # Off-campus is exempt from the doc-badge gate per product brief §3.1.
+    if (
+        get_settings().listing_document_review_required
+        and listing.category != ListingCategory.OFF_CAMPUS
+        and not listing.documents
+    ):
+        # The initial test phase can skip document review. Production can opt
+        # back in with LISTING_DOCUMENT_REVIEW_REQUIRED=true.
         missing.append("documents")
 
     return missing
+
+
+def _status_after_submission(listing: Listing) -> ListingStatus:
+    """Return the visible status a ready listing should receive."""
+    if listing.category == ListingCategory.OFF_CAMPUS:
+        return ListingStatus.LIVE_UNVERIFIED
+    if get_settings().listing_document_review_required:
+        return ListingStatus.UNDER_DOC_REVIEW
+    return ListingStatus.LIVE_UNVERIFIED
 
 
 async def submit_listing(
@@ -256,13 +271,7 @@ async def submit_listing(
 
     _validate_type_data(listing)
 
-    # Off-campus drafts go straight live-unverified (no doc badge required).
-    # All other categories enter the admin doc-review queue.
-    listing.status = (
-        ListingStatus.LIVE_UNVERIFIED
-        if listing.category == ListingCategory.OFF_CAMPUS
-        else ListingStatus.UNDER_DOC_REVIEW
-    )
+    listing.status = _status_after_submission(listing)
     await db.flush()
     return _view(listing)
 

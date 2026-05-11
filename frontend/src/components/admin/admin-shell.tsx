@@ -6,6 +6,7 @@
  */
 
 import Link from 'next/link';
+import type { Route } from 'next';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 
@@ -42,7 +43,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             return (
               <Link
                 key={s.href}
-                href={s.href}
+                href={s.href as Route}
                 className={
                   'block rounded-lg px-3 py-2 text-sm transition-colors ' +
                   (active ? 'bg-brand/10 text-brand' : 'text-slate-700 hover:bg-slate-50')

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Title document upload. Files go directly to a private S3 bucket via a
+ * Optional title document upload. Files go directly to a private S3 bucket via a
  * short-lived presigned PUT — the backend never sees the file body. Admin
  * review (Sprint 4) uses short-expiry presigned GET URLs.
  */
@@ -84,9 +84,9 @@ export function DocumentUpload({ listing, onSaved }: Props) {
   return (
     <section className="space-y-3">
       <header>
-        <h2 className="text-base font-semibold text-slate-900">Title documents</h2>
+        <h2 className="text-base font-semibold text-slate-900">Title documents (optional)</h2>
         <p className="text-xs text-slate-500">
-          Only reviewed by BeeBop admins. Never shared with seekers. Max 25MB per file.
+          Add documents now if you want them ready for later verification. Max 25MB per file.
         </p>
       </header>
       <div className="flex flex-wrap items-center gap-3">
@@ -123,7 +123,7 @@ export function DocumentUpload({ listing, onSaved }: Props) {
       {error && <p className="text-sm text-red-600">{error}</p>}
       {docs.length === 0 ? (
         <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-          No documents uploaded yet.
+          No documents uploaded yet. You can still submit the listing.
         </p>
       ) : (
         <ul className="space-y-2">

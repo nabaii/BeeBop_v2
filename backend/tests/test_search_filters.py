@@ -18,9 +18,12 @@ from app.search.schemas import (
 from app.search.service import _verification_clause
 
 
-def test_shared_filters_default_to_verified_pre_checked() -> None:
-    # Per dev plan §7.3: default pre-checks Fully Verified + Doc Verified.
-    assert SharedFilters().verification == ["fully_verified", "doc_verified"]
+def test_shared_filters_default_to_test_phase_visibility() -> None:
+    assert SharedFilters().verification == [
+        "fully_verified",
+        "doc_verified",
+        "unverified",
+    ]
 
 
 def test_shared_filters_default_sort_is_relevance() -> None:

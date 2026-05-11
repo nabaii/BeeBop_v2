@@ -26,7 +26,7 @@ class SharedFilters(BaseModel):
     q: str | None = None
     locations: list[str] = Field(default_factory=list)
     verification: list[VerificationTier] = Field(
-        default_factory=lambda: ["fully_verified", "doc_verified"]
+        default_factory=lambda: ["fully_verified", "doc_verified", "unverified"]
     )
     amenities: list[str] = Field(default_factory=list)  # format: "group:key"
     min_price: float | None = Field(default=None, ge=0)

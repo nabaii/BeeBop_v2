@@ -34,7 +34,7 @@ interface SearchState {
 }
 
 const defaultFilters: SearchSeedFilters = {
-  verification: ['fully_verified', 'doc_verified'],
+  verification: ['fully_verified', 'doc_verified', 'unverified'],
   sort: 'relevance',
   page: 1,
   page_size: 24,

@@ -12,7 +12,6 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { EmptyPanel } from '@/components/dashboard/empty-panel';
-import { NinVerifyCard } from '@/components/dashboard/nin-verify-card';
 import { NotificationsInbox } from '@/components/dashboard/notifications-inbox';
 import { StatTile } from '@/components/dashboard/stat-tile';
 import { ListingCard } from '@/components/listing/listing-card';
@@ -66,8 +65,6 @@ export default function LandlordDashboardPage() {
       </header>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <NinVerifyCard />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatTile label="Listings" value={overview?.listings_total ?? '—'} />

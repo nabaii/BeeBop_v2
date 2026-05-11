@@ -9,7 +9,7 @@ import { search, type ShortLetFilters } from '@/lib/search';
 import { useSearch } from '@/stores/search';
 
 const DEFAULTS: ShortLetFilters = {
-  verification: ['fully_verified', 'doc_verified'],
+  verification: ['fully_verified', 'doc_verified', 'unverified'],
   sort: 'relevance',
   page: 1,
   page_size: 24,

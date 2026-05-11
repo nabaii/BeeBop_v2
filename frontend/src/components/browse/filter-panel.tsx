@@ -33,7 +33,7 @@ export function FilterPanel({ value, onChange, children }: Props) {
   }, []);
 
   function toggleTier(tier: VerificationTier) {
-    const current = value.verification ?? ['fully_verified', 'doc_verified'];
+    const current = value.verification ?? ['fully_verified', 'doc_verified', 'unverified'];
     const next = current.includes(tier)
       ? current.filter((t) => t !== tier)
       : [...current, tier];
@@ -140,7 +140,9 @@ export function FilterPanel({ value, onChange, children }: Props) {
         </h3>
         <ul className="mt-2 space-y-1.5">
           {VERIFICATION_TIERS.map((t) => {
-            const checked = (value.verification ?? []).includes(t.value);
+            const checked = (
+              value.verification ?? ['fully_verified', 'doc_verified', 'unverified']
+            ).includes(t.value);
             return (
               <li key={t.value}>
                 <label className="flex items-center gap-2 text-sm text-slate-700">

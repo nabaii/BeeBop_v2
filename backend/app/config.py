@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     nimc_api_url: str = ""
     cac_api_key: str = ""
     cac_api_url: str = ""
+    # Test-phase switches. When listing_document_review_required is false,
+    # landlords can publish listings as live-unverified without title docs.
+    listing_document_review_required: bool = False
 
     # LLMs
     anthropic_api_key: str = ""
