@@ -2,11 +2,13 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.admin.inspector_routes import router as admin_inspector_router
 from app.admin.routes import router as admin_router
@@ -42,6 +44,7 @@ from app.visits.routes import (
 )
 
 settings = get_settings()
+DEV_ASSETS_DIR = Path(__file__).resolve().parents[2] / "dummy listings"
 
 if settings.sentry_dsn:
     sentry_sdk.init(
@@ -83,6 +86,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if settings.environment == "development" and DEV_ASSETS_DIR.exists():
+    app.mount("/dev-assets", StaticFiles(directory=DEV_ASSETS_DIR), name="dev-assets")
 
 
 @app.exception_handler(DomainError)

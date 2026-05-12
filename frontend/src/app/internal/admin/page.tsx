@@ -11,8 +11,11 @@ import { useEffect, useState } from 'react';
 import { DocumentViewer } from '@/components/admin/doc-viewer';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/lib/api';
-import { admin, type DocReviewQueueRow } from '@/lib/admin';
-import { getListing, type ListingView } from '@/lib/listings';
+import {
+  admin,
+  type AdminListingDetail,
+  type DocReviewQueueRow,
+} from '@/lib/admin';
 
 type ActionKind = 'approve' | 'query' | 'reject';
 
@@ -114,16 +117,17 @@ function ReviewDrawer({
   onClose: () => void;
   onResolved: () => Promise<void>;
 }) {
-  const [listing, setListing] = useState<ListingView | null>(null);
+  const [listing, setListing] = useState<AdminListingDetail | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState<ActionKind | null>(null);
   const [note, setNote] = useState('');
-  const [viewing, setViewing] = useState<ListingView['documents'][number] | null>(null);
+  const [viewing, setViewing] = useState<AdminListingDetail['documents'][number] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    getListing(row.listing_id)
+    admin
+      .listingDetail(row.listing_id)
       .then((l) => !cancelled && setListing(l))
       .catch(() => !cancelled && setLoadError('Could not load this listing.'));
     return () => {

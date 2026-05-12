@@ -94,6 +94,65 @@ export interface AdminListingRow {
   deleted_at: string | null;
 }
 
+export interface AdminBadgeView {
+  id: string;
+  type: 'document' | 'physical';
+  issued_at: string;
+  expires_at: string;
+  inspector_id: string | null;
+}
+
+export interface AdminListingInspectionSummary {
+  report_id: string;
+  status: InspectionReportStatus;
+  inspector_name: string;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+}
+
+export interface AdminListingDetail {
+  id: string;
+  title: string | null;
+  subtitle: string | null;
+  description: string | null;
+  category: ListingCategory;
+  status: ListingStatus;
+  landlord_id: string;
+  landlord_name: string;
+  landlord_email: string;
+  created_at: string;
+  updated_at: string;
+  suspended_at: string | null;
+  deleted_at: string | null;
+  review_note: string | null;
+  suspension_reason: string | null;
+  address_line: string | null;
+  district: string | null;
+  gps_lat: number | null;
+  gps_lng: number | null;
+  price: number | null;
+  amenities: Record<string, Record<string, { present?: boolean; confirmed?: boolean }> | null>;
+  type_data: Record<string, unknown>;
+  photos: Array<{
+    id: string;
+    url: string;
+    room_label: string | null;
+    is_cover: boolean;
+    display_order: number;
+  }>;
+  documents: Array<{
+    id: string;
+    filename: string;
+    doc_type: string;
+    content_type: string;
+    size_bytes: number | null;
+  }>;
+  document_badge: AdminBadgeView | null;
+  physical_badge: AdminBadgeView | null;
+  latest_inspection: AdminListingInspectionSummary | null;
+  is_publicly_visible: boolean;
+}
+
 export interface AdminListingsResponse {
   items: AdminListingRow[];
   total: number;
@@ -177,6 +236,10 @@ export const admin = {
       auth: true,
     });
   },
+  listingDetail: (listingId: string) =>
+    api.get<AdminListingDetail>(`/internal/admin/listings/${listingId}`, {
+      auth: true,
+    }),
   editListing: (
     listingId: string,
     payload: Partial<{
@@ -187,6 +250,12 @@ export const admin = {
       price: number;
     }>,
   ) => api.patch(`/internal/admin/listings/${listingId}`, payload, { auth: true }),
+  publishListing: (listingId: string) =>
+    api.post(`/internal/admin/listings/${listingId}/publish`, undefined, { auth: true }),
+  awardDocumentBadge: (listingId: string) =>
+    api.post(`/internal/admin/listings/${listingId}/badges/document`, undefined, { auth: true }),
+  awardPhysicalBadge: (listingId: string) =>
+    api.post(`/internal/admin/listings/${listingId}/badges/physical`, undefined, { auth: true }),
   suspend: (listingId: string, reason: string) =>
     api.post(`/internal/admin/listings/${listingId}/suspend`, { reason }, { auth: true }),
   restore: (listingId: string) =>

@@ -6,7 +6,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.models._enums import InspectionReportStatus, ListingCategory, ListingStatus
+from app.listings.schemas import ListingDocumentView, ListingPhotoView
+from app.models._enums import BadgeType, InspectionReportStatus, ListingCategory, ListingStatus
 
 
 class DocReviewQueueRow(BaseModel):
@@ -45,6 +46,53 @@ class AdminListingsResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class AdminBadgeView(BaseModel):
+    id: str
+    type: BadgeType
+    issued_at: datetime
+    expires_at: datetime
+    inspector_id: str | None = None
+
+
+class AdminListingInspectionSummary(BaseModel):
+    report_id: str
+    status: InspectionReportStatus
+    inspector_name: str
+    submitted_at: datetime | None = None
+    reviewed_at: datetime | None = None
+
+
+class AdminListingDetail(BaseModel):
+    id: str
+    title: str | None = None
+    subtitle: str | None = None
+    description: str | None = None
+    category: ListingCategory
+    status: ListingStatus
+    landlord_id: str
+    landlord_name: str
+    landlord_email: str
+    created_at: datetime
+    updated_at: datetime
+    suspended_at: datetime | None = None
+    deleted_at: datetime | None = None
+    review_note: str | None = None
+    suspension_reason: str | None = None
+    address_line: str | None = None
+    district: str | None = None
+    gps_lat: float | None = None
+    gps_lng: float | None = None
+    price: float | None = None
+    amenities: dict = Field(default_factory=dict)
+    type_data: dict = Field(default_factory=dict)
+    photos: list[ListingPhotoView] = Field(default_factory=list)
+    documents: list[ListingDocumentView] = Field(default_factory=list)
+    document_badge: AdminBadgeView | None = None
+    physical_badge: AdminBadgeView | None = None
+    latest_inspection: AdminListingInspectionSummary | None = None
+    is_publicly_visible: bool = False
 
 
 class AdminListingFilters(BaseModel):

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.admin import review_service, service
 from app.admin.schemas import (
+    AdminListingDetail,
     AreaScoreUpdatePayload,
     AreaScoreView,
     AdminListingEditPayload,
@@ -161,6 +162,14 @@ async def list_listings(
     return await service.list_listings(filters=filters, db=db)
 
 
+@router.get("/listings/{listing_id}", response_model=AdminListingDetail)
+async def listing_detail(
+    listing_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> AdminListingDetail:
+    return await service.get_listing_detail(listing_id=listing_id, db=db)
+
+
 @router.patch("/listings/{listing_id}")
 async def edit_listing(
     listing_id: uuid.UUID,
@@ -174,6 +183,44 @@ async def edit_listing(
     )
     if payload.price is not None:
         await invalidate_listing_report_cache(listing=listing, redis=redis, db=db)
+    await db.commit()
+    return {"id": str(listing.id), "status": listing.status.value}
+
+
+@router.post("/listings/{listing_id}/publish")
+async def publish_listing(
+    listing_id: uuid.UUID,
+    admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    listing = await service.publish_listing(admin=admin, listing_id=listing_id, db=db)
+    await db.commit()
+    return {"id": str(listing.id), "status": listing.status.value}
+
+
+@router.post("/listings/{listing_id}/badges/document")
+async def award_document_badge(
+    listing_id: uuid.UUID,
+    admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    listing = await service.award_document_badge(
+        admin=admin, listing_id=listing_id, db=db
+    )
+    await db.commit()
+    return {"id": str(listing.id), "status": listing.status.value}
+
+
+@router.post("/listings/{listing_id}/badges/physical")
+async def award_physical_badge(
+    listing_id: uuid.UUID,
+    admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> dict[str, str]:
+    listing = await review_service.award_physical_badge_for_listing(
+        admin=admin, listing_id=listing_id, db=db, redis=redis
+    )
     await db.commit()
     return {"id": str(listing.id), "status": listing.status.value}
 

@@ -210,20 +210,17 @@ async def inspection_review_detail(
     )
 
 
-async def approve_inspection_report(
+async def _complete_physical_badge_award(
     *,
     admin: User,
-    report_id: uuid.UUID,
+    report: InspectionReport,
+    listing: Listing,
+    inspector: User,
     note: str | None,
+    audit_action: str,
     db: AsyncSession,
     redis: Redis,
 ) -> InspectionReport:
-    report, listing, inspector, _ = await _load_review_bundle(report_id=report_id, db=db)
-    if report.status != InspectionReportStatus.PENDING:
-        raise ConflictError(
-            "Inspection report is not awaiting review.",
-            code="inspection_not_pending",
-        )
     if await listing_has_active_badge(
         listing_id=listing.id, badge_type=BadgeType.PHYSICAL, db=db
     ):
@@ -244,10 +241,16 @@ async def approve_inspection_report(
     assessment = _validated_assessment(report)
     _apply_confirmed_amenities(listing=listing, assessment=assessment)
 
-    report.status = InspectionReportStatus.APPROVED
-    report.reviewed_by_id = admin.id
-    report.reviewed_at = datetime.now(timezone.utc)
-    report.review_note = note
+    if report.status == InspectionReportStatus.PENDING:
+        report.status = InspectionReportStatus.APPROVED
+        report.reviewed_by_id = admin.id
+        report.reviewed_at = datetime.now(timezone.utc)
+        report.review_note = note
+    elif report.status != InspectionReportStatus.APPROVED:
+        raise ConflictError(
+            "Listing needs a pending or approved inspection report before a physical badge can be issued.",
+            code="inspection_report_not_ready",
+        )
 
     badge = await issue_physical_badge(
         listing_id=listing.id,
@@ -266,8 +269,8 @@ async def approve_inspection_report(
         admin_id=admin.id,
         entity_type="inspection_report",
         entity_id=report.id,
-        action="inspection.approve",
-        payload={"badge_id": str(badge.id)},
+        action=audit_action,
+        payload={"badge_id": str(badge.id), "listing_id": str(listing.id)},
         db=db,
     )
     await dispatch_notification(
@@ -281,6 +284,83 @@ async def approve_inspection_report(
         db=db,
     )
     return report
+
+
+async def approve_inspection_report(
+    *,
+    admin: User,
+    report_id: uuid.UUID,
+    note: str | None,
+    db: AsyncSession,
+    redis: Redis,
+) -> InspectionReport:
+    report, listing, inspector, _ = await _load_review_bundle(report_id=report_id, db=db)
+    if report.status != InspectionReportStatus.PENDING:
+        raise ConflictError(
+            "Inspection report is not awaiting review.",
+            code="inspection_not_pending",
+        )
+    return await _complete_physical_badge_award(
+        admin=admin,
+        report=report,
+        listing=listing,
+        inspector=inspector,
+        note=note,
+        audit_action="inspection.approve",
+        db=db,
+        redis=redis,
+    )
+
+
+async def award_physical_badge_for_listing(
+    *,
+    admin: User,
+    listing_id: uuid.UUID,
+    db: AsyncSession,
+    redis: Redis,
+) -> Listing:
+    inspector_alias = aliased(User)
+    owner_alias = aliased(User)
+    row = (
+        await db.execute(
+            select(InspectionReport, Listing, inspector_alias, owner_alias)
+            .join(Listing, Listing.id == InspectionReport.listing_id)
+            .join(inspector_alias, inspector_alias.id == InspectionReport.inspector_id)
+            .join(owner_alias, owner_alias.id == Listing.owner_id)
+            .where(
+                Listing.id == listing_id,
+                InspectionReport.status.in_(
+                    (
+                        InspectionReportStatus.PENDING,
+                        InspectionReportStatus.APPROVED,
+                    )
+                ),
+            )
+            .order_by(
+                InspectionReport.submitted_at.desc().nullslast(),
+                InspectionReport.created_at.desc(),
+            )
+            .limit(1)
+        )
+    ).one_or_none()
+    if row is None:
+        raise ConflictError(
+            "A pending or approved inspection report is required before a physical badge can be issued.",
+            code="inspection_report_required",
+        )
+
+    report, listing, inspector, _ = row
+    await _complete_physical_badge_award(
+        admin=admin,
+        report=report,
+        listing=listing,
+        inspector=inspector,
+        note=None,
+        audit_action="listing.physical_badge_award",
+        db=db,
+        redis=redis,
+    )
+    return listing
 
 
 async def query_inspection_report(

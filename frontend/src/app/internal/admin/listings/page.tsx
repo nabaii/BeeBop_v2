@@ -5,6 +5,8 @@
  * Per-row actions: edit (inline subset), suspend, restore, soft-delete.
  */
 
+import Link from 'next/link';
+import type { Route } from 'next';
 import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -259,7 +261,12 @@ function Row({
   return (
     <tr>
       <td className="px-4 py-3">
-        <div className="font-medium text-slate-900">{row.title ?? 'Untitled'}</div>
+        <Link
+          href={`/internal/admin/listings/${row.id}` as Route}
+          className="font-medium text-slate-900 hover:text-brand hover:underline"
+        >
+          {row.title ?? 'Untitled'}
+        </Link>
         <div className="text-xs uppercase tracking-wide text-slate-500">
           {row.category.replace('_', ' ')}
         </div>
@@ -276,6 +283,12 @@ function Row({
       </td>
       <td className="px-4 py-3 text-right">
         <div className="inline-flex gap-2">
+          <Link
+            href={`/internal/admin/listings/${row.id}` as Route}
+            className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50"
+          >
+            Open
+          </Link>
           {!isDeleted && !isSuspended && (
             <Button variant="ghost" disabled={busy !== null} onClick={() => void suspend()}>
               {busy === 'suspend' ? 'Suspending…' : 'Suspend'}

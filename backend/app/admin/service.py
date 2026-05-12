@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Iterable
+from types import SimpleNamespace
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,8 +20,11 @@ from sqlalchemy.orm import selectinload
 
 from app.admin import audit
 from app.admin.schemas import (
+    AdminBadgeView,
+    AdminListingDetail,
     AdminListingEditPayload,
     AdminListingFilters,
+    AdminListingInspectionSummary,
     AdminListingRow,
     AdminListingsResponse,
     DocReviewQueue,
@@ -30,11 +33,24 @@ from app.admin.schemas import (
     NinReviewQueueRow,
 )
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
-from app.models._enums import ListingStatus, UserRole
-from app.models.listing import Listing, ListingDocument
+from app.listings.service import _validate_ready_for_submission, _validate_type_data
+from app.models._enums import BadgeStatus, BadgeType, ListingCategory, ListingStatus, UserRole
+from app.models.badge import Badge
+from app.models.inspection import InspectionReport
+from app.models.listing import Listing, ListingDocument, ListingPhoto
 from app.models.user import User
 from app.notifications.dispatch import dispatch_notification
-from app.verification.badges import issue_doc_badge
+from app.verification.badges import issue_doc_badge, listing_has_active_badge
+
+_PUBLIC_STATUSES = frozenset(
+    {
+        ListingStatus.LIVE_UNVERIFIED,
+        ListingStatus.DOC_VERIFIED,
+        ListingStatus.FULLY_VERIFIED,
+        ListingStatus.LET_AGREED,
+        ListingStatus.SALE_AGREED,
+    }
+)
 
 
 def _full_name(user: User) -> str:
@@ -42,6 +58,32 @@ def _full_name(user: User) -> str:
     if parts:
         return " ".join(parts)
     return user.business_name or user.email
+
+
+def _is_publicly_visible(status: ListingStatus) -> bool:
+    return status in _PUBLIC_STATUSES
+
+
+def _public_status_from_badges(
+    *, has_document_badge: bool, has_physical_badge: bool
+) -> ListingStatus:
+    if has_physical_badge:
+        return ListingStatus.FULLY_VERIFIED
+    if has_document_badge:
+        return ListingStatus.DOC_VERIFIED
+    return ListingStatus.LIVE_UNVERIFIED
+
+
+def _badge_view(badge: Badge | None) -> AdminBadgeView | None:
+    if badge is None:
+        return None
+    return AdminBadgeView(
+        id=str(badge.id),
+        type=badge.type,
+        issued_at=badge.created_at,
+        expires_at=badge.expires_at,
+        inspector_id=str(badge.inspector_id) if badge.inspector_id else None,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -76,12 +118,145 @@ async def _load(db: AsyncSession, listing_id: uuid.UUID) -> Listing:
     stmt = (
         select(Listing)
         .where(Listing.id == listing_id)
-        .options(selectinload(Listing.documents), selectinload(Listing.owner))
+        .options(
+            selectinload(Listing.photos),
+            selectinload(Listing.documents),
+            selectinload(Listing.owner),
+        )
     )
     listing = (await db.execute(stmt)).scalar_one_or_none()
     if listing is None:
         raise NotFoundError("Listing not found.", code="listing_not_found")
     return listing
+
+
+async def _active_badges_for_listing(
+    *, listing_id: uuid.UUID, db: AsyncSession
+) -> tuple[Badge | None, Badge | None]:
+    rows = (
+        await db.execute(
+            select(Badge)
+            .where(
+                Badge.listing_id == listing_id,
+                Badge.status == BadgeStatus.ACTIVE,
+            )
+            .order_by(Badge.created_at.desc())
+        )
+    ).scalars().all()
+    document = next((badge for badge in rows if badge.type == BadgeType.DOCUMENT), None)
+    physical = next((badge for badge in rows if badge.type == BadgeType.PHYSICAL), None)
+    return document, physical
+
+
+async def _listing_media(
+    *, listing_id: uuid.UUID, db: AsyncSession
+) -> tuple[list[ListingPhoto], list[ListingDocument]]:
+    photos = (
+        await db.execute(
+            select(ListingPhoto)
+            .where(ListingPhoto.listing_id == listing_id)
+            .order_by(ListingPhoto.display_order.asc(), ListingPhoto.created_at.asc())
+        )
+    ).scalars().all()
+    documents = (
+        await db.execute(
+            select(ListingDocument)
+            .where(ListingDocument.listing_id == listing_id)
+            .order_by(ListingDocument.created_at.asc())
+        )
+    ).scalars().all()
+    return photos, documents
+
+
+async def _latest_inspection_summary(
+    *, listing_id: uuid.UUID, db: AsyncSession
+) -> AdminListingInspectionSummary | None:
+    row = (
+        await db.execute(
+            select(InspectionReport, User)
+            .join(User, User.id == InspectionReport.inspector_id)
+            .where(InspectionReport.listing_id == listing_id)
+            .order_by(
+                InspectionReport.submitted_at.desc().nullslast(),
+                InspectionReport.created_at.desc(),
+            )
+            .limit(1)
+        )
+    ).one_or_none()
+    if row is None:
+        return None
+    report, inspector = row
+    return AdminListingInspectionSummary(
+        report_id=str(report.id),
+        status=report.status,
+        inspector_name=_full_name(inspector),
+        submitted_at=report.submitted_at,
+        reviewed_at=report.reviewed_at,
+    )
+
+
+async def get_listing_detail(
+    *, listing_id: uuid.UUID, db: AsyncSession
+) -> AdminListingDetail:
+    listing = await _load(db, listing_id)
+    owner = await db.get(User, listing.owner_id)
+    if owner is None:
+        raise NotFoundError("Listing owner not found.", code="listing_owner_not_found")
+    photos, documents = await _listing_media(listing_id=listing.id, db=db)
+    document_badge, physical_badge = await _active_badges_for_listing(
+        listing_id=listing.id, db=db
+    )
+    latest_inspection = await _latest_inspection_summary(
+        listing_id=listing.id, db=db
+    )
+    return AdminListingDetail(
+        id=str(listing.id),
+        title=listing.title,
+        subtitle=listing.subtitle,
+        description=listing.description,
+        category=listing.category,
+        status=listing.status,
+        landlord_id=str(listing.owner_id),
+        landlord_name=_full_name(owner),
+        landlord_email=owner.email,
+        created_at=listing.created_at,
+        updated_at=listing.updated_at,
+        suspended_at=listing.suspended_at,
+        deleted_at=listing.deleted_at,
+        review_note=listing.review_note,
+        suspension_reason=listing.suspension_reason,
+        address_line=listing.address_line,
+        district=listing.district,
+        gps_lat=listing.gps_lat,
+        gps_lng=listing.gps_lng,
+        price=float(listing.price) if listing.price is not None else None,
+        amenities=listing.amenities or {},
+        type_data=listing.type_data or {},
+        photos=[
+            {
+                "id": str(photo.id),
+                "url": photo.url,
+                "room_label": photo.room_label,
+                "is_cover": photo.is_cover,
+                "display_order": photo.display_order,
+            }
+            for photo in photos
+        ],
+        documents=[
+            {
+                "id": str(doc.id),
+                "filename": doc.filename,
+                "doc_type": doc.doc_type,
+                "content_type": doc.content_type,
+                "size_bytes": doc.size_bytes,
+            }
+            for doc in documents
+        ],
+        document_badge=_badge_view(document_badge),
+        physical_badge=_badge_view(physical_badge),
+        latest_inspection=latest_inspection,
+        is_publicly_visible=_is_publicly_visible(listing.status),
+    )
 
 
 async def approve_doc(
@@ -238,6 +413,116 @@ async def list_listings(
     return AdminListingsResponse(
         items=items, total=total, page=filters.page, page_size=filters.page_size
     )
+
+
+async def award_document_badge(
+    *, admin: User, listing_id: uuid.UUID, db: AsyncSession
+) -> Listing:
+    listing = await _load(db, listing_id)
+    _, documents = await _listing_media(listing_id=listing.id, db=db)
+    if listing.deleted_at is not None or listing.status == ListingStatus.DELISTED:
+        raise ConflictError(
+            "Listing has been delisted and cannot receive badges.",
+            code="listing_delisted",
+        )
+    if await listing_has_active_badge(
+        listing_id=listing.id, badge_type=BadgeType.DOCUMENT, db=db
+    ):
+        raise ConflictError(
+            "Listing already has an active document badge.",
+            code="document_badge_exists",
+        )
+    if listing.category != ListingCategory.OFF_CAMPUS and not documents:
+        raise ValidationError(
+            "Upload at least one title document before awarding a document badge.",
+            code="document_badge_docs_required",
+        )
+
+    has_physical_badge = await listing_has_active_badge(
+        listing_id=listing.id, badge_type=BadgeType.PHYSICAL, db=db
+    )
+    badge = await issue_doc_badge(listing_id=listing.id, admin_id=admin.id, db=db)
+    listing.status = _public_status_from_badges(
+        has_document_badge=True,
+        has_physical_badge=has_physical_badge,
+    )
+    listing.suspended_at = None
+    listing.suspension_reason = None
+    await audit.record(
+        admin_id=admin.id,
+        entity_type="listing",
+        entity_id=listing.id,
+        action="listing.document_badge_award",
+        payload={"badge_id": str(badge.id)},
+        db=db,
+    )
+    await dispatch_notification(
+        user_id=listing.owner_id,
+        event_type="badge.issued",
+        payload={
+            "listing_id": str(listing.id),
+            "listing_title": listing.title or "Your listing",
+            "badge_type": "document",
+        },
+        db=db,
+    )
+    await db.flush()
+    return listing
+
+
+async def publish_listing(
+    *, admin: User, listing_id: uuid.UUID, db: AsyncSession
+) -> Listing:
+    listing = await _load(db, listing_id)
+    photos, documents = await _listing_media(listing_id=listing.id, db=db)
+    if listing.deleted_at is not None or listing.status == ListingStatus.DELISTED:
+        raise ConflictError(
+            "Listing has been delisted and cannot go live.",
+            code="listing_delisted",
+        )
+
+    validation_view = SimpleNamespace(
+        title=listing.title,
+        description=listing.description,
+        address_line=listing.address_line,
+        gps_lat=listing.gps_lat,
+        gps_lng=listing.gps_lng,
+        category=listing.category,
+        price=listing.price,
+        type_data=listing.type_data or {},
+        photos=photos,
+        documents=documents,
+    )
+    missing = _validate_ready_for_submission(validation_view)
+    if missing:
+        raise ValidationError(
+            f"Listing is not ready to go live: {', '.join(missing)}",
+            code="listing_not_ready_for_publish",
+        )
+    _validate_type_data(validation_view)
+
+    has_document_badge = await listing_has_active_badge(
+        listing_id=listing.id, badge_type=BadgeType.DOCUMENT, db=db
+    )
+    has_physical_badge = await listing_has_active_badge(
+        listing_id=listing.id, badge_type=BadgeType.PHYSICAL, db=db
+    )
+    listing.status = _public_status_from_badges(
+        has_document_badge=has_document_badge,
+        has_physical_badge=has_physical_badge,
+    )
+    listing.suspended_at = None
+    listing.suspension_reason = None
+    await audit.record(
+        admin_id=admin.id,
+        entity_type="listing",
+        entity_id=listing.id,
+        action="listing.publish",
+        payload={"status": listing.status.value},
+        db=db,
+    )
+    await db.flush()
+    return listing
 
 
 async def edit_listing(
