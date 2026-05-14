@@ -22,6 +22,12 @@ from app.models._enums import AccountType, UserRole
 from app.models.user import User
 
 DEV_USERS: dict[UserRole, dict[str, str | bool]] = {
+    UserRole.SEEKER: {
+        "email": "seeker-super@beebop.ng",
+        "first_name": "Seeker",
+        "last_name": "Super",
+        "needs_account_type": False,
+    },
     UserRole.LANDLORD: {
         "email": "landlord-super@beebop.ng",
         "first_name": "Landlord",
@@ -123,8 +129,8 @@ async def dev_login_as(
     *, role: UserRole, db: AsyncSession, redis: Redis
 ) -> VerifyResponse:
     """Dev-only bypass: load or create a canonical `<role>-super@beebop.ng`
-    user and issue a real token pair. Currently supports landlord and admin —
-    the landlord account owns listings created by `scripts.seed_listings`.
+    user and issue a real token pair. The landlord account owns listings
+    created by `scripts.seed_listings`.
     """
     spec = DEV_USERS.get(role)
     if spec is None:

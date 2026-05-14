@@ -61,7 +61,7 @@ export async function verifyOtp(args: {
   return { user, isNewUser: data.is_new_user };
 }
 
-export type DevRole = 'landlord' | 'admin';
+export type DevRole = 'seeker' | 'landlord' | 'admin';
 
 export async function devLoginAs(role: DevRole = 'landlord'): Promise<{
   user: SessionUser;

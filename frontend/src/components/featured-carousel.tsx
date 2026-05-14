@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { ListingCard } from '@/components/listing/listing-card';
 import { getFeaturedListings, type PublicListingSummary } from '@/lib/search';
 
-export function FeaturedCarousel() {
+export function FeaturedCarousel({ showBrowseLink = true }: { showBrowseLink?: boolean }) {
   const [items, setItems] = useState<PublicListingSummary[] | null>(null);
 
   useEffect(() => {
@@ -26,9 +26,11 @@ export function FeaturedCarousel() {
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-slate-900">Popular right now</h2>
-        <Link href="/browse/rent" className="text-sm font-medium text-brand hover:text-brand-700">
-          See all &rsaquo;
-        </Link>
+        {showBrowseLink && (
+          <Link href="/browse" className="text-sm font-medium text-brand hover:text-brand-700">
+            See all &rsaquo;
+          </Link>
+        )}
       </div>
       <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2">
         {items.map((r) => (

@@ -127,7 +127,12 @@ export default function ProfilePage() {
       <nav className="space-y-2">
         <RowLink href="/dashboard/seeker" icon={CalendarCheck} label="Activity" hint="Offers · Bookings · Agreements" />
         <RowLink href="/profile/notifications" icon={Bell} label="Notifications" />
-        <RowLink href="#" icon={Settings} label="Settings & privacy" />
+        <RowLink
+          icon={Settings}
+          label="Settings & privacy"
+          hint="Coming soon"
+          disabled
+        />
         <button
           type="button"
           onClick={() => void handleLogout()}
@@ -201,12 +206,26 @@ function StatTile({
   emphasis?: boolean;
 }) {
   const display = value === undefined ? '—' : value;
+  const className = `flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-center transition hover:bg-brand-50 ${
+    emphasis ? 'border-brand bg-brand-50' : 'border-slate-200 bg-white'
+  }`;
+
+  if (href.startsWith('#')) {
+    return (
+      <a href={href} className={className}>
+        <Icon className={`h-4 w-4 ${emphasis ? 'text-brand-700' : 'text-slate-500'}`} aria-hidden />
+        <span className="text-base font-semibold text-slate-900">{display}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          {label}
+        </span>
+      </a>
+    );
+  }
+
   return (
     <Link
       href={href as Route}
-      className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-center transition hover:bg-brand-50 ${
-        emphasis ? 'border-brand bg-brand-50' : 'border-slate-200 bg-white'
-      }`}
+      className={className}
     >
       <Icon className={`h-4 w-4 ${emphasis ? 'text-brand-700' : 'text-slate-500'}`} aria-hidden />
       <span className="text-base font-semibold text-slate-900">{display}</span>
@@ -299,17 +318,16 @@ function RowLink({
   icon: Icon,
   label,
   hint,
+  disabled = false,
 }: {
-  href: string;
+  href?: string;
   icon: LucideIcon;
   label: string;
   hint?: string;
+  disabled?: boolean;
 }) {
-  return (
-    <Link
-      href={href as Route}
-      className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
-    >
+  const content = (
+    <>
       <span className="flex items-center gap-3">
         <Icon className="h-5 w-5 text-slate-500" aria-hidden />
         <span>
@@ -318,6 +336,23 @@ function RowLink({
         </span>
       </span>
       <ChevronRight className="h-4 w-4 text-slate-400" aria-hidden />
+    </>
+  );
+
+  if (disabled || !href) {
+    return (
+      <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-500">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href as Route}
+      className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+    >
+      {content}
     </Link>
   );
 }

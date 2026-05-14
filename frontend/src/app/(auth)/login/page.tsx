@@ -91,9 +91,18 @@ export default function LoginPage() {
           </p>
           <Button
             type="button"
+            onClick={() => void handleDevLogin('seeker')}
+            disabled={devBusyRole !== null}
+            className="w-full"
+          >
+            {devBusyRole === 'seeker' ? 'Signing in…' : 'Log in as seeker-super'}
+          </Button>
+          <Button
+            type="button"
             onClick={() => void handleDevLogin('landlord')}
             disabled={devBusyRole !== null}
             className="w-full"
+            variant="secondary"
           >
             {devBusyRole === 'landlord' ? 'Signing in…' : 'Log in as landlord-super'}
           </Button>

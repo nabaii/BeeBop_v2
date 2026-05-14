@@ -31,6 +31,26 @@ Four property categories:
 
 ## Local Development
 
+Quick start from the repo root:
+
+```bash
+npm run dev
+```
+
+That single command starts:
+- Postgres + Redis via `docker compose`
+- FastAPI backend on `http://127.0.0.1:8000`
+- Next.js frontend on `http://localhost:3000`
+
+If the backend Python environment has not been installed yet, set it up once:
+
+```bash
+cd backend
+python -m venv .venv
+# Windows PowerShell
+.\.venv\Scripts\python -m pip install -e ".[dev]"
+```
+
 Per-service instructions live in each service's own README:
 - [backend/README.md](backend/README.md)
 - [frontend/README.md](frontend/README.md)

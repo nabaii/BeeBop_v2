@@ -9,7 +9,7 @@ import { cn } from '@/lib/cn';
 const TABS = [
   { href: '/', label: 'Chat', icon: MessageSquare, match: (p: string) => p === '/' },
   {
-    href: '/browse/rent',
+    href: '/browse',
     label: 'Explore',
     icon: Compass,
     match: (p: string) => p.startsWith('/browse'),

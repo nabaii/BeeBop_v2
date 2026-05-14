@@ -71,7 +71,7 @@ class RefreshPayload(BaseModel):
 
 
 class DevLoginPayload(BaseModel):
-    """Body for `/auth/dev-login`. Only landlord and admin are wired up — the
+    """Body for `/auth/dev-login`. Dev-only shortcut accounts are wired up — the
     service raises if any other role is passed."""
 
-    role: Literal["landlord", "admin"] = "landlord"
+    role: Literal["seeker", "landlord", "admin"] = "landlord"
