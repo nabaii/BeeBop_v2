@@ -138,6 +138,53 @@ function ensureRuntimeDir() {
   fs.mkdirSync(runtimeDir, { recursive: true });
 }
 
+function removeFrontendCache(reason) {
+  const nextDir = path.join(frontendDir, '.next');
+  if (!fs.existsSync(nextDir)) {
+    return;
+  }
+
+  console.log(`[dev] Removing Next.js cache (${reason})...`);
+  fs.rmSync(nextDir, { recursive: true, force: true });
+}
+
+function cleanupBrokenFrontendCache() {
+  if (!isWindows) {
+    return;
+  }
+
+  const nextDir = path.join(frontendDir, '.next');
+  if (!fs.existsSync(nextDir)) {
+    return;
+  }
+
+  const generatedFiles = [
+    'package.json',
+    'app-build-manifest.json',
+    'build-manifest.json',
+    'prerender-manifest.json',
+    'react-loadable-manifest.json',
+    'routes-manifest.json',
+  ];
+
+  for (const file of generatedFiles) {
+    const candidate = path.join(nextDir, file);
+    if (!fs.existsSync(candidate)) {
+      continue;
+    }
+
+    try {
+      if (fs.lstatSync(candidate).isSymbolicLink()) {
+        removeFrontendCache('Windows reparse-point files detected');
+        return;
+      }
+    } catch (error) {
+      removeFrontendCache(`unreadable generated file: ${error.message}`);
+      return;
+    }
+  }
+}
+
 function saveState(state) {
   ensureRuntimeDir();
   fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
@@ -478,6 +525,7 @@ async function main() {
   });
 
   console.log('[dev] Launching frontend on http://localhost:3000');
+  cleanupBrokenFrontendCache();
   const frontendCommand = getNpmRunCommand('dev');
   const frontend = spawnLogged('frontend', frontendCommand.command, frontendCommand.args, {
     cwd: frontendDir,

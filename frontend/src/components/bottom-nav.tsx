@@ -26,8 +26,8 @@ export function BottomNav() {
   const pathname = usePathname() ?? '/';
 
   return (
-    <nav className="bg-white px-5 pb-4 pt-1">
-      <ul className="grid grid-cols-3 gap-1 rounded-[28px] bg-white p-2 shadow-[0_18px_44px_rgba(15,23,42,0.13)]">
+    <nav className="sticky bottom-0 z-40 shrink-0 border-t border-slate-100 bg-white/95 px-3 pt-2 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur safe-pb">
+      <ul className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-50 p-1.5">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const active = tab.match(pathname);
@@ -36,7 +36,7 @@ export function BottomNav() {
               <Link
                 href={tab.href}
                 className={cn(
-                  'flex min-h-[54px] flex-col items-center justify-center gap-1 rounded-2xl px-2 text-[10px] font-semibold uppercase leading-none tracking-wide transition-colors',
+                  'flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl px-2 text-[10px] font-semibold uppercase leading-none tracking-wide transition-colors',
                   active
                     ? 'bg-brand-50 text-brand-700'
                     : 'text-slate-400 hover:text-slate-600',

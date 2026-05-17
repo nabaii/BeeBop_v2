@@ -80,7 +80,7 @@ export default function ListingDetailPage({
   return (
     <>
       <main className="min-h-screen bg-slate-100">
-        <div className="mx-auto min-h-screen max-w-[430px] bg-slate-50 pb-32 shadow-xl sm:max-w-5xl sm:shadow-none">
+        <div className="mx-auto min-h-screen max-w-[480px] bg-slate-50 pb-32 shadow-xl sm:max-w-5xl sm:shadow-none">
           <ListingHeader listing={listing} />
 
           <div className="space-y-8 px-4 py-5 sm:px-8">
@@ -225,7 +225,7 @@ function SpecTiles({ listing }: { listing: PublicListingDetail }) {
   const specs = listingSpecs(listing);
 
   return (
-    <dl className="grid grid-cols-2 gap-4">
+    <dl className="grid grid-cols-1 gap-4 min-[360px]:grid-cols-2">
       {specs.map(({ label, value, icon: Icon }) => (
         <div
           key={label}
@@ -251,7 +251,7 @@ function ApproximateLocation({ listing }: { listing: PublicListingDetail }) {
       <p className="mt-2 text-sm leading-6 text-stone-600">
         Exact address shared after offer acceptance or a confirmed visit.
       </p>
-      <div className="mt-5 aspect-[2/1] overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#5aa6aa_0%,#2f8791_45%,#9fbf67_100%)] p-4 text-xs text-white">
+      <div className="mt-5 aspect-[4/3] overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#5aa6aa_0%,#2f8791_45%,#9fbf67_100%)] p-4 text-xs text-white sm:aspect-[2/1]">
         <div className="flex h-full items-center justify-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 font-semibold text-slate-800 shadow-sm">
             <MapPin className="h-4 w-4 text-brand-600" aria-hidden />

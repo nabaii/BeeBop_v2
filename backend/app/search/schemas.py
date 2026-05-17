@@ -37,8 +37,9 @@ class SharedFilters(BaseModel):
 
 
 class OffCampusFilters(SharedFilters):
-    institution: str | None = None                   # silently applied from seeker profile
-    gender: Gender | None = None                     # silently applied from seeker profile
+    use_profile_filters: bool = False
+    institution: str | None = None
+    gender: Gender | None = None
     unit_kinds: list[str] = Field(default_factory=list)
     available_now: bool = False
 

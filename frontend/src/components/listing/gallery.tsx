@@ -68,10 +68,10 @@ function HeroGrid({
     <div
       className={cn(
         'grid gap-3',
-        supporting.length > 0 ? 'grid-cols-[2fr_0.92fr]' : 'grid-cols-1',
+        supporting.length > 0 ? 'min-[380px]:grid-cols-[2fr_0.92fr]' : 'grid-cols-1',
       )}
     >
-      <div className="relative aspect-square overflow-hidden rounded-[16px] bg-slate-100 shadow-sm">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-[16px] bg-slate-100 shadow-sm min-[380px]:aspect-square">
         <img
           src={cover.url}
           alt={cover.room_label ?? 'Listing cover'}
@@ -83,11 +83,11 @@ function HeroGrid({
         </div>
       </div>
       {supporting.length > 0 && (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-2 gap-3 min-[380px]:grid-cols-1">
           {supporting.map((p) => (
             <div
               key={p.id}
-              className="aspect-square overflow-hidden rounded-[14px] bg-slate-100 shadow-sm"
+              className="aspect-[4/3] overflow-hidden rounded-[14px] bg-slate-100 shadow-sm min-[380px]:aspect-square"
             >
               <img
                 src={p.url}

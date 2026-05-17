@@ -136,7 +136,7 @@ export function MapView({ data, onSelect }: Props) {
     <div className="space-y-2">
       <div
         ref={container}
-        className="h-[500px] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
+        className="h-[min(62dvh,500px)] min-h-[320px] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
       />
       <Legend />
     </div>
@@ -146,7 +146,7 @@ export function MapView({ data, onSelect }: Props) {
 function FallbackList({ data, onSelect }: Props) {
   return (
     <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
         <div>
           <h3 className="text-sm font-semibold text-slate-900">Map unavailable</h3>
           <p className="text-xs text-slate-500">
@@ -187,7 +187,7 @@ function FallbackList({ data, onSelect }: Props) {
 
 function Legend() {
   return (
-    <div className="flex items-center gap-3 text-xs text-slate-600">
+    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
       <Pill color="#0d9488" label="Fully Verified" />
       <Pill color="#2563eb" label="Doc Verified" />
       <Pill color="#94a3b8" label="Unverified" />

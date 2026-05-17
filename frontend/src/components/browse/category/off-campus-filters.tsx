@@ -50,9 +50,6 @@ export function OffCampusFilterFields({
         />
         Available now
       </label>
-      <p className="text-[11px] text-slate-500">
-        Institution and gender are applied from your profile — not shown here.
-      </p>
     </>
   );
 }

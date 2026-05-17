@@ -17,6 +17,7 @@ import { BottomNav } from '@/components/bottom-nav';
 import { FeaturedCarousel } from '@/components/featured-carousel';
 import { MainSidebar } from '@/components/main-sidebar';
 import { cn } from '@/lib/cn';
+import { useSearch } from '@/stores/search';
 
 type ExploreCategory = {
   href: Route;
@@ -94,6 +95,7 @@ const CATEGORIES: ExploreCategory[] = [
 
 export default function BrowseHubPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const clearSearchSession = useSearch((state) => state.clearSession);
 
   return (
     <div className="flex min-h-screen bg-slate-100">
@@ -119,16 +121,12 @@ export default function BrowseHubPage() {
             </div>
           </header>
 
-          <section className="relative overflow-hidden rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <div className="absolute right-0 top-0 h-36 w-36 translate-x-8 -translate-y-8 rounded-full bg-brand-100/70 blur-2xl" />
-            <div className="absolute bottom-0 left-0 h-32 w-32 -translate-x-6 translate-y-8 rounded-full bg-sky-100/70 blur-2xl" />
-            <div className="relative">
-              <p className="text-sm font-medium text-brand-700">Each category is its own listing type.</p>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-                Start with the kind of property you want to explore, then we will take you into the
-                matching results and filters for that lane.
-              </p>
-            </div>
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <p className="text-sm font-medium text-brand-700">Each category is its own listing type.</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              Start with the kind of property you want to explore, then we will take you into the
+              matching results and filters for that lane.
+            </p>
           </section>
 
           <section className="mt-6 grid gap-4 md:grid-cols-2">
@@ -138,12 +136,12 @@ export default function BrowseHubPage() {
                 <Link
                   key={category.href}
                   href={category.href}
+                  onClick={clearSearchSession}
                   className={cn(
-                    'group relative overflow-hidden rounded-[28px] border p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md',
+                    'group relative overflow-hidden rounded-2xl border p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-5',
                     category.tones.card,
                   )}
                 >
-                  <div className="absolute right-0 top-0 h-28 w-28 translate-x-6 -translate-y-6 rounded-full bg-white/40" />
                   <div className="relative">
                     <div className="flex items-start justify-between gap-4">
                       <div>

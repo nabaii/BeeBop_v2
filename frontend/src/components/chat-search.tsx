@@ -118,10 +118,10 @@ export function ChatSearchPanel() {
 
   if (empty) {
     return (
-      <div className="h-full overflow-y-auto px-4 py-6">
+      <div className="h-full overflow-y-auto px-4 py-5 min-[380px]:py-6">
         <div className="space-y-6">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-slate-900">
+            <h2 className="text-xl font-bold text-slate-900 min-[380px]:text-2xl">
               What kind of place are you looking for?
             </h2>
             <p className="mt-2 text-sm text-slate-500">
@@ -156,7 +156,7 @@ export function ChatSearchPanel() {
             </div>
           </form>
 
-          <ul className="grid grid-cols-2 gap-2">
+          <ul className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
             {SUGGESTIONS.map(({ text, icon: Icon }) => (
               <li key={text}>
                 <button
@@ -270,7 +270,7 @@ export function ChatSearchPanel() {
 function UserBubble({ text }: { text: string }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-slate-200 px-4 py-3 text-sm text-slate-900">
+      <div className="max-w-[86%] rounded-2xl rounded-tr-sm bg-slate-200 px-4 py-3 text-sm text-slate-900">
         {text}
       </div>
     </div>
@@ -283,7 +283,7 @@ function BotBubble({ text }: { text: string }) {
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-white">
         <Briefcase className="h-4 w-4" aria-hidden />
       </div>
-      <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm text-slate-900 shadow-sm">
+      <div className="max-w-[86%] rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm text-slate-900 shadow-sm">
         {text}
       </div>
     </div>
@@ -311,7 +311,7 @@ function ResultsPanel({
   canOpenBrowse: boolean;
 }) {
   return (
-    <div className="ml-10 rounded-2xl bg-white p-3 shadow-sm">
+    <div className="rounded-2xl bg-white p-3 shadow-sm min-[380px]:ml-10">
       <div className="mb-2 flex items-center justify-between">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
           {results.length} match{results.length === 1 ? '' : 'es'}
@@ -355,7 +355,7 @@ function CollapsedResultsWindow({
   const pointerStart = useRef<number | null>(null);
 
   return (
-    <section className="absolute inset-x-0 bottom-0 rounded-t-[32px] bg-white px-6 pb-4 pt-3 shadow-[0_-18px_44px_rgba(15,23,42,0.12)]">
+    <section className="absolute inset-x-0 bottom-0 rounded-t-[32px] bg-white px-4 pb-4 pt-3 shadow-[0_-18px_44px_rgba(15,23,42,0.12)] min-[380px]:px-6">
       <button
         type="button"
         onClick={onExpand}
@@ -422,9 +422,9 @@ function ExpandedResultsView({
       </div>
 
       <div className="flex-1 overflow-y-auto bg-white pt-12">
-        <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-[34px] pb-6">
+        <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-6 min-[380px]:px-[34px]">
           {entry.response.results.map((result) => (
-            <div key={result.id} className="w-[320px] shrink-0 snap-center">
+            <div key={result.id} className="w-[calc(100vw-48px)] max-w-[320px] shrink-0 snap-center">
               <ExpandedListingCard
                 result={result}
                 parameters={entry.response.parameters}
@@ -440,7 +440,7 @@ function ExpandedResultsView({
         )}
       </div>
 
-      <div className="shrink-0 bg-white px-6 pb-4 pt-2">
+      <div className="shrink-0 bg-white px-4 pb-4 pt-2 min-[380px]:px-6">
         <RefineSearchForm
           value={value}
           onValueChange={onValueChange}
@@ -540,7 +540,7 @@ function MiniResultCard({
   return (
     <Link
       href={`/listings/${result.id}` as Route}
-      className="flex w-[258px] shrink-0 snap-center overflow-hidden rounded-[22px] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.12)] ring-1 ring-slate-100"
+      className="flex w-[min(258px,76vw)] shrink-0 snap-center overflow-hidden rounded-[22px] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.12)] ring-1 ring-slate-100"
     >
       <div className="relative h-[92px] w-[92px] shrink-0 bg-slate-100">
         <img

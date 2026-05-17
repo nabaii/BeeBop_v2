@@ -23,7 +23,7 @@ export function ResultsGrid({ data, loading, onPageChange, emptyHint }: Props) {
 
   if (data.results.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-12 text-center">
+      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center sm:p-12">
         <p className="text-sm text-slate-600">No listings match those filters yet.</p>
         <p className="mt-1 text-xs text-slate-500">{emptyHint}</p>
       </div>
@@ -46,7 +46,7 @@ export function ResultsGrid({ data, loading, onPageChange, emptyHint }: Props) {
         ))}
       </ul>
       {totalPages > 1 && (
-        <nav className="flex items-center justify-center gap-2">
+        <nav className="flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
             disabled={data.page <= 1 || loading}

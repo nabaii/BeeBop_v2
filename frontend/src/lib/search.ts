@@ -21,6 +21,7 @@ export interface SharedFilters {
 }
 
 export interface OffCampusFilters extends SharedFilters {
+  use_profile_filters?: boolean;
   institution?: string;
   gender?: 'female' | 'male';
   unit_kinds?: string[];

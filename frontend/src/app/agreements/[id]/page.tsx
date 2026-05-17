@@ -77,7 +77,7 @@ function Inner({ id }: { id: string }) {
       </header>
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
-        <dl className="grid grid-cols-2 gap-3">
+        <dl className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
           <Field label={agreement.type === 'tenancy' ? 'Landlord' : 'Seller'} value={agreement.landlord_name} />
           <Field label={agreement.type === 'tenancy' ? 'Tenant' : 'Buyer'} value={agreement.seeker_name} />
           <Field label="Price" value={`₦${Math.round(agreement.price).toLocaleString('en-NG')}`} />
@@ -175,7 +175,7 @@ function SignCard({
   return (
     <section className="space-y-3 rounded-xl border border-brand/40 bg-brand/5 p-4">
       <h2 className="text-base font-semibold text-slate-900">Sign</h2>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           variant={channel === 'email' ? 'primary' : 'secondary'}
           onClick={() => {
@@ -210,7 +210,7 @@ function SignCard({
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
           />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button onClick={() => void sign()} disabled={busy !== null || code.length !== 6}>
               {busy === 'sign' ? 'Signing…' : 'Sign agreement'}
             </Button>

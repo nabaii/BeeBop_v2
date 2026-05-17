@@ -156,10 +156,9 @@ async def search_off_campus(
     stmt = _base_visibility_stmt().where(Listing.category == ListingCategory.OFF_CAMPUS)
     stmt = _apply_shared(stmt, filters)
 
-    # Institution and gender are applied silently — they aren't user-facing
-    # filter controls (dev plan §7.3). Gender filtering is enforced at the
-    # room level: we join through UnitType/Room and require at least one
-    # matching room.
+    # Institution and gender are explicit filters when supplied. Gender
+    # filtering is enforced at the room level: we join through UnitType/Room
+    # and require at least one matching room.
     if filters.institution:
         stmt = stmt.where(
             Listing.type_data["institutions_accepted"].astext.ilike(   # type: ignore[attr-defined]

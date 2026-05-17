@@ -15,6 +15,7 @@ from app.search.schemas import (
     SharedFilters,
     ShortLetFilters,
 )
+from app.search.routes import _off_campus_filters, _rent_filters, _shared_filter_kwargs
 from app.search.service import _verification_clause
 
 
@@ -76,12 +77,31 @@ def test_verification_clause_combined_tiers() -> None:
     assert "fully_verified" in as_sql
 
 
-def test_off_campus_filters_extend_shared_with_silent_fields() -> None:
+def test_off_campus_filters_extend_shared_with_explicit_student_fields() -> None:
     f = OffCampusFilters()
+    assert f.use_profile_filters is False
     assert f.institution is None
     assert f.gender is None
     assert f.unit_kinds == []
     assert f.available_now is False
+
+
+def test_route_filter_helpers_parse_repeated_query_lists() -> None:
+    shared = _shared_filter_kwargs(
+        locations=["Jahi", "Wuse 2"],
+        verification=["fully_verified", "unverified"],
+        amenities=["power:generator"],
+    )
+
+    rent = _rent_filters(shared=shared, bedroom_counts=[2, 3])
+    assert rent.locations == ["Jahi", "Wuse 2"]
+    assert rent.verification == ["fully_verified", "unverified"]
+    assert rent.amenities == ["power:generator"]
+    assert rent.bedroom_counts == [2, 3]
+
+    off_campus = _off_campus_filters(shared=shared, unit_kinds=["self_contain"])
+    assert off_campus.use_profile_filters is False
+    assert off_campus.unit_kinds == ["self_contain"]
 
 
 def test_short_let_filter_optional_fields() -> None:

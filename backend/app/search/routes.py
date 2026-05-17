@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import uuid
 
+from datetime import date
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from redis.asyncio import Redis
 from sqlalchemy import select
@@ -13,7 +16,7 @@ from sqlalchemy.orm import selectinload
 from app.core.dependencies import get_current_user_optional
 from app.core.redis_client import get_redis
 from app.database import get_db
-from app.models._enums import ListingCategory, ListingStatus
+from app.models._enums import Gender, ListingCategory, ListingStatus
 from app.models.bookmark import Bookmark
 from app.models.listing import Listing
 from app.models.user import User
@@ -26,7 +29,9 @@ from app.search.schemas import (
     SalesFilters,
     SearchResponse,
     ShortLetFilters,
+    SortOption,
     ValuationReport,
+    VerificationTier,
 )
 from app.verification.reports import (
     get_area_score_for_listing,
@@ -36,14 +41,116 @@ from app.verification.reports import (
 
 router = APIRouter(tags=["search"])
 
+_DEFAULT_VERIFICATION: list[VerificationTier] = [
+    "fully_verified",
+    "doc_verified",
+    "unverified",
+]
+
+
+def _shared_filter_kwargs(
+    q: str | None = None,
+    locations: Annotated[list[str] | None, Query()] = None,
+    verification: Annotated[list[VerificationTier] | None, Query()] = None,
+    amenities: Annotated[list[str] | None, Query()] = None,
+    min_price: Annotated[float | None, Query(ge=0)] = None,
+    max_price: Annotated[float | None, Query(ge=0)] = None,
+    sort: SortOption = "relevance",
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=60)] = 24,
+) -> dict[str, object]:
+    return {
+        "q": q,
+        "locations": locations or [],
+        "verification": verification or list(_DEFAULT_VERIFICATION),
+        "amenities": amenities or [],
+        "min_price": min_price,
+        "max_price": max_price,
+        "sort": sort,
+        "page": page,
+        "page_size": page_size,
+    }
+
+
+def _off_campus_filters(
+    shared: Annotated[dict[str, object], Depends(_shared_filter_kwargs)],
+    use_profile_filters: Annotated[bool, Query()] = False,
+    institution: str | None = None,
+    gender: Annotated[Gender | None, Query()] = None,
+    unit_kinds: Annotated[list[str] | None, Query()] = None,
+    available_now: Annotated[bool, Query()] = False,
+) -> OffCampusFilters:
+    return OffCampusFilters(
+        **shared,
+        use_profile_filters=use_profile_filters,
+        institution=institution,
+        gender=gender,
+        unit_kinds=unit_kinds or [],
+        available_now=available_now,
+    )
+
+
+def _short_let_filters(
+    shared: Annotated[dict[str, object], Depends(_shared_filter_kwargs)],
+    check_in: Annotated[date | None, Query()] = None,
+    check_out: Annotated[date | None, Query()] = None,
+    guests: Annotated[int | None, Query(ge=1)] = None,
+    min_stay: Annotated[int | None, Query(ge=1)] = None,
+    instant_booking: Annotated[bool | None, Query()] = None,
+    min_rating: Annotated[float | None, Query(ge=0, le=5)] = None,
+) -> ShortLetFilters:
+    return ShortLetFilters(
+        **shared,
+        check_in=check_in,
+        check_out=check_out,
+        guests=guests,
+        min_stay=min_stay,
+        instant_booking=instant_booking,
+        min_rating=min_rating,
+    )
+
+
+def _rent_filters(
+    shared: Annotated[dict[str, object], Depends(_shared_filter_kwargs)],
+    bedroom_counts: Annotated[list[int] | None, Query()] = None,
+    property_types: Annotated[list[str] | None, Query()] = None,
+    furnishing: Annotated[list[str] | None, Query()] = None,
+    payment_structure: Annotated[list[str] | None, Query()] = None,
+    available_from: Annotated[date | None, Query()] = None,
+) -> RentFilters:
+    return RentFilters(
+        **shared,
+        bedroom_counts=bedroom_counts or [],
+        property_types=property_types or [],
+        furnishing=furnishing or [],
+        payment_structure=payment_structure or [],
+        available_from=available_from,
+    )
+
+
+def _sales_filters(
+    shared: Annotated[dict[str, object], Depends(_shared_filter_kwargs)],
+    bedroom_counts: Annotated[list[int] | None, Query()] = None,
+    property_types: Annotated[list[str] | None, Query()] = None,
+    development_status: Annotated[list[str] | None, Query()] = None,
+    title_types: Annotated[list[str] | None, Query()] = None,
+) -> SalesFilters:
+    return SalesFilters(
+        **shared,
+        bedroom_counts=bedroom_counts or [],
+        property_types=property_types or [],
+        development_status=development_status or [],
+        title_types=title_types or [],
+    )
+
 
 @router.get("/search/off-campus", response_model=SearchResponse)
 async def search_off_campus(
-    filters: OffCampusFilters = Depends(),
+    filters: OffCampusFilters = Depends(_off_campus_filters),
     current: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
 ) -> SearchResponse:
-    if current is not None:
+    if filters.use_profile_filters and current is not None:
         if current.institution and not filters.institution:
             filters.institution = current.institution
         if current.gender and filters.gender is None:
@@ -53,7 +160,7 @@ async def search_off_campus(
 
 @router.get("/search/short-let", response_model=SearchResponse)
 async def search_short_let(
-    filters: ShortLetFilters = Depends(),
+    filters: ShortLetFilters = Depends(_short_let_filters),
     db: AsyncSession = Depends(get_db),
 ) -> SearchResponse:
     return await search_service.search_short_let(filters, db=db)
@@ -61,7 +168,7 @@ async def search_short_let(
 
 @router.get("/search/rent", response_model=SearchResponse)
 async def search_rent(
-    filters: RentFilters = Depends(),
+    filters: RentFilters = Depends(_rent_filters),
     db: AsyncSession = Depends(get_db),
 ) -> SearchResponse:
     return await search_service.search_rent(filters, db=db)
@@ -69,7 +176,7 @@ async def search_rent(
 
 @router.get("/search/sales", response_model=SearchResponse)
 async def search_sales(
-    filters: SalesFilters = Depends(),
+    filters: SalesFilters = Depends(_sales_filters),
     db: AsyncSession = Depends(get_db),
 ) -> SearchResponse:
     return await search_service.search_sales(filters, db=db)

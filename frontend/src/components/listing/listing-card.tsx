@@ -56,7 +56,7 @@ export function ListingCard({ data }: { data: ListingCardData }) {
         )}
       </div>
       <div className="p-3">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-col gap-2 min-[380px]:flex-row min-[380px]:items-start min-[380px]:justify-between">
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-slate-900">
               {data.title ?? 'Untitled listing'}
@@ -65,7 +65,7 @@ export function ListingCard({ data }: { data: ListingCardData }) {
               <div className="text-xs text-slate-500">{data.district}</div>
             )}
           </div>
-          <div className="shrink-0 text-right">
+          <div className="shrink-0 text-left min-[380px]:text-right">
             <div className="text-sm font-semibold text-slate-900">
               {formatPrice(data.price)}
             </div>

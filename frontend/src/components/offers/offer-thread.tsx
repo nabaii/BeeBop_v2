@@ -59,7 +59,7 @@ export function OfferThreadCard({ thread, viewerRole, onChanged }: Props) {
 
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4">
-      <header className="flex items-start justify-between gap-3">
+      <header className="flex flex-col gap-3 min-[380px]:flex-row min-[380px]:items-start min-[380px]:justify-between">
         <div className="min-w-0">
           <Link
             href={`/listings/${thread.listing_id}`}
@@ -83,7 +83,7 @@ export function OfferThreadCard({ thread, viewerRole, onChanged }: Props) {
           <li
             key={r.id}
             className={
-              'flex items-center justify-between rounded-lg border px-3 py-2 text-sm ' +
+              'flex flex-col gap-2 rounded-lg border px-3 py-2 text-sm min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between ' +
               (r.id === thread.current_offer_id
                 ? 'border-brand/40 bg-brand/5'
                 : 'border-slate-200 bg-slate-50')
@@ -100,7 +100,7 @@ export function OfferThreadCard({ thread, viewerRole, onChanged }: Props) {
                 <p className="mt-0.5 text-xs text-slate-500">{r.conditions}</p>
               )}
             </div>
-            <span className="font-semibold text-slate-900">
+            <span className="shrink-0 font-semibold text-slate-900">
               ₦{Number(r.price).toLocaleString('en-NG')}
             </span>
           </li>
@@ -127,7 +127,7 @@ export function OfferThreadCard({ thread, viewerRole, onChanged }: Props) {
                 onChange={(e) => setCounterPrice(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="Your counter (₦)"
               />
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   onClick={() => void run('counter')}
                   disabled={busy !== null || !counterPrice}
@@ -147,7 +147,7 @@ export function OfferThreadCard({ thread, viewerRole, onChanged }: Props) {
               </div>
             </div>
           ) : (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button onClick={() => void run('accept')} disabled={busy !== null}>
                 {busy === 'accept' ? 'Accepting…' : 'Accept'}
               </Button>

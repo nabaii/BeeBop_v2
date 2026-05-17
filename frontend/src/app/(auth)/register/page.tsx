@@ -21,7 +21,7 @@ export default function RegisterPage() {
   return (
     <div>
       <h1 className="mb-6 text-xl font-semibold text-slate-900">Create an account</h1>
-      <div className="mb-6 grid grid-cols-2 gap-2">
+      <div className="mb-6 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
         <RoleCard active={role === 'seeker'} onClick={() => setRole('seeker')} title="I'm looking" subtitle="Find a home" />
         <RoleCard active={role === 'landlord'} onClick={() => setRole('landlord')} title="I'm listing" subtitle="Rent or sell" />
       </div>
@@ -56,7 +56,7 @@ function RoleCard({
       type="button"
       onClick={onClick}
       className={
-        'rounded-lg border p-3 text-left transition-colors ' +
+        'min-h-[76px] rounded-lg border p-3 text-left transition-colors ' +
         (active
           ? 'border-brand bg-brand/5 text-brand'
           : 'border-slate-300 text-slate-600 hover:bg-slate-50')

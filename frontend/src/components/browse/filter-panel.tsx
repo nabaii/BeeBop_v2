@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/cn';
 import { getAmenityVocabulary } from '@/lib/listings';
 import type { SharedFilters, VerificationTier } from '@/lib/search';
 
@@ -16,6 +17,7 @@ interface Props {
   onChange: (next: SharedFilters) => void;
   /** Category-specific controls rendered below the shared filters. */
   children?: React.ReactNode;
+  className?: string;
 }
 
 const VERIFICATION_TIERS: { value: VerificationTier; label: string; dot: string }[] = [
@@ -24,7 +26,7 @@ const VERIFICATION_TIERS: { value: VerificationTier; label: string; dot: string 
   { value: 'unverified', label: 'Unverified', dot: 'bg-verified-grey' },
 ];
 
-export function FilterPanel({ value, onChange, children }: Props) {
+export function FilterPanel({ value, onChange, children, className }: Props) {
   const [locationInput, setLocationInput] = useState('');
   const [vocab, setVocab] = useState<Record<string, string[]>>({});
 
@@ -69,7 +71,7 @@ export function FilterPanel({ value, onChange, children }: Props) {
   }
 
   return (
-    <aside className="space-y-5 rounded-xl border border-slate-200 bg-white p-4">
+    <aside className={cn('space-y-5 rounded-xl border border-slate-200 bg-white p-4', className)}>
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           Keywords

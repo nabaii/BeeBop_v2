@@ -11,7 +11,7 @@
  * requests on filter change, and an empty-state hint.
  */
 
-import { Menu } from 'lucide-react';
+import { LayoutGrid, Map, Menu, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { BottomNav } from '@/components/bottom-nav';
@@ -47,9 +47,23 @@ export function CategoryBrowse<F extends SharedFilters>({
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<'grid' | 'map'>('grid');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const initialFiltersKey = useMemo(() => JSON.stringify(initialFilters), [initialFilters]);
+  const initialFiltersKeyRef = useRef(initialFiltersKey);
   const key = useMemo(() => JSON.stringify(filters), [filters]);
+
+  useEffect(() => {
+    if (initialFiltersKeyRef.current === initialFiltersKey) {
+      return;
+    }
+
+    initialFiltersKeyRef.current = initialFiltersKey;
+    setFilters(initialFilters);
+    setData(null);
+    setLoading(true);
+  }, [initialFilters, initialFiltersKey]);
 
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -83,31 +97,52 @@ export function CategoryBrowse<F extends SharedFilters>({
       />
       <div className="flex min-h-screen flex-1 flex-col bg-slate-50">
         <main className="flex-1 p-4 pb-24 sm:p-6 lg:mx-auto lg:max-w-6xl lg:p-8 lg:pb-8">
-          <header className="mb-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+          <header className="mb-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(true)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 lg:hidden"
+                  aria-label="Open menu"
+                >
+                  <Menu className="h-5 w-5" aria-hidden />
+                </button>
+                <h1 className="min-w-0 truncate text-xl font-semibold text-slate-900 sm:text-2xl">
+                  {title}
+                </h1>
+              </div>
               <button
                 type="button"
-                onClick={() => setDrawerOpen(true)}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 lg:hidden"
-                aria-label="Open menu"
+                onClick={() => setFilterOpen(true)}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 lg:hidden"
+                aria-label="Open filters"
               >
-                <Menu className="h-5 w-5" aria-hidden />
+                <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                Filters
               </button>
-              <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{title}</h1>
             </div>
-            <div className="inline-flex overflow-hidden rounded-lg border border-slate-300 text-sm">
+            <div className="inline-grid w-full grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-sm sm:w-auto sm:inline-flex sm:p-0">
               <button
                 type="button"
                 onClick={() => setView('grid')}
-                className={'px-3 py-1.5 ' + (view === 'grid' ? 'bg-brand text-white' : 'bg-white text-slate-700 hover:bg-slate-50')}
+                className={
+                  'inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 sm:rounded-none sm:py-1.5 ' +
+                  (view === 'grid' ? 'bg-brand text-white' : 'text-slate-700 hover:bg-slate-50')
+                }
               >
+                <LayoutGrid className="h-4 w-4" aria-hidden />
                 Grid
               </button>
               <button
                 type="button"
                 onClick={() => setView('map')}
-                className={'px-3 py-1.5 ' + (view === 'map' ? 'bg-brand text-white' : 'bg-white text-slate-700 hover:bg-slate-50')}
+                className={
+                  'inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 sm:rounded-none sm:py-1.5 ' +
+                  (view === 'map' ? 'bg-brand text-white' : 'text-slate-700 hover:bg-slate-50')
+                }
               >
+                <Map className="h-4 w-4" aria-hidden />
                 Map
               </button>
             </div>
@@ -118,9 +153,11 @@ export function CategoryBrowse<F extends SharedFilters>({
             </div>
           )}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
-            <FilterPanel value={filters} onChange={sharedOnChange}>
-              {renderCategoryFilters(filters, (next) => setFilters({ ...next, page: 1 } as F))}
-            </FilterPanel>
+            <div className="hidden lg:block">
+              <FilterPanel value={filters} onChange={sharedOnChange}>
+                {renderCategoryFilters(filters, (next) => setFilters({ ...next, page: 1 } as F))}
+              </FilterPanel>
+            </div>
             <div>
               {view === 'grid' ? (
                 <ResultsGrid
@@ -135,6 +172,46 @@ export function CategoryBrowse<F extends SharedFilters>({
             </div>
           </div>
         </main>
+        {filterOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <button
+              type="button"
+              aria-label="Close filters"
+              onClick={() => setFilterOpen(false)}
+              className="absolute inset-0 bg-slate-950/45"
+            />
+            <div className="absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-white p-4 shadow-[0_-18px_42px_rgba(15,23,42,0.2)] safe-pb">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">Filters</h2>
+                  <p className="text-xs text-slate-500">{title}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFilterOpen(false)}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100"
+                  aria-label="Close filters"
+                >
+                  <X className="h-5 w-5" aria-hidden />
+                </button>
+              </div>
+              <FilterPanel
+                value={filters}
+                onChange={sharedOnChange}
+                className="rounded-none border-0 bg-transparent p-0"
+              >
+                {renderCategoryFilters(filters, (next) => setFilters({ ...next, page: 1 } as F))}
+              </FilterPanel>
+              <button
+                type="button"
+                onClick={() => setFilterOpen(false)}
+                className="mt-5 flex min-h-11 w-full items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white"
+              >
+                View results
+              </button>
+            </div>
+          </div>
+        )}
         <div className="lg:hidden">
           <BottomNav />
         </div>

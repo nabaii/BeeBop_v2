@@ -92,7 +92,7 @@ function BookingCard({
 
   return (
     <article className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-      <header className="flex items-start justify-between gap-3">
+      <header className="flex flex-col gap-3 min-[380px]:flex-row min-[380px]:items-start min-[380px]:justify-between">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-slate-900">{booking.listing_title}</div>
           <div className="text-xs uppercase tracking-wide text-slate-500">
@@ -102,7 +102,7 @@ function BookingCard({
         <StatusPill booking={booking} />
       </header>
 
-      <dl className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+      <dl className="grid grid-cols-1 gap-2 text-xs text-slate-600 min-[380px]:grid-cols-2">
         <div>
           <dt>Total</dt>
           <dd className="font-medium text-slate-900">
@@ -129,7 +129,7 @@ function BookingCard({
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {viewerRole === 'host' && booking.status === 'requested' && !booking.instant_booking && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             disabled={busy !== null}
             onClick={() => run('accept', () => bookings.accept(booking.id))}
@@ -164,7 +164,7 @@ function BookingCard({
               className="w-full rounded border border-slate-300 px-2 py-1 text-xs"
             />
           </label>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="secondary"
               disabled={busy !== null || !accessDraft.trim()}

@@ -38,7 +38,7 @@ export function CtaBar({ listing }: Props) {
   const loggedOutCta = (
     <Link
       href={`/login?return_to=${encodeURIComponent(pathname ?? '/')}`}
-      className="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white"
+      className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white sm:w-auto"
     >
       Sign in to continue
     </Link>
@@ -49,8 +49,8 @@ export function CtaBar({ listing }: Props) {
   return (
     <>
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40">
-        <div className="mx-auto max-w-[430px] px-4 pb-4 sm:max-w-5xl">
-          <div className="pointer-events-auto flex flex-col gap-4 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_16px_42px_rgba(15,23,42,0.16)] sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto max-w-[480px] px-4 safe-pb sm:max-w-5xl">
+          <div className="pointer-events-auto flex flex-col gap-3 rounded-[24px] border border-slate-200 bg-white p-3 shadow-[0_16px_42px_rgba(15,23,42,0.16)] sm:flex-row sm:items-center sm:justify-between sm:p-4">
             {listing.category === 'short_let' && (
               <ShortLetCta listing={listing} disabled={!user} onBook={() => setBookingModalOpen(true)}>
                 {loggedOutCta}
@@ -136,19 +136,21 @@ function ShortLetCta({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Input
-          type="date"
-          value={checkIn}
-          onChange={(e) => setCheckIn(e.target.value)}
-          className="w-36"
-        />
-        <Input
-          type="date"
-          value={checkOut}
-          onChange={(e) => setCheckOut(e.target.value)}
-          className="w-36"
-        />
+      <div className="w-full space-y-2 text-sm sm:w-auto">
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            type="date"
+            value={checkIn}
+            onChange={(e) => setCheckIn(e.target.value)}
+            className="w-full"
+          />
+          <Input
+            type="date"
+            value={checkOut}
+            onChange={(e) => setCheckOut(e.target.value)}
+            className="w-full"
+          />
+        </div>
         <div className="text-xs text-slate-500">
           {quote ? (
             <>
@@ -162,7 +164,7 @@ function ShortLetCta({
           )}
         </div>
       </div>
-      {disabled ? children : <Button onClick={onBook}>Book</Button>}
+      {disabled ? children : <Button onClick={onBook} className="w-full sm:w-auto">Book</Button>}
     </>
   );
 }
@@ -186,7 +188,7 @@ function OffCampusCta({
         </span>
         <span className="ml-2 text-xs text-slate-500">starting rate</span>
       </div>
-      {disabled ? children : <Button onClick={onMakeOffer}>Enquire</Button>}
+      {disabled ? children : <Button onClick={onMakeOffer} className="w-full sm:w-auto">Enquire</Button>}
     </>
   );
 }
@@ -224,7 +226,7 @@ function RentCta({
           per year
         </div>
       </div>
-      {disabled ? children : <Button onClick={onMakeOffer}>Make offer</Button>}
+      {disabled ? children : <Button onClick={onMakeOffer} className="w-full sm:w-auto">Make offer</Button>}
     </>
   );
 }
@@ -247,7 +249,7 @@ function SalesCta({
           {formatPrice(listing.price)}
         </span>
       </div>
-      {disabled ? children : <Button onClick={onMakeOffer}>Make offer</Button>}
+      {disabled ? children : <Button onClick={onMakeOffer} className="w-full sm:w-auto">Make offer</Button>}
     </>
   );
 }

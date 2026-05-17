@@ -9,7 +9,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  'inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium ' +
+  'inline-flex min-h-11 items-center justify-center rounded-lg px-4 py-2 text-sm font-medium ' +
   'transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none ' +
   'focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2';
 

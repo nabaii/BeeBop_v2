@@ -71,7 +71,7 @@ export default function ProfilePage() {
     <div className="space-y-5 px-4 py-5 pb-8">
       <ProfileHeader fullName={fullName} initials={initials} email={user?.email ?? ''} />
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-4">
         <StatTile
           icon={Bookmark}
           label="Saved"
@@ -160,7 +160,7 @@ function ProfileHeader({
 }) {
   return (
     <section className="rounded-3xl bg-white p-4 shadow-sm">
-      <div className="flex items-start gap-3">
+      <div className="flex flex-wrap items-start gap-3">
         <div className="relative">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-xl font-bold text-brand-700">
             {initials}
@@ -183,7 +183,7 @@ function ProfileHeader({
         </div>
         <button
           type="button"
-          className="shrink-0 rounded-full bg-brand px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-brand-600"
+          className="w-full shrink-0 rounded-full bg-brand px-3 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-brand-600 min-[380px]:w-auto"
         >
           Edit profile
         </button>
@@ -283,7 +283,7 @@ function SavedSection({ items }: { items: PublicListingSummary[] | null }) {
       ) : (
         <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2">
           {items.map((r) => (
-            <div key={r.id} className="w-60 shrink-0">
+            <div key={r.id} className="w-[min(15rem,78vw)] shrink-0">
               <ListingCard
                 data={{
                   id: r.id,
@@ -332,7 +332,7 @@ function RowLink({
         <Icon className="h-5 w-5 text-slate-500" aria-hidden />
         <span>
           {label}
-          {hint && <span className="ml-2 text-xs font-normal text-slate-500">{hint}</span>}
+          {hint && <span className="block text-xs font-normal text-slate-500 min-[380px]:ml-2 min-[380px]:inline">{hint}</span>}
         </span>
       </span>
       <ChevronRight className="h-4 w-4 text-slate-400" aria-hidden />

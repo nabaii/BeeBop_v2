@@ -46,7 +46,7 @@ export function AgreementsPanel({ viewerRole }: { viewerRole: 'seeker' | 'landlo
               className="rounded-xl border border-slate-200 bg-white p-4"
             >
               <Link href={`/agreements/${a.id}` as `/agreements/${string}`} className="block">
-                <header className="flex items-start justify-between gap-3">
+                <header className="flex flex-col gap-3 min-[380px]:flex-row min-[380px]:items-start min-[380px]:justify-between">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-slate-900">
                       {a.listing_title}
@@ -59,7 +59,7 @@ export function AgreementsPanel({ viewerRole }: { viewerRole: 'seeker' | 'landlo
                   </div>
                   <StatusBadge status={a.status} signaturesNeeded={signaturesRemaining(a, viewerRole)} />
                 </header>
-                <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <dl className="mt-3 grid grid-cols-1 gap-2 text-sm min-[380px]:grid-cols-2">
                   <div>
                     <dt className="text-xs text-slate-500">Price</dt>
                     <dd className="font-medium text-slate-900">

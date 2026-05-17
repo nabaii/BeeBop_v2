@@ -112,7 +112,7 @@ export default function SeekerOnboardingPage() {
         cta="Continue"
         disabled={!firstName.trim() || !lastName.trim()}
       >
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
           <Labelled label="First name">
             <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
           </Labelled>
@@ -135,7 +135,7 @@ export default function SeekerOnboardingPage() {
         cta="Continue"
         disabled={selected.length === 0}
       >
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
           {CATEGORIES.map((c) => {
             const active = selected.includes(c.value);
             return (
