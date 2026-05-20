@@ -39,8 +39,17 @@ npm run dev
 
 That single command starts:
 - Postgres + Redis via `docker compose`
-- FastAPI backend on `http://127.0.0.1:8000`
+- Pending database migrations via Alembic
+- FastAPI backend on `http://127.0.0.1:8000` by default
 - Next.js frontend on `http://localhost:3000`
+
+On Windows, reserved port ranges can make port `8000` fail with `EACCES`.
+`npm run dev` will automatically choose the next usable backend port and pass
+the matching API URL to the frontend. To force a port in PowerShell:
+
+```powershell
+$env:BACKEND_PORT=8181; npm run dev
+```
 
 If the backend Python environment has not been installed yet, set it up once:
 

@@ -67,6 +67,7 @@ ABUJA_LOCATIONS: dict[str, str] = {
     "katampe": "Katampe",
     "katampe extension": "Katampe Extension",
     "jabi": "Jabi",
+    "jahi": "Jahi",
     "utako": "Utako",
     "kado": "Kado",
     "guzape": "Guzape",

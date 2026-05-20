@@ -6,7 +6,8 @@ plus internal admin and trusted-agent portals.
 ## Requirements
 
 - Node.js 20 LTS or later
-- The backend running locally on port 8000 (see [../backend/README.md](../backend/README.md))
+- The backend running locally (the root `npm run dev` command passes
+  `NEXT_PUBLIC_API_URL` automatically)
 
 ## Setup
 

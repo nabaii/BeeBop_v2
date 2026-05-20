@@ -137,8 +137,24 @@ class StubLLMClient:
         elif "schedule" in msg or "visit" in msg or "book" in msg:
             intent = "transactional"
 
-        # Minimal parameter extraction: route to rent by default, pull
-        # location-like words after "in".
+        # Category detection — mirror the heuristic in the main pipeline
+        # instead of blindly defaulting to "rent".
+        category: str | None = None
+        if any(tok in msg for tok in ("short-let", "shortlet", "airbnb", "per night")):
+            category = "short_let"
+        elif any(tok in msg for tok in ("for sale", "buy ", "purchase ", "distress sale", "plot of land")):
+            category = "sales"
+        elif any(tok in msg for tok in ("student", "hostel", "off-campus", "self-con near")):
+            category = "off_campus"
+        elif any(tok in msg for tok in ("rent", "to let", "lease", "bedroom flat")):
+            category = "rent"
+        elif any(tok in msg for tok in (
+            "duplex", "bungalow", "penthouse", "terrace", "terraced",
+            "detached", "semi-detached", "maisonette", "serviced", "furnished",
+        )):
+            category = "rent"
+
+        # Minimal parameter extraction: pull location-like words after "in".
         location: str | None = None
         if " in " in msg:
             tail = msg.split(" in ", 1)[1].strip()
@@ -148,13 +164,13 @@ class StubLLMClient:
         parsed = {
             "intent": intent,
             "parameters": {
-                "listing_category": "rent",
+                "listing_category": category,
                 "raw_query": user_message,
                 "locations": [location] if location else [],
                 "amenities": [],
-                "verification_tiers": ["fully_verified", "doc_verified"],
+                "verification_tiers": ["fully_verified", "doc_verified", "unverified"],
             },
-            "missing_parameter_prompt": None,
+            "missing_parameter_prompt": None if category else "Which category should I search: off-campus, short-let, rent, or sales?",
             "reference_resolution": None,
         }
         return StructuredCompletion(

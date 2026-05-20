@@ -4,12 +4,13 @@ Run:
 
     python -m scripts.seed_listings
     python -m scripts.seed_listings --owner-email someone@beebop.ng
+    python -m scripts.seed_listings --asset-base-url http://127.0.0.1:8181/dev-assets
 
 Creates an Abuja-flavored mix of rent, sales, and off-campus listings owned
 by a seed landlord (auto-created at first run as `landlord-seed@beebop.ng`).
 All listings go straight to LIVE_UNVERIFIED so they appear in seeker search
-without needing the admin doc-review queue. Photos and documents are left
-empty — populate them manually via the owner UI.
+without needing the admin doc-review queue. Photos are attached from the
+local `dummy listings` folder through the FastAPI `/dev-assets` mount.
 
 Idempotent: re-running deletes the prior seed batch for the owner (titles
 starting with the `[seed]` prefix) before recreating, so it's safe to run
@@ -20,8 +21,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
+import os
 import sys
 from datetime import date, timedelta
+from pathlib import Path
+from urllib.parse import quote
 
 from sqlalchemy import select
 
@@ -34,12 +39,39 @@ from app.models._enums import (
     UnitKind,
     UserRole,
 )
-from app.models.listing import Listing
+from app.models.listing import Listing, ListingPhoto
 from app.models.student_accommodation import Room, UnitType
 from app.models.user import User
 
 SEED_PREFIX = "[seed]"
 DEFAULT_OWNER_EMAIL = "landlord-super@beebop.ng"
+DEFAULT_DEV_ASSET_BASE_URL = "http://127.0.0.1:8000/dev-assets"
+ROOT_DIR = Path(__file__).resolve().parents[2]
+ASSET_ROOT = ROOT_DIR / "dummy listings"
+DEV_STATE_FILE = ROOT_DIR / ".codex-run" / "dev-state.json"
+PHOTO_LABELS = (
+    "Living room",
+    "Kitchen",
+    "Bedroom",
+    "Bathroom",
+    "Dining area",
+    "Exterior",
+)
+
+LAND_PHOTOS = [
+    {
+        "url": "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80",
+        "room_label": "Plot overview",
+    },
+    {
+        "url": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
+        "room_label": "Access road",
+    },
+    {
+        "url": "https://images.unsplash.com/photo-1448630360428-65456885c650?auto=format&fit=crop&w=1200&q=80",
+        "room_label": "Neighbourhood",
+    },
+]
 
 
 def _amenities(**groups: dict[str, bool]) -> dict:
@@ -54,6 +86,69 @@ def _amenities(**groups: dict[str, bool]) -> dict:
         out[group] = {key: {"present": present, "confirmed": False}
                       for key, present in items.items()}
     return out
+
+
+def _browser_host(host: str) -> str:
+    if host in {"0.0.0.0", "::"}:
+        return "localhost"
+    return host
+
+
+def _default_asset_base_url() -> str:
+    env_value = os.getenv("BEEBOP_DEV_ASSET_BASE_URL")
+    if env_value:
+        return env_value.rstrip("/")
+
+    if DEV_STATE_FILE.exists():
+        try:
+            state = json.loads(DEV_STATE_FILE.read_text(encoding="utf-8"))
+            port = state.get("backendPort")
+            if port:
+                host = _browser_host(str(state.get("backendHost") or "127.0.0.1"))
+                return f"http://{host}:{port}/dev-assets"
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    api_url = os.getenv("NEXT_PUBLIC_API_URL")
+    if api_url:
+        return f"{api_url.rstrip('/')}/dev-assets"
+
+    return DEFAULT_DEV_ASSET_BASE_URL
+
+
+def _photo_url(*, base_url: str, folder: str, filename: str) -> str:
+    return f"{base_url.rstrip('/')}/{quote(folder)}/{quote(filename)}"
+
+
+def _files_for_folder(folder: str) -> list[Path]:
+    root = ASSET_ROOT / folder
+    if not root.exists():
+        raise FileNotFoundError(f"Dummy listing folder not found: {root}")
+    return sorted(path for path in root.iterdir() if path.is_file())
+
+
+def _local_photos(
+    *,
+    base_url: str,
+    folder: str,
+    limit: int = 6,
+    offset: int = 0,
+) -> list[dict[str, str]]:
+    files = _files_for_folder(folder)
+    if not files:
+        raise FileNotFoundError(f"No dummy listing photos found in {ASSET_ROOT / folder}")
+
+    selected = files[offset: offset + limit]
+    if len(selected) < limit:
+        selected.extend(files[: limit - len(selected)])
+
+    return [
+        {
+            "url": _photo_url(base_url=base_url, folder=folder, filename=file.name),
+            "room_label": PHOTO_LABELS[index % len(PHOTO_LABELS)],
+        }
+        for index, file in enumerate(selected)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -543,12 +638,53 @@ def _build_listing(owner: User, payload: dict) -> Listing:
     return listing
 
 
+def _photo_specs_for_listing(payload: dict, asset_base_url: str) -> list[dict[str, str]]:
+    title = str(payload["title"])
+    if "Furnished 3-bedroom flat" in title:
+        return _local_photos(base_url=asset_base_url, folder="Listing_2", limit=6)
+    if "2-bedroom mini flat" in title:
+        return _local_photos(base_url=asset_base_url, folder="Listing_1", limit=5)
+    if "4-bedroom semi-detached duplex" in title:
+        return _local_photos(base_url=asset_base_url, folder="Listing_3", limit=6)
+    if "5-bedroom detached duplex" in title:
+        return _local_photos(base_url=asset_base_url, folder="Listing_3", limit=6, offset=4)
+    if "1,000sqm residential plot" in title:
+        return LAND_PHOTOS
+    if "Off-plan 4-bedroom terrace" in title:
+        return _local_photos(base_url=asset_base_url, folder="Listing_3", limit=5, offset=10)
+    if "BeeBop Lodge" in title:
+        return _local_photos(base_url=asset_base_url, folder="Listing_1", limit=6, offset=6)
+    if "Jabi Student Lodge" in title:
+        return _local_photos(base_url=asset_base_url, folder="Listing_2", limit=6, offset=6)
+    return _local_photos(base_url=asset_base_url, folder="Listing_1", limit=4)
+
+
+def _add_listing_photos(listing: Listing, payload: dict, asset_base_url: str) -> int:
+    specs = _photo_specs_for_listing(payload, asset_base_url)
+    listing.photos = [
+        ListingPhoto(
+            url=spec["url"],
+            room_label=spec.get("room_label"),
+            display_order=index,
+            is_cover=index == 0,
+        )
+        for index, spec in enumerate(specs)
+    ]
+    return len(specs)
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description="Seed dummy BeeBop listings.")
     parser.add_argument("--owner-email", default=DEFAULT_OWNER_EMAIL,
                         help=f"Owner email (default: {DEFAULT_OWNER_EMAIL}).")
+    parser.add_argument(
+        "--asset-base-url",
+        default=_default_asset_base_url(),
+        help="Base URL for local dummy images (default: detected dev backend /dev-assets).",
+    )
     args = parser.parse_args()
     email = args.owner_email.strip().lower()
+    asset_base_url = args.asset_base_url.rstrip("/")
 
     rent = [{**p, "category": ListingCategory.RENT} for p in _rent_listings()]
     sales = [{**p, "category": ListingCategory.SALES} for p in _sales_listings()]
@@ -558,14 +694,18 @@ async def main() -> int:
     async with AsyncSessionLocal() as db:
         owner = await _ensure_owner(db, email)
         wiped = await _wipe_existing_seed(db, owner)
+        photo_count = 0
 
         for payload in rent + sales:
-            db.add(_build_listing(owner, payload))
+            listing = _build_listing(owner, payload)
+            db.add(listing)
+            photo_count += _add_listing_photos(listing, payload, asset_base_url)
 
         for payload in student:
             inventory = payload.pop("_inventory")
             listing = _build_listing(owner, payload)
             db.add(listing)
+            photo_count += _add_listing_photos(listing, payload, asset_base_url)
             await db.flush()  # need listing.id for unit-type FK
             for ut_payload in inventory:
                 ut = UnitType(
@@ -594,6 +734,7 @@ async def main() -> int:
         print(f"Removed {wiped} prior seed listing(s).")
     print(f"Created {total} listing(s): "
           f"{len(rent)} rent, {len(sales)} sales, {len(student)} off-campus.")
+    print(f"Attached {photo_count} photo(s) from {asset_base_url}.")
     return 0
 
 

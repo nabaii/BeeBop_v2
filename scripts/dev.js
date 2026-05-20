@@ -10,6 +10,9 @@ const frontendDir = path.join(rootDir, 'frontend');
 const runtimeDir = path.join(rootDir, '.codex-run');
 const stateFile = path.join(runtimeDir, 'dev-state.json');
 const isWindows = process.platform === 'win32';
+const DEFAULT_BACKEND_HOST = '127.0.0.1';
+const DEFAULT_BACKEND_PORT = 8000;
+const DEFAULT_FRONTEND_PORT = 3000;
 const managedChildren = new Set();
 let shuttingDown = false;
 
@@ -132,6 +135,27 @@ function getNpmRunCommand(scriptName) {
     command: 'npm',
     args: ['run', scriptName],
   };
+}
+
+function parsePort(value, fallback, label) {
+  if (value === undefined || value === '') {
+    return fallback;
+  }
+
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`${label} must be an integer between 1 and 65535.`);
+  }
+
+  return port;
+}
+
+function getBrowserReachableHost(host) {
+  if (host === '0.0.0.0' || host === '::') {
+    return 'localhost';
+  }
+
+  return host;
 }
 
 function ensureRuntimeDir() {
@@ -276,21 +300,16 @@ async function cleanupPreviousRun() {
   clearState();
 }
 
-function isPortAvailable(port, host) {
-  return new Promise((resolve, reject) => {
+function probePort(port, host) {
+  return new Promise((resolve) => {
     const server = net.createServer();
 
     server.unref();
     server.once('error', (error) => {
-      if (error.code === 'EADDRINUSE') {
-        resolve(false);
-        return;
-      }
-
-      reject(error);
+      resolve({ available: false, error });
     });
     const onListen = () => {
-      server.close(() => resolve(true));
+      server.close(() => resolve({ available: true }));
     };
 
     if (host) {
@@ -300,6 +319,24 @@ function isPortAvailable(port, host) {
 
     server.listen(port, onListen);
   });
+}
+
+function formatPortBindError(error) {
+  if (!error) {
+    return 'unavailable';
+  }
+
+  if (error.code === 'EADDRINUSE') {
+    return 'already in use';
+  }
+
+  if (error.code === 'EACCES') {
+    return isWindows
+      ? 'permission denied, likely because Windows reserved that port'
+      : 'permission denied';
+  }
+
+  return error.message;
 }
 
 function getWindowsPortOwner(port) {
@@ -404,10 +441,10 @@ function isRepoOwnedListener(owner, expectedDir, marker) {
   );
 }
 
-async function cleanupRepoListeners() {
+async function cleanupRepoListeners(backendPort, frontendPort) {
   const candidates = [
-    { port: 3000, dir: frontendDir, marker: 'next' },
-    { port: 8000, dir: backendDir, marker: 'uvicorn' },
+    { port: frontendPort, dir: frontendDir, marker: 'next' },
+    { port: backendPort, dir: backendDir, marker: 'uvicorn' },
   ];
 
   for (const candidate of candidates) {
@@ -423,16 +460,60 @@ async function cleanupRepoListeners() {
   }
 }
 
+async function runMigrations(python) {
+  console.log('[dev] Applying database migrations...');
+  await runChecked(
+    'db',
+    python.command,
+    [...python.argsPrefix, '-m', 'alembic', 'upgrade', 'head'],
+    { cwd: backendDir },
+  );
+}
+
 async function ensurePortFree(port, label, host) {
-  const available = await isPortAvailable(port, host);
-  if (available) {
+  const result = await probePort(port, host);
+  if (result.available) {
     return;
   }
 
   const owner = getPortOwner(port);
   const ownerText = owner ? ` Currently owned by ${formatPortOwner(owner)}.` : '';
+  const reason = formatPortBindError(result.error);
+  const windowsHint =
+    isWindows && result.error?.code === 'EACCES'
+      ? ' Run "netsh interface ipv4 show excludedportrange protocol=tcp" to confirm Windows port reservations.'
+      : '';
   throw new Error(
-    `${label} port ${port} is already in use.${ownerText} Stop that process and run npm run dev again.`,
+    `${label} port ${port} is unavailable: ${reason}.${ownerText}${windowsHint} Stop that process or choose another port and run npm run dev again.`,
+  );
+}
+
+async function resolveBackendPort(preferredPort, host, explicitPort) {
+  if (explicitPort) {
+    await ensurePortFree(preferredPort, 'Backend', host);
+    return preferredPort;
+  }
+
+  const maxPort = Math.min(65535, preferredPort + 300);
+  let firstError = null;
+
+  for (let port = preferredPort; port <= maxPort; port += 1) {
+    const result = await probePort(port, host);
+    if (result.available) {
+      if (port !== preferredPort) {
+        console.log(
+          `[dev] Backend port ${preferredPort} is unavailable (${formatPortBindError(firstError)}); using ${port} instead.`,
+        );
+      }
+
+      return port;
+    }
+
+    firstError ??= result.error;
+  }
+
+  throw new Error(
+    `No available backend port found between ${preferredPort} and ${maxPort}. Set BACKEND_PORT to a free port and run npm run dev again.`,
   );
 }
 
@@ -491,17 +572,32 @@ async function shutdown(exitCode = 0) {
 
 async function main() {
   const python = resolvePython();
+  const backendHost = process.env.BACKEND_HOST || DEFAULT_BACKEND_HOST;
+  const explicitBackendPort =
+    process.env.BACKEND_PORT !== undefined && process.env.BACKEND_PORT !== '';
+  const preferredBackendPort = parsePort(
+    process.env.BACKEND_PORT,
+    DEFAULT_BACKEND_PORT,
+    'BACKEND_PORT',
+  );
+  const frontendPort = DEFAULT_FRONTEND_PORT;
 
   await cleanupPreviousRun();
-  await cleanupRepoListeners();
+  await cleanupRepoListeners(preferredBackendPort, frontendPort);
 
   console.log('[dev] Starting Postgres and Redis with Docker Compose...');
   await runChecked('infra', 'docker', ['compose', 'up', '-d', 'postgres', 'redis']);
+  await runMigrations(python);
 
-  await ensurePortFree(8000, 'Backend');
-  await ensurePortFree(3000, 'Frontend');
+  const backendPort = await resolveBackendPort(
+    preferredBackendPort,
+    backendHost,
+    explicitBackendPort,
+  );
+  const frontendApiUrl = `http://${getBrowserReachableHost(backendHost)}:${backendPort}`;
+  await ensurePortFree(frontendPort, 'Frontend');
 
-  console.log('[dev] Launching backend on http://127.0.0.1:8000');
+  console.log(`[dev] Launching backend on http://${backendHost}:${backendPort}`);
   const backend = spawnLogged(
     'backend',
     python.command,
@@ -512,27 +608,35 @@ async function main() {
       'app.main:app',
       '--reload',
       '--host',
-      '127.0.0.1',
+      backendHost,
       '--port',
-      '8000',
+      String(backendPort),
     ],
     { cwd: backendDir },
   );
   monitorChild('backend', backend);
   saveState({
     rootPid: process.pid,
+    backendHost,
+    backendPort,
+    frontendApiUrl,
     children: [{ name: 'backend', pid: backend.pid }],
   });
 
-  console.log('[dev] Launching frontend on http://localhost:3000');
+  console.log(`[dev] Launching frontend on http://localhost:${frontendPort}`);
+  console.log(`[dev] Frontend API URL: ${frontendApiUrl}`);
   cleanupBrokenFrontendCache();
   const frontendCommand = getNpmRunCommand('dev');
   const frontend = spawnLogged('frontend', frontendCommand.command, frontendCommand.args, {
     cwd: frontendDir,
+    env: { NEXT_PUBLIC_API_URL: frontendApiUrl },
   });
   monitorChild('frontend', frontend);
   saveState({
     rootPid: process.pid,
+    backendHost,
+    backendPort,
+    frontendApiUrl,
     children: [
       { name: 'backend', pid: backend.pid },
       { name: 'frontend', pid: frontend.pid },

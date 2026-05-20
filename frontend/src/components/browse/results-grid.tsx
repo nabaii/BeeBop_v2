@@ -37,7 +37,7 @@ export function ResultsGrid({ data, loading, onPageChange, emptyHint }: Props) {
           {data.total.toLocaleString()} result{data.total === 1 ? '' : 's'}
         </p>
       </div>
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-4">
         {data.results.map((r) => (
           <li key={r.id} className="relative">
             <ListingCard data={toCardData(r)} />

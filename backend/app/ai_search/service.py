@@ -30,7 +30,7 @@ from app.ai_search.schemas import (
     SessionStateView,
 )
 from app.ai_search.session_store import SessionStore, new_session_id
-from app.ai_search.vocabulary import LANDMARKS, normalise_location
+from app.ai_search.vocabulary import ABUJA_LOCATIONS, LANDMARKS, normalise_location
 from app.integrations.openai_client import (
     LLMClient,
     StubLLMClient,
@@ -627,16 +627,52 @@ def _infer_category(
         return ListingCategory.OFF_CAMPUS
     if any(token in lower for token in ("rent", "to let", "lease", "2-bed", "3-bed", "bedroom flat")):
         return ListingCategory.RENT
+    # Property-type words in combination with a recognised Abuja location
+    # strongly imply a rental search (the most common category).
+    _PROPERTY_TYPE_TOKENS = (
+        "duplex", "bungalow", "penthouse", "terrace", "terraced",
+        "detached", "semi-detached", "semi detached", "maisonette",
+        "serviced", "furnished", "self-con", "self-contain",
+    )
+    has_property_type = any(tok in lower for tok in _PROPERTY_TYPE_TOKENS)
+    has_location = any(loc in lower for loc in ABUJA_LOCATIONS)
+    has_bedroom = bool(re.search(r"\b\d+\s*[-]?\s*(?:bed|bedroom|br)\b", lower))
+    if has_property_type or (has_location and has_bedroom):
+        return ListingCategory.RENT
     return previous.listing_category if previous is not None else None
+
+
+# Landmarks → nearest district for the location filter.  When a user says
+# "near Baze" we inject "Jabi" as a location because that's where Baze sits.
+_LANDMARK_DISTRICT: dict[str, str] = {
+    "baze": "Jabi",
+    "baze university": "Jabi",
+    "nile university": "Jabi",
+    "nileuni": "Jabi",
+    "university of abuja": "Gwagwalada",
+    "uniabuja": "Gwagwalada",
+    "veritas": "Bwari",
+    "national hospital": "Central Area",
+    "asokoro hospital": "Asokoro",
+    "ceddi plaza": "Central Area",
+    "jabi lake mall": "Jabi",
+    "shoprite jabi": "Jabi",
+}
 
 
 def _extract_locations(lower: str) -> list[str]:
     locations: list[str] = []
-    tokens = re.split(r"[,.;]| near | around | in | at ", lower)
+    tokens = re.split(r"[,.;]| near | around | in | at | close to ", lower)
     for token in tokens:
         canonical = normalise_location(token)
         if canonical and canonical not in locations:
             locations.append(canonical)
+
+    # Resolve landmarks to their host district when no explicit location was
+    # found (e.g. "near Baze" → "Jabi").
+    for landmark, district in _LANDMARK_DISTRICT.items():
+        if landmark in lower and district not in locations:
+            locations.append(district)
     return locations
 
 
@@ -649,7 +685,7 @@ def _extract_amenities(lower: str) -> list[str]:
 
 
 def _extract_bedroom_count(lower: str) -> int | None:
-    match = re.search(r"\b(\d+)\s*(?:bed|beds|bedroom|bedrooms|br)\b", lower)
+    match = re.search(r"\b(\d+)\s*[-]?\s*(?:bed|beds|bedroom|bedrooms|br)\b", lower)
     if match is None:
         return None
     return int(match.group(1))
@@ -790,8 +826,14 @@ async def _search_response(
     parameters: ExtractedParameters,
     db: AsyncSession,
 ) -> SearchResponse:
+    # Build a clean keyword string for the ILIKE search instead of using the
+    # full conversational raw_query.  The raw_query is a natural-language
+    # sentence like "2-bedroom in Wuse 2 under 300k" — passing it verbatim
+    # as an ILIKE pattern returns zero rows because no listing title/description
+    # contains that exact substring.
+    search_keywords = _extract_search_keywords(parameters)
     shared = {
-        "q": parameters.raw_query,
+        "q": search_keywords if search_keywords else None,
         "locations": parameters.locations,
         "verification": parameters.verification_tiers or _DEFAULT_VERIFICATION,
         "amenities": parameters.amenities,
@@ -801,6 +843,11 @@ async def _search_response(
         "page": 1,
         "page_size": _SEARCH_LIMIT,
     }
+    bedroom_counts = (
+        [parameters.bedroom_count]
+        if parameters.bedroom_count is not None
+        else []
+    )
 
     category = parameters.listing_category
     if category == ListingCategory.OFF_CAMPUS:
@@ -817,25 +864,87 @@ async def _search_response(
         return await public_search.search_sales(
             SalesFilters(
                 **shared,
-                bedroom_counts=(
-                    [parameters.bedroom_count]
-                    if parameters.bedroom_count is not None
-                    else []
-                ),
+                bedroom_counts=bedroom_counts,
             ),
             db=db,
         )
     return await public_search.search_rent(
         RentFilters(
             **shared,
-            bedroom_counts=(
-                [parameters.bedroom_count]
-                if parameters.bedroom_count is not None
-                else []
-            ),
+            bedroom_counts=bedroom_counts,
         ),
         db=db,
     )
+
+
+# Tokens stripped from the raw query before passing to ILIKE.  These are
+# either handled by dedicated structured filters or are conversational noise.
+_SEARCH_STOPWORDS: set[str] = {
+    # Conversational noise
+    "show", "me", "find", "get", "looking", "for", "want", "need", "can",
+    "you", "i", "a", "an", "the", "and", "or", "with", "in", "at", "near",
+    "around", "close", "please", "some", "any", "good", "nice",
+    # Category tokens (handled by listing_category filter)
+    "rent", "rental", "rentals", "sale", "sales", "buy", "purchase",
+    "short", "let", "hostel", "hostels", "student", "airbnb",
+    # Price tokens (handled by min_price / max_price filter)
+    "under", "below", "above", "over", "less", "than", "budget",
+    "between", "from", "maximum", "max", "minimum", "min",
+    # Generic housing terms
+    "house", "houses", "home", "homes", "apartment", "apartments",
+    "flat", "flats", "place", "property", "properties", "listing",
+    "listings", "options", "room", "rooms", "bedroom", "bedrooms", "bed",
+    # Misc
+    "verified", "unverified", "fully", "doc", "ones", "that", "are", "is",
+    "have", "has", "do", "does", "of", "to", "on", "per", "year", "month",
+    "night", "term",
+}
+
+
+def _extract_search_keywords(parameters: ExtractedParameters) -> str | None:
+    """Derive a lean keyword string from the raw query for ILIKE matching.
+
+    The public search service runs ``ILIKE %q%`` against title, description,
+    and district. Passing the full conversational sentence (e.g.
+    "show me 2-bed in Wuse 2 under 300k") returns zero rows because no
+    listing contains that exact substring. Instead we strip out:
+
+    * Locations  - already handled by the ``locations`` filter.
+    * Prices     - already handled by ``min_price`` / ``max_price``.
+    * Categories - already handled by ``listing_category``.
+    * Bedroom counts - already handled by ``bedroom_counts``.
+    * Stopwords  - conversational filler ("show me", "looking for", etc.).
+
+    What remains are property-descriptive terms like "duplex", "serviced",
+    "penthouse", etc. that genuinely narrow listings via ILIKE.
+    """
+    raw = parameters.raw_query.lower()
+
+    # Remove location tokens so they don't pollute the keyword search.
+    for loc in parameters.locations:
+        raw = raw.replace(loc.lower(), " ")
+
+    # Remove landmark names (they're resolved to a district in locations,
+    # but their raw text shouldn't appear in the ILIKE keywords).
+    for landmark in LANDMARKS:
+        raw = raw.replace(landmark, " ")
+
+    # Remove price-like tokens (e.g. "300k", "4,000,000", "2m").
+    raw = re.sub(r"\b\d[\d,]*(?:\.\d+)?[km]?\b", " ", raw)
+
+    # Remove bedroom patterns (e.g. "2-bed", "3 bedroom").
+    raw = re.sub(r"\b\d+\s*[-]?\s*(?:bed|beds|bedroom|bedrooms|br)\b", " ", raw)
+
+    # Tokenise on non-alpha boundaries and filter stopwords.
+    tokens = re.split(r"[^a-z]+", raw)
+    keywords = [
+        tok for tok in tokens
+        if tok and len(tok) >= 2 and tok not in _SEARCH_STOPWORDS
+    ]
+
+    if not keywords:
+        return None
+    return " ".join(keywords)
 
 
 async def _rating_map(

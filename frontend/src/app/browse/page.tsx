@@ -98,10 +98,10 @@ export default function BrowseHubPage() {
   const clearSearchSession = useSearch((state) => state.clearSession);
 
   return (
-    <div className="flex min-h-screen bg-slate-100">
+    <div className="flex min-h-[100dvh] bg-slate-100">
       <MainSidebar mobileOpen={drawerOpen} onMobileClose={() => setDrawerOpen(false)} />
-      <div className="flex min-h-screen flex-1 flex-col bg-slate-50">
-        <main className="flex-1 p-4 pb-24 sm:p-6 lg:mx-auto lg:max-w-6xl lg:p-8 lg:pb-8">
+      <div className="mx-auto flex h-[100dvh] w-full max-w-[480px] flex-col bg-slate-50 shadow-xl">
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 pb-6 sm:p-6">
           <header className="mb-6 flex items-center gap-3">
             <button
               type="button"
@@ -129,7 +129,7 @@ export default function BrowseHubPage() {
             </p>
           </section>
 
-          <section className="mt-6 grid gap-4 md:grid-cols-2">
+          <section className="mt-6 grid gap-4">
             {CATEGORIES.map((category) => {
               const Icon = category.icon;
               return (
@@ -195,9 +195,7 @@ export default function BrowseHubPage() {
           </section>
         </main>
 
-        <div className="lg:hidden">
-          <BottomNav />
-        </div>
+        <BottomNav />
       </div>
     </div>
   );

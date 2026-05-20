@@ -22,12 +22,15 @@ cp ../.env.example .env          # fill values as needed
 
 ```bash
 # Dev server with auto-reload
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 # Health check
 curl http://localhost:8000/health
 # -> {"status":"ok"}
 ```
+
+If Windows has reserved port `8000`, use the repo-level `npm run dev` command
+or choose another port, for example `--port 8181`.
 
 ## Database migrations
 

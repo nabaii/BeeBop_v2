@@ -69,16 +69,20 @@ def _verification_clause(tiers: list[str]):  # type: ignore[no-untyped-def]
 def _apply_shared(stmt, filters: SharedFilters):  # type: ignore[no-untyped-def]
     stmt = stmt.where(_verification_clause(filters.verification))
     if filters.q:
-        # Simple ILIKE for MVP; upgrade to `to_tsvector @@ plainto_tsquery` in
-        # a later sprint once query volume justifies a tsvector column.
-        like = f"%{filters.q.strip()}%"
-        stmt = stmt.where(
-            or_(
-                Listing.title.ilike(like),
-                Listing.description.ilike(like),
-                Listing.district.ilike(like),
+        # Per-word ILIKE matching.  Each keyword must match in at least one
+        # of title / description / district, but different keywords can match
+        # in different fields.  This gives much better recall than requiring
+        # the entire phrase as a single substring.
+        words = [w.strip() for w in filters.q.split() if w.strip()]
+        for word in words:
+            like = f"%{word}%"
+            stmt = stmt.where(
+                or_(
+                    Listing.title.ilike(like),
+                    Listing.description.ilike(like),
+                    Listing.district.ilike(like),
+                )
             )
-        )
     if filters.locations:
         stmt = stmt.where(Listing.district.in_(filters.locations))
     if filters.min_price is not None:

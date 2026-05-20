@@ -18,15 +18,21 @@ from app.core.security import (
     decode_token,
     user_id_from_claims,
 )
-from app.models._enums import AccountType, UserRole
+from app.models._enums import AccountType, ListingCategory, UserRole
 from app.models.user import User
 
-DEV_USERS: dict[UserRole, dict[str, str | bool]] = {
+DEV_USERS: dict[UserRole, dict[str, str | bool | list[str]]] = {
     UserRole.SEEKER: {
         "email": "seeker-super@beebop.ng",
         "first_name": "Seeker",
         "last_name": "Super",
         "needs_account_type": False,
+        "category_preferences": [
+            ListingCategory.OFF_CAMPUS.value,
+            ListingCategory.SHORT_LET.value,
+            ListingCategory.RENT.value,
+            ListingCategory.SALES.value,
+        ],
     },
     UserRole.LANDLORD: {
         "email": "landlord-super@beebop.ng",
@@ -50,7 +56,28 @@ def _is_onboarded(user: User) -> bool:
         return False
     if user.role == UserRole.LANDLORD and user.account_type is None:
         return False
+    if user.role == UserRole.SEEKER and not user.category_preferences:
+        return False
     return True
+
+
+def _apply_dev_user_spec(
+    *, user: User, role: UserRole, spec: dict[str, str | bool | list[str]]
+) -> None:
+    user.role = role
+    user.first_name = str(spec["first_name"])
+    user.last_name = str(spec["last_name"])
+    user.is_active = True
+    user.is_suspended = False
+    user.nin_verified = True
+    user.bvn_verified = True
+
+    if spec["needs_account_type"]:
+        user.account_type = AccountType.INDIVIDUAL
+
+    category_preferences = spec.get("category_preferences")
+    if category_preferences is not None:
+        user.category_preferences = list(category_preferences)
 
 
 def _to_authenticated(user: User) -> AuthenticatedUser:
@@ -145,15 +172,11 @@ async def dev_login_as(
         is_new = True
         user = User(
             email=email,
-            role=role,
-            first_name=str(spec["first_name"]),
-            last_name=str(spec["last_name"]),
-            account_type=AccountType.INDIVIDUAL if spec["needs_account_type"] else None,
-            nin_verified=True,
-            bvn_verified=True,
         )
         db.add(user)
-        await db.flush()
+
+    _apply_dev_user_spec(user=user, role=role, spec=spec)
+    await db.flush()
 
     refresh_store = RefreshTokenStore(redis)
     tokens = await _issue_token_pair(user=user, refresh_store=refresh_store)
