@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -152,6 +153,8 @@ class StubLLMClient:
             "duplex", "bungalow", "penthouse", "terrace", "terraced",
             "detached", "semi-detached", "maisonette", "serviced", "furnished",
         )):
+            category = "rent"
+        elif re.search(r"\b\d+\s*[-]?\s*(?:bed|bedroom|br)\b", msg):
             category = "rent"
 
         # Minimal parameter extraction: pull location-like words after "in".
