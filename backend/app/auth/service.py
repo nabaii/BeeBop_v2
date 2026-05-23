@@ -23,7 +23,7 @@ from app.models.user import User
 
 DEV_USERS: dict[UserRole, dict[str, str | bool | list[str]]] = {
     UserRole.SEEKER: {
-        "email": "seeker-super@beebop.ng",
+        "email": "seeker-super@beebop.store",
         "first_name": "Seeker",
         "last_name": "Super",
         "needs_account_type": False,
@@ -35,13 +35,13 @@ DEV_USERS: dict[UserRole, dict[str, str | bool | list[str]]] = {
         ],
     },
     UserRole.LANDLORD: {
-        "email": "landlord-super@beebop.ng",
+        "email": "landlord-super@beebop.store",
         "first_name": "Landlord",
         "last_name": "Super",
         "needs_account_type": True,
     },
     UserRole.ADMIN: {
-        "email": "admin-super@beebop.ng",
+        "email": "admin-super@beebop.store",
         "first_name": "Admin",
         "last_name": "Super",
         "needs_account_type": False,
@@ -122,7 +122,7 @@ async def verify_otp_and_issue_tokens(
     if user is None:
         is_new = True
         user = User(
-            email=identifier if channel == "email" else f"pending-{uuid.uuid4().hex[:12]}@beebop.ng",
+            email=identifier if channel == "email" else f"pending-{uuid.uuid4().hex[:12]}@beebop.store",
             phone=identifier if channel == "whatsapp" else None,
             role=role_if_new,
         )
@@ -155,7 +155,7 @@ async def rotate_refresh_token(
 async def dev_login_as(
     *, role: UserRole, db: AsyncSession, redis: Redis
 ) -> VerifyResponse:
-    """Dev-only bypass: load or create a canonical `<role>-super@beebop.ng`
+    """Dev-only bypass: load or create a canonical `<role>-super@beebop.store`
     user and issue a real token pair. The landlord account owns listings
     created by `scripts.seed_listings`.
     """

@@ -76,7 +76,11 @@ app = FastAPI(
 allowed_origins = (
     ["*"]
     if settings.environment == "development"
-    else ["https://beebop.ng", "https://www.beebop.ng", "https://app.beebop.ng"]
+    else [
+        "https://beebop.store",
+        "https://www.beebop.store",
+        "https://app.beebop.store",
+    ]
 )
 
 app.add_middleware(

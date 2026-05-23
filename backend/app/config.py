@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # Email (Resend)
     resend_api_key: str = ""
-    resend_from_email: str = "noreply@beebop.ng"
+    resend_from_email: str = "noreply@beebop.store"
 
     # WhatsApp Business API
     whatsapp_business_api_token: str = ""

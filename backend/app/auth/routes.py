@@ -86,7 +86,7 @@ async def dev_login(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ) -> VerifyResponse:
-    """Dev-only OTP bypass — signs in as the canonical `<role>-super@beebop.ng`
+    """Dev-only OTP bypass — signs in as the canonical `<role>-super@beebop.store`
     user (landlord or admin). Returns 404 outside the development environment
     so it cannot be triggered in staging or production even if the route is
     accidentally deployed.

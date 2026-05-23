@@ -81,7 +81,10 @@ async def set_identity(
     # placeholder email. Trying to change an established email requires a
     # separate "change email" flow (not Sprint 1 scope).
     if payload.email:
-        if user.email and not user.email.endswith("@beebop.ng"):
+        is_placeholder_email = user.email and user.email.endswith(
+            ("@beebop.store", "@beebop.ng")
+        )
+        if user.email and not is_placeholder_email:
             raise ForbiddenError(
                 "Email is already set. Use the change-email flow.",
                 code="email_locked",

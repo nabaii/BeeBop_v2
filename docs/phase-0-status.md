@@ -33,11 +33,11 @@ These involve external parties with lead times outside the team's control. Every
 - [ ] **NIMC API access** — Submit developer application with required business documentation.
 - [ ] **CAC API access** — Submit application for CAC registration verification API.
 - [ ] **Paystack merchant account** — Create and complete KYC. Configure settlement account. Obtain test and live API keys.
-- [ ] **beebop.ng domain** — Purchase via NiRegistry or reseller. Point DNS nameservers to Vercel (frontend). Configure `api.beebop.ng` subdomain for Render backend.
+- [ ] **beebop.store domain** — Purchased via Hostinger. Point DNS to Vercel (frontend). Configure `api.beebop.store` subdomain for Render backend.
 - [ ] **Google Maps Platform** — Create GCP project. Enable Maps JavaScript API, Geocoding API, Places API. Set billing with budget alerts. The $200/month free credit covers MVP usage.
 - [ ] **Hosting accounts** — Create all five: Vercel, Render, Neon, Upstash, Cloudinary. Connect GitHub repo to Vercel and Render. Obtain connection strings and API keys. Store as env vars.
-- [ ] **Resend email** — Create account. Verify `beebop.ng` sending domain. Configure DKIM/SPF records on domain DNS. Test OTP email template delivery.
-- [ ] **UptimeRobot** — Free account. HTTP monitor on `https://api.beebop.ng/health`. Interval: 5 minutes. Alert email configured. (Acts as primary keepalive; GitHub Actions keepalive is the backup.)
+- [ ] **Resend email** — Create account. Verify `beebop.store` sending domain. Configure DKIM/SPF records on domain DNS. Test OTP email template delivery.
+- [ ] **UptimeRobot** — Free account. HTTP monitor on `https://api.beebop.store/health`. Interval: 5 minutes. Alert email configured. (Acts as primary keepalive; GitHub Actions keepalive is the backup.)
 - [ ] **Sentry + PostHog** — Free-tier accounts. Connect both to frontend (Vercel) and backend (Render). Configure alert routing.
 
 ### Week 1–2
