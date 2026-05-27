@@ -77,6 +77,10 @@ Health Check Path: /health
 PYTHON_VERSION: 3.12.13
 ```
 
+The Render Blueprint service name is `beebop`, matching the existing Render
+web service name. Render only applies Blueprint config to an existing service
+when the `name` in `render.yaml` matches that service.
+
 If the service is built from the repo root instead, use `pip install -e ./backend`
 as the build command. Do not use bare `pip install -e`; pip requires the editable
 install target path.

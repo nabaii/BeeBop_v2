@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: beebop-backend
+    name: beebop
     runtime: python
     rootDir: backend
     buildCommand: bash scripts/render-build.sh
