@@ -71,7 +71,7 @@ The FastAPI backend is a Python service rooted at `backend/`. In Render, set:
 
 ```bash
 Root Directory: backend
-Build Command: pip install -e .
+Build Command: bash scripts/render-build.sh
 Start Command: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
 Health Check Path: /health
 PYTHON_VERSION: 3.12.13
@@ -80,6 +80,13 @@ PYTHON_VERSION: 3.12.13
 If the service is built from the repo root instead, use `pip install -e ./backend`
 as the build command. Do not use bare `pip install -e`; pip requires the editable
 install target path.
+
+If Render logs still say `Running build command 'pip install -e'`, the deployed
+service is using an old Dashboard build command and is not applying this
+`render.yaml` service definition. In that case, update the service's Settings >
+Build & Deploy > Build Command to the command above, or sync the Blueprint to
+the existing service. For Blueprint syncs, the service name in `render.yaml`
+must match the existing Render service name.
 
 ## Documentation
 
