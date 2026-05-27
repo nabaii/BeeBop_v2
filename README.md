@@ -65,6 +65,22 @@ Per-service instructions live in each service's own README:
 - [frontend/README.md](frontend/README.md)
 - [inspector/README.md](inspector/README.md)
 
+## Render Backend Deployment
+
+The FastAPI backend is a Python service rooted at `backend/`. In Render, set:
+
+```bash
+Root Directory: backend
+Build Command: pip install -e .
+Start Command: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+Health Check Path: /health
+PYTHON_VERSION: 3.12.13
+```
+
+If the service is built from the repo root instead, use `pip install -e ./backend`
+as the build command. Do not use bare `pip install -e`; pip requires the editable
+install target path.
+
 ## Documentation
 
 - [docs/phase-0-status.md](docs/phase-0-status.md) — Phase 0 completion status and founder-action checklist
