@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,6 +20,16 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "postgresql+asyncpg://user:password@localhost:5432/beebop"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalise_database_url(cls, value: str) -> str:
+        """Render Postgres URLs omit the asyncpg dialect by default."""
+        if value.startswith("postgres://"):
+            return value.replace("postgres://", "postgresql+asyncpg://", 1)
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return value
 
     # Redis (session context + Celery broker)
     redis_url: str = "redis://localhost:6379/0"
