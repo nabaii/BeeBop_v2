@@ -72,6 +72,14 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     posthog_api_key: str = ""
 
+    # Production bootstrap
+    # Optional first-admin seed for deployed environments where running an
+    # ad-hoc shell command is inconvenient. When set, startup creates or
+    # promotes this email to UserRole.ADMIN.
+    admin_bootstrap_email: str = ""
+    admin_bootstrap_first_name: str = "BeeBop"
+    admin_bootstrap_last_name: str = "Admin"
+
 
 @lru_cache
 def get_settings() -> Settings:
