@@ -89,6 +89,7 @@ class Settings(BaseSettings):
     admin_bootstrap_email: str = ""
     admin_bootstrap_first_name: str = "BeeBop"
     admin_bootstrap_last_name: str = "Admin"
+    admin_bootstrap_password: str = ""
 
 
 @lru_cache

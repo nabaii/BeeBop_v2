@@ -12,6 +12,7 @@ import logging
 from sqlalchemy import select
 
 from app.config import Settings
+from app.core.security import hash_password
 from app.database import AsyncSessionLocal
 from app.models._enums import UserRole
 from app.models.user import User
@@ -35,7 +36,7 @@ async def bootstrap_admin_from_settings(settings: Settings) -> None:
         ).scalar_one_or_none()
 
         if existing is None:
-            user = User(
+            account = User(
                 email=email,
                 role=UserRole.ADMIN,
                 first_name=settings.admin_bootstrap_first_name,
@@ -43,15 +44,31 @@ async def bootstrap_admin_from_settings(settings: Settings) -> None:
                 is_active=True,
                 is_suspended=False,
             )
-            db.add(user)
+            db.add(account)
             action = "created"
         else:
-            existing.role = UserRole.ADMIN
-            existing.first_name = settings.admin_bootstrap_first_name
-            existing.last_name = settings.admin_bootstrap_last_name
-            existing.is_active = True
-            existing.is_suspended = False
+            account = existing
+            account.role = UserRole.ADMIN
+            account.first_name = settings.admin_bootstrap_first_name
+            account.last_name = settings.admin_bootstrap_last_name
+            account.is_active = True
+            account.is_suspended = False
             action = "promoted"
+
+        password = settings.admin_bootstrap_password.strip()
+        if password:
+            if (
+                len(password) < 8
+                or not any(c.isalpha() for c in password)
+                or not any(c.isdigit() for c in password)
+            ):
+                logger.warning(
+                    "Bootstrap admin password ignored for %s: must be 8+ chars with a letter and number",
+                    email,
+                )
+            else:
+                account.password_hash = hash_password(password)
+                action = f"{action} with password"
 
         await db.commit()
         logger.info("Bootstrap admin %s: %s", action, email)

@@ -8,7 +8,18 @@
 
 import { useSession } from '@/stores/session';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+const CONFIGURED_API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
+
+function apiUrl(path: string): string {
+  if (!CONFIGURED_API_URL) {
+    if (process.env.NODE_ENV === 'development') return `http://localhost:8000${path}`;
+    return `/api/backend${path}`;
+  }
+  if (typeof window !== 'undefined' && CONFIGURED_API_URL === window.location.origin) {
+    return `/api/backend${path}`;
+  }
+  return `${CONFIGURED_API_URL}${path}`;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -42,7 +53,7 @@ async function rawFetch<T>(
   };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(apiUrl(path), {
     method: init.method ?? 'GET',
     headers,
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
@@ -60,7 +71,7 @@ async function refreshTokens(): Promise<boolean> {
   const { refreshToken, setSession, clear } = useSession.getState();
   if (!refreshToken) return false;
   try {
-    const res = await fetch(`${API_URL}/auth/refresh`, {
+    const res = await fetch(apiUrl('/auth/refresh'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refreshToken }),

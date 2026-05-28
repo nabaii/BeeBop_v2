@@ -45,6 +45,7 @@ def _view(user: User) -> UserView:
         first_name=user.first_name,
         last_name=user.last_name,
         phone=user.phone,
+        has_password=user.password_hash is not None,
         account_type=user.account_type,
         nin_verified=user.nin_verified,
         nin_document_url=user.nin_document_url,

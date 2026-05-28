@@ -13,17 +13,42 @@ interface OtpRequestResponse {
   resend_available_in_seconds: number;
 }
 
+interface AuthenticatedUserResponse {
+  id: string;
+  email: string;
+  role: UserRole;
+  first_name?: string | null;
+  last_name?: string | null;
+  onboarding_complete: boolean;
+  has_password?: boolean;
+}
+
 interface VerifyResponse {
   tokens: { access_token: string; refresh_token: string };
-  user: {
-    id: string;
-    email: string;
-    role: UserRole;
-    first_name?: string | null;
-    last_name?: string | null;
-    onboarding_complete: boolean;
-  };
+  user: AuthenticatedUserResponse;
   is_new_user: boolean;
+}
+
+function toSessionUser(user: AuthenticatedUserResponse): SessionUser {
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    firstName: user.first_name ?? null,
+    lastName: user.last_name ?? null,
+    onboardingComplete: user.onboarding_complete,
+    hasPassword: user.has_password ?? false,
+  };
+}
+
+function applyVerifyResponse(data: VerifyResponse): { user: SessionUser; isNewUser: boolean } {
+  const user = toSessionUser(data.user);
+  useSession.getState().setSession({
+    user,
+    accessToken: data.tokens.access_token,
+    refreshToken: data.tokens.refresh_token,
+  });
+  return { user, isNewUser: data.is_new_user };
 }
 
 export async function requestOtp(
@@ -45,20 +70,35 @@ export async function verifyOtp(args: {
     identifier: args.identifier,
     code: args.code,
   });
-  const user: SessionUser = {
-    id: data.user.id,
-    email: data.user.email,
-    role: data.user.role,
-    firstName: data.user.first_name ?? null,
-    lastName: data.user.last_name ?? null,
-    onboardingComplete: data.user.onboarding_complete,
-  };
-  useSession.getState().setSession({
-    user,
-    accessToken: data.tokens.access_token,
-    refreshToken: data.tokens.refresh_token,
+  return applyVerifyResponse(data);
+}
+
+export async function loginWithPassword(args: {
+  email: string;
+  password: string;
+}): Promise<{ user: SessionUser; isNewUser: boolean }> {
+  const data = await api.post<VerifyResponse>('/auth/password/login', {
+    email: args.email.trim().toLowerCase(),
+    password: args.password,
   });
-  return { user, isNewUser: data.is_new_user };
+  return applyVerifyResponse(data);
+}
+
+export async function setPassword(args: {
+  currentPassword?: string;
+  newPassword: string;
+}): Promise<SessionUser> {
+  const data = await api.post<AuthenticatedUserResponse>(
+    '/auth/password',
+    {
+      current_password: args.currentPassword || undefined,
+      new_password: args.newPassword,
+    },
+    { auth: true },
+  );
+  const user = toSessionUser(data);
+  useSession.getState().setUser(user);
+  return user;
 }
 
 export type DevRole = 'seeker' | 'landlord' | 'admin';
@@ -68,20 +108,7 @@ export async function devLoginAs(role: DevRole = 'landlord'): Promise<{
   isNewUser: boolean;
 }> {
   const data = await api.post<VerifyResponse>('/auth/dev-login', { role });
-  const user: SessionUser = {
-    id: data.user.id,
-    email: data.user.email,
-    role: data.user.role,
-    firstName: data.user.first_name ?? null,
-    lastName: data.user.last_name ?? null,
-    onboardingComplete: data.user.onboarding_complete,
-  };
-  useSession.getState().setSession({
-    user,
-    accessToken: data.tokens.access_token,
-    refreshToken: data.tokens.refresh_token,
-  });
-  return { user, isNewUser: data.is_new_user };
+  return applyVerifyResponse(data);
 }
 
 export async function logout(): Promise<void> {
@@ -101,15 +128,9 @@ export async function fetchMe(): Promise<SessionUser | null> {
       first_name?: string | null;
       last_name?: string | null;
       onboarding_complete: boolean;
+      has_password?: boolean;
     }>('/users/me', { auth: true });
-    return {
-      id: data.id,
-      email: data.email,
-      role: data.role,
-      firstName: data.first_name ?? null,
-      lastName: data.last_name ?? null,
-      onboardingComplete: data.onboarding_complete,
-    };
+    return toSessionUser(data);
   } catch {
     return null;
   }

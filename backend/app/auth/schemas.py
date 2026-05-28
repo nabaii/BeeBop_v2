@@ -45,6 +45,28 @@ class OtpVerifyPayload(BaseModel):
     code: str = Field(..., min_length=6, max_length=6, pattern=r"^\d{6}$")
 
 
+class PasswordLoginPayload(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def _normalise_email(cls, v: EmailStr) -> str:
+        return str(v).strip().lower()
+
+
+class SetPasswordPayload(BaseModel):
+    current_password: str | None = Field(default=None, min_length=8, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def _validate_new_password(cls, v: str) -> str:
+        if not any(c.isalpha() for c in v) or not any(c.isdigit() for c in v):
+            raise ValueError("Password must include at least one letter and one number.")
+        return v
+
+
 class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
@@ -58,6 +80,7 @@ class AuthenticatedUser(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     onboarding_complete: bool
+    has_password: bool = False
 
 
 class VerifyResponse(BaseModel):
