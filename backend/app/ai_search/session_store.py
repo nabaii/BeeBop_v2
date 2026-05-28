@@ -81,10 +81,10 @@ class SessionStore:
     ) -> None:
         state.turns.append(
             ChatTurn(
-                role=role,           # type: ignore[arg-type]
+                role=role,
                 content=content,
                 created_at=datetime.now(UTC),
-                intent=intent,        # type: ignore[arg-type]
+                intent=intent,
             )
         )
 

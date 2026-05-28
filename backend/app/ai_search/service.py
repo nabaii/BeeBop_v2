@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -21,9 +22,11 @@ from sqlalchemy.orm import selectinload
 
 from app.ai_search import prompts
 from app.ai_search.schemas import (
+    ActionKind,
     ChatRequestPayload,
     ChatResponse,
     ExtractedParameters,
+    Intent,
     LLMResponse,
     ReferenceResolution,
     ResultListingSummary,
@@ -513,8 +516,8 @@ def _merge_list(
     secondary: list[str],
     fallback: list[str],
     *,
-    normaliser,
-) -> list[str]:  # type: ignore[no-untyped-def]
+    normaliser: Callable[[str], str | None],
+) -> list[str]:
     values: list[str] = []
     for group in (primary, secondary, fallback):
         for item in group:
@@ -547,7 +550,7 @@ def _heuristic_interpretation(
     )
 
 
-def _heuristic_intent(query: str) -> str:
+def _heuristic_intent(query: str) -> Intent:
     lower = query.lower().strip()
     if any(word in lower for word in ("schedule", "visit", "make offer", "offer on", "book", "bookmark", "save this")):
         return "transactional"
@@ -578,7 +581,7 @@ def _heuristic_reference(query: str) -> ReferenceResolution | None:
     return None
 
 
-def _action_kind(lower: str) -> str | None:
+def _action_kind(lower: str) -> ActionKind | None:
     if "visit" in lower or "schedule" in lower:
         return "schedule_visit"
     if "offer" in lower:
@@ -629,12 +632,12 @@ def _infer_category(
         return ListingCategory.RENT
     # Property-type words in combination with a recognised Abuja location
     # strongly imply a rental search (the most common category).
-    _PROPERTY_TYPE_TOKENS = (
+    _property_type_tokens = (
         "duplex", "bungalow", "penthouse", "terrace", "terraced",
         "detached", "semi-detached", "semi detached", "maisonette",
         "serviced", "furnished", "self-con", "self-contain",
     )
-    has_property_type = any(tok in lower for tok in _PROPERTY_TYPE_TOKENS)
+    has_property_type = any(tok in lower for tok in _property_type_tokens)
     has_location = any(loc in lower for loc in ABUJA_LOCATIONS)
     has_bedroom = bool(re.search(r"\b\d+\s*[-]?\s*(?:bed|bedroom|br)\b", lower))
     if has_property_type or (has_location and has_bedroom):
@@ -1193,7 +1196,7 @@ def _search_message(
 
 def _transactional_message(
     *,
-    action_kind: str | None,
+    action_kind: ActionKind | None,
     selected: ResultListingSummary | None,
 ) -> str:
     subject = (

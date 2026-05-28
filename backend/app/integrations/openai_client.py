@@ -16,10 +16,13 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from app.config import get_settings
 from app.core.exceptions import ExternalServiceError
+
+if TYPE_CHECKING:
+    from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -50,9 +53,9 @@ class LLMClient(Protocol):
 class OpenAIClient:
     def __init__(self, api_key: str) -> None:
         self._api_key = api_key
-        self._client = None
+        self._client: AsyncOpenAI | None = None
 
-    def _ensure_client(self):  # type: ignore[no-untyped-def]
+    def _ensure_client(self) -> AsyncOpenAI:
         if self._client is None:
             from openai import AsyncOpenAI
 
@@ -86,13 +89,16 @@ class OpenAIClient:
             completion = await client.chat.completions.create(
                 model=model or DEFAULT_MODEL,
                 temperature=temperature,
-                response_format=response_format,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message},
-                ],
+                response_format=cast(Any, response_format),
+                messages=cast(
+                    Any,
+                    [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message},
+                    ],
+                ),
             )
-        except Exception as exc:  # noqa: BLE001 — network/auth surface routes through ExternalServiceError
+        except Exception as exc:
             raise ExternalServiceError(
                 "OpenAI request failed.", code="openai_request_failed"
             ) from exc
@@ -147,14 +153,25 @@ class StubLLMClient:
             category = "sales"
         elif any(tok in msg for tok in ("student", "hostel", "off-campus", "self-con near")):
             category = "off_campus"
-        elif any(tok in msg for tok in ("rent", "to let", "lease", "bedroom flat")):
-            category = "rent"
-        elif any(tok in msg for tok in (
-            "duplex", "bungalow", "penthouse", "terrace", "terraced",
-            "detached", "semi-detached", "maisonette", "serviced", "furnished",
-        )):
-            category = "rent"
-        elif re.search(r"\b\d+\s*[-]?\s*(?:bed|bedroom|br)\b", msg):
+        elif (
+            any(tok in msg for tok in ("rent", "to let", "lease", "bedroom flat"))
+            or any(
+                tok in msg
+                for tok in (
+                    "duplex",
+                    "bungalow",
+                    "penthouse",
+                    "terrace",
+                    "terraced",
+                    "detached",
+                    "semi-detached",
+                    "maisonette",
+                    "serviced",
+                    "furnished",
+                )
+            )
+            or re.search(r"\b\d+\s*[-]?\s*(?:bed|bedroom|br)\b", msg)
+        ):
             category = "rent"
 
         # Minimal parameter extraction: pull location-like words after "in".
@@ -171,7 +188,12 @@ class StubLLMClient:
                 "raw_query": user_message,
                 "locations": [location] if location else [],
                 "amenities": [],
+                "min_price": None,
+                "max_price": None,
+                "bedroom_count": None,
                 "verification_tiers": ["fully_verified", "doc_verified", "unverified"],
+                "duration_years": None,
+                "urgency": None,
             },
             "missing_parameter_prompt": None if category else "Which category should I search: off-campus, short-let, rent, or sales?",
             "reference_resolution": None,
