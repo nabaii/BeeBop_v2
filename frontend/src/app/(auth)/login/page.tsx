@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Sign-in — OTP flow.
+ * Sign-in with password-first auth and OTP fallback.
  *
  * On success: if onboarding is complete, send the user to their role home;
  * if not, route to the shared onboarding entry point (/onboarding) which
@@ -12,11 +12,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import { OtpFlow } from '@/components/auth/otp-flow';
+import { LoginForm } from '@/components/auth/login-form';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ApiError } from '@/lib/api';
-import { devLoginAs, loginWithPassword, type DevRole } from '@/lib/auth';
+import { devLoginAs, type DevRole } from '@/lib/auth';
 import type { SessionUser } from '@/stores/session';
 
 type RoleHomeRoute =
@@ -25,8 +24,6 @@ type RoleHomeRoute =
   | '/internal/agent'
   | '/internal/admin'
   | 'http://localhost:3001';
-
-type LoginMode = 'password' | 'code';
 
 function roleHome(user: SessionUser): RoleHomeRoute {
   switch (user.role) {
@@ -46,7 +43,6 @@ function roleHome(user: SessionUser): RoleHomeRoute {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<LoginMode>('password');
   const [devBusyRole, setDevBusyRole] = useState<DevRole | null>(null);
   const [devError, setDevError] = useState<string | null>(null);
 
@@ -81,19 +77,7 @@ export default function LoginPage() {
   return (
     <div>
       <h1 className="mb-6 text-xl font-semibold text-slate-900">Sign in</h1>
-      <div className="mb-4 grid grid-cols-2 gap-2">
-        <ModeTab active={mode === 'password'} onClick={() => setMode('password')}>
-          Password
-        </ModeTab>
-        <ModeTab active={mode === 'code'} onClick={() => setMode('code')}>
-          Code
-        </ModeTab>
-      </div>
-      {mode === 'password' ? (
-        <PasswordLoginForm onAuthenticated={handleAuthenticated} onUseCode={() => setMode('code')} />
-      ) : (
-        <OtpFlow roleIfNew="seeker" onAuthenticated={handleAuthenticated} submitLabel="Send code" />
-      )}
+      <LoginForm onAuthenticated={handleAuthenticated} />
       <p className="mt-6 text-center text-sm text-slate-500">
         New to BeeBop?{' '}
         <Link href="/register" className="font-medium text-brand hover:underline">
@@ -136,104 +120,4 @@ export default function LoginPage() {
       )}
     </div>
   );
-}
-
-function PasswordLoginForm({
-  onAuthenticated,
-  onUseCode,
-}: {
-  onAuthenticated: (args: { user: SessionUser; isNewUser: boolean }) => void;
-  onUseCode: () => void;
-}) {
-  const [email, setEmail] = useState('');
-  const [password, setPasswordValue] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit() {
-    setError(null);
-    setBusy(true);
-    try {
-      const res = await loginWithPassword({ email, password });
-      onAuthenticated(res);
-    } catch (err) {
-      setError(errorMessage(err, 'Invalid email or password.'));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form
-      className="space-y-4"
-      onSubmit={(e) => {
-        e.preventDefault();
-        void submit();
-      }}
-    >
-      <label className="block text-sm">
-        <span className="mb-1 block text-slate-700">Email address</span>
-        <Input
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          invalid={Boolean(error)}
-          required
-        />
-      </label>
-      <label className="block text-sm">
-        <span className="mb-1 block text-slate-700">Password</span>
-        <Input
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPasswordValue(e.target.value)}
-          invalid={Boolean(error)}
-          required
-        />
-      </label>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <Button type="submit" disabled={busy || !email.trim() || password.length < 8} className="w-full">
-        {busy ? 'Signing in...' : 'Sign in'}
-      </Button>
-      <button
-        type="button"
-        className="w-full text-center text-sm font-medium text-brand hover:underline"
-        onClick={onUseCode}
-      >
-        Sign in with a code
-      </button>
-    </form>
-  );
-}
-
-function ModeTab({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        'min-h-11 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ' +
-        (active ? 'border-brand bg-brand/5 text-brand' : 'border-slate-300 text-slate-600 hover:bg-slate-50')
-      }
-    >
-      {children}
-    </button>
-  );
-}
-
-function errorMessage(err: unknown, fallback: string): string {
-  if (err instanceof ApiError) return err.message || fallback;
-  return fallback;
 }
