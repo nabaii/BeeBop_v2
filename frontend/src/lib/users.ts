@@ -80,6 +80,12 @@ export async function saveStudentExtras(args: {
   return u;
 }
 
+export async function becomeLandlord(): Promise<UserView> {
+  const u = await api.post<UserView>('/users/me/become-landlord', undefined, { auth: true });
+  applyToSession(u);
+  return u;
+}
+
 export async function saveAccountType(account_type: 'individual' | 'agency'): Promise<UserView> {
   const u = await api.patch<UserView>('/users/me/account-type', { account_type }, { auth: true });
   applyToSession(u);

@@ -814,8 +814,8 @@ async def _ensure_owner(db, email: str) -> User:
     user = User(
         email=email,
         role=UserRole.LANDLORD,
-        first_name="Landlord",
-        last_name="Super",
+        first_name="BeeBop",
+        last_name="Landlord",
         phone="+2348000000000",
         account_type=AccountType.INDIVIDUAL,
         nin_verified=True,
