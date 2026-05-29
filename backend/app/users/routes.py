@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -62,6 +64,16 @@ async def set_student_extras(
     db: AsyncSession = Depends(get_db),
 ) -> UserView:
     view = await service.set_student_extras(user=user, payload=payload, db=db)
+    await db.commit()
+    return view
+
+
+@router.post("/me/become-landlord", response_model=UserView)
+async def become_landlord(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UserView:
+    view = await service.become_landlord(user=user, db=db)
     await db.commit()
     return view
 

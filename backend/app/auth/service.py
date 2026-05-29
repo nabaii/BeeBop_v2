@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.otp_service import OtpService
 from app.auth.refresh_store import RefreshTokenStore
 from app.auth.schemas import AuthenticatedUser, TokenPair, VerifyResponse
-from app.core.exceptions import UnauthorisedError
+from app.core.exceptions import UnauthorisedError, ValidationError
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -36,8 +36,8 @@ DEV_USERS: dict[UserRole, dict[str, str | bool | list[str]]] = {
     },
     UserRole.LANDLORD: {
         "email": "landlord-super@beebop.ng",
-        "first_name": "Landlord",
-        "last_name": "Super",
+        "first_name": "BeeBop",
+        "last_name": "Landlord",
         "needs_account_type": True,
     },
     UserRole.ADMIN: {
@@ -47,6 +47,8 @@ DEV_USERS: dict[UserRole, dict[str, str | bool | list[str]]] = {
         "needs_account_type": False,
     },
 }
+
+PUBLIC_SIGNUP_ROLES = frozenset({UserRole.SEEKER, UserRole.LANDLORD})
 
 
 def _is_onboarded(user: User) -> bool:
@@ -109,6 +111,12 @@ async def verify_otp_and_issue_tokens(
     db: AsyncSession,
     redis: Redis,
 ) -> VerifyResponse:
+    if role_if_new not in PUBLIC_SIGNUP_ROLES:
+        raise ValidationError(
+            "Only seeker and landlord accounts can self-register.",
+            code="role_not_public_signup",
+        )
+
     otp = OtpService(redis)
     await otp.verify(channel=channel, identifier=identifier, code=code)  # type: ignore[arg-type]
 

@@ -120,6 +120,19 @@ async def set_student_extras(
     return _view(user)
 
 
+async def become_landlord(*, user: User, db: AsyncSession) -> UserView:
+    if user.role == UserRole.LANDLORD:
+        return _view(user)
+    if user.role != UserRole.SEEKER:
+        raise ForbiddenError(
+            "Only seeker accounts can become landlord accounts.",
+            code="cannot_become_landlord",
+        )
+    user.role = UserRole.LANDLORD
+    await db.flush()
+    return _view(user)
+
+
 async def set_account_type(
     *, user: User, payload: LandlordAccountTypePayload, db: AsyncSession
 ) -> UserView:

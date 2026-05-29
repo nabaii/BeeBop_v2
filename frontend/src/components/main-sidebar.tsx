@@ -4,19 +4,24 @@ import {
   Building2,
   GraduationCap,
   House,
+  LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
+  UserPlus,
   Waves,
   X,
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { becomeLandlord } from '@/lib/users';
 import { useSearch } from '@/stores/search';
+import { useSession } from '@/stores/session';
 
 const CATEGORIES: ReadonlyArray<{
   href: '/browse/off-campus' | '/browse/short-let' | '/browse/rent' | '/browse/sales';
@@ -36,9 +41,18 @@ interface MainSidebarProps {
 }
 
 export function MainSidebar({ onNewChat, mobileOpen = false, onMobileClose }: MainSidebarProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [landlordBusy, setLandlordBusy] = useState(false);
+  const [landlordError, setLandlordError] = useState<string | null>(null);
   const clearSearchSession = useSearch((state) => state.clearSession);
+  const user = useSession((state) => state.user);
+
+  const hasLandlordAccess = user?.role === 'landlord' || user?.role === 'agent';
+  const canShowLandlordAction = !user || user.role === 'seeker' || hasLandlordAccess;
+  const landlordActionLabel = hasLandlordAccess ? 'Landlord dashboard' : 'Become a landlord';
+  const LandlordActionIcon = hasLandlordAccess ? LayoutDashboard : UserPlus;
 
   function handleNavigate() {
     onMobileClose?.();
@@ -47,6 +61,34 @@ export function MainSidebar({ onNewChat, mobileOpen = false, onMobileClose }: Ma
   function handleCategoryNavigate() {
     clearSearchSession();
     handleNavigate();
+  }
+
+  async function handleLandlordAction() {
+    setLandlordError(null);
+    if (!user) {
+      handleNavigate();
+      router.push('/register?role=landlord');
+      return;
+    }
+    if (hasLandlordAccess) {
+      handleNavigate();
+      router.push('/dashboard/landlord');
+      return;
+    }
+    if (user.role !== 'seeker') return;
+
+    setLandlordBusy(true);
+    try {
+      const updated = await becomeLandlord();
+      handleNavigate();
+      router.push(updated.onboarding_complete ? '/dashboard/landlord' : '/onboarding/landlord');
+    } catch (err) {
+      setLandlordError(
+        err instanceof ApiError ? err.message : 'Could not switch this account. Try again.',
+      );
+    } finally {
+      setLandlordBusy(false);
+    }
   }
 
   return (
@@ -137,6 +179,30 @@ export function MainSidebar({ onNewChat, mobileOpen = false, onMobileClose }: Ma
             );
           })}
         </nav>
+        {canShowLandlordAction && (
+          <div className="border-t border-slate-200 p-2">
+            <button
+              type="button"
+              onClick={() => void handleLandlordAction()}
+              disabled={landlordBusy}
+              className={cn(
+                'flex min-h-11 w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-brand/10 hover:text-brand disabled:cursor-not-allowed disabled:opacity-60',
+                collapsed && 'lg:justify-center',
+              )}
+              title={landlordActionLabel}
+            >
+              <LandlordActionIcon className="h-4 w-4 shrink-0" aria-hidden />
+              <span className={cn(collapsed && 'lg:hidden')}>
+                {landlordBusy ? 'Switching...' : landlordActionLabel}
+              </span>
+            </button>
+            {landlordError && (
+              <p className={cn('mt-2 text-xs text-red-600', collapsed && 'lg:hidden')}>
+                {landlordError}
+              </p>
+            )}
+          </div>
+        )}
       </aside>
     </>
   );

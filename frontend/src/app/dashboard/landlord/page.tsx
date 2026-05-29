@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { EmptyPanel } from '@/components/dashboard/empty-panel';
 import { NotificationsInbox } from '@/components/dashboard/notifications-inbox';
 import { StatTile } from '@/components/dashboard/stat-tile';
+import { RouteGuard } from '@/components/route-guard';
 import { ListingCard } from '@/components/listing/listing-card';
 import { AgreementsPanel } from '@/components/agreements/agreements-panel';
 import { OffersPanel } from '@/components/offers/offers-panel';
@@ -26,6 +27,14 @@ import {
 import { listMyListings, type ListingView } from '@/lib/listings';
 
 export default function LandlordDashboardPage() {
+  return (
+    <RouteGuard roles={['landlord', 'agent']} redirectTo="/dashboard/seeker">
+      <LandlordDashboardContent />
+    </RouteGuard>
+  );
+}
+
+function LandlordDashboardContent() {
   const [overview, setOverview] = useState<LandlordOverview | null>(null);
   const [analytics, setAnalytics] = useState<ListingAnalytics[] | null>(null);
   const [listings, setListings] = useState<ListingView[] | null>(null);

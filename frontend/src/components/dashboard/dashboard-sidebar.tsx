@@ -8,10 +8,13 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/cn';
+import { ApiError } from '@/lib/api';
 import { logout } from '@/lib/auth';
+import { cn } from '@/lib/cn';
+import { becomeLandlord } from '@/lib/users';
 import { useSession, type UserRole } from '@/stores/session';
 
 const SECTIONS = [
@@ -29,11 +32,30 @@ export function DashboardSidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const user = useSession((s) => s.user);
+  const [landlordBusy, setLandlordBusy] = useState(false);
+  const [landlordError, setLandlordError] = useState<string | null>(null);
   if (!user) return null;
 
   const visible = SECTIONS.filter(
     (s) => !s.roles || (s.roles as readonly UserRole[]).includes(user.role),
   );
+  const hasLandlordAccess = user.role === 'landlord' || user.role === 'agent';
+  const canBecomeLandlord = user.role === 'seeker';
+
+  async function handleBecomeLandlord() {
+    setLandlordError(null);
+    setLandlordBusy(true);
+    try {
+      const updated = await becomeLandlord();
+      router.replace(updated.onboarding_complete ? '/dashboard/landlord' : '/onboarding/landlord');
+    } catch (err) {
+      setLandlordError(
+        err instanceof ApiError ? err.message : 'Could not switch this account. Try again.',
+      );
+    } finally {
+      setLandlordBusy(false);
+    }
+  }
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
@@ -61,6 +83,28 @@ export function DashboardSidebar() {
         })}
       </nav>
       <div className="space-y-2 border-t border-slate-200 p-3">
+        {canBecomeLandlord && (
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={() => void handleBecomeLandlord()}
+              disabled={landlordBusy}
+            >
+              {landlordBusy ? 'Switching...' : 'Become a landlord'}
+            </Button>
+            {landlordError && <p className="text-xs text-red-600">{landlordError}</p>}
+          </>
+        )}
+        {hasLandlordAccess && (
+          <Link
+            href="/dashboard/landlord"
+            className="block rounded-lg border border-slate-300 bg-white px-3 py-2 text-center text-sm font-medium text-slate-800 hover:bg-slate-50"
+          >
+            Landlord dashboard
+          </Link>
+        )}
         <Link href="/" className="block text-center text-xs text-slate-500 hover:text-brand">
           Back to BeeBop
         </Link>

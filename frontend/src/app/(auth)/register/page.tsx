@@ -8,15 +8,52 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { OtpFlow } from '@/components/auth/otp-flow';
+import { ApiError } from '@/lib/api';
+import { becomeLandlord } from '@/lib/users';
+import type { SessionUser } from '@/stores/session';
 
 type Role = 'seeker' | 'landlord';
 
 export default function RegisterPage() {
   const router = useRouter();
   const [role, setRole] = useState<Role>('seeker');
+  const [conversionError, setConversionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('role') === 'landlord') setRole('landlord');
+  }, []);
+
+  async function handleAuthenticated({
+    user,
+    isNewUser,
+  }: {
+    user: SessionUser;
+    isNewUser: boolean;
+  }) {
+    setConversionError(null);
+    if (role === 'landlord' && user.role === 'seeker') {
+      try {
+        const updated = await becomeLandlord();
+        router.replace(updated.onboarding_complete ? '/dashboard/landlord' : '/onboarding/landlord');
+      } catch (err) {
+        setConversionError(
+          err instanceof ApiError ? err.message : 'Could not switch this account. Try again.',
+        );
+      }
+      return;
+    }
+    if (!isNewUser && user.onboardingComplete) {
+      if (user.role === 'seeker') router.replace('/dashboard/seeker');
+      else if (user.role === 'landlord' || user.role === 'agent') router.replace('/dashboard/landlord');
+      else router.replace('/');
+      return;
+    }
+    router.replace('/onboarding');
+  }
 
   return (
     <div>
@@ -27,9 +64,10 @@ export default function RegisterPage() {
       </div>
       <OtpFlow
         roleIfNew={role}
-        onAuthenticated={() => router.replace('/onboarding')}
+        onAuthenticated={(args) => void handleAuthenticated(args)}
         submitLabel="Send code"
       />
+      {conversionError && <p className="mt-3 text-sm text-red-600">{conversionError}</p>}
       <p className="mt-6 text-center text-sm text-slate-500">
         Already have an account?{' '}
         <Link href="/login" className="font-medium text-brand hover:underline">
