@@ -1,4 +1,4 @@
-"""JWT issuance and verification. Password-free — all auth is via OTP."""
+"""JWT issuance, verification, and password hashing helpers."""
 
 from __future__ import annotations
 

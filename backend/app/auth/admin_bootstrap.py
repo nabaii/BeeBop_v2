@@ -1,8 +1,8 @@
 """Production-safe first-admin bootstrap.
 
-The public login form is OTP-only, so a deployed environment needs one user
-record with role=admin before staff can reach `/internal/admin`. This module
-lets operators seed that first account via backend environment variables.
+Production uses OTP plus password login for accounts that have a password hash.
+This module lets operators seed the first admin account via backend environment
+variables so staff can reach `/internal/admin`.
 """
 
 from __future__ import annotations
