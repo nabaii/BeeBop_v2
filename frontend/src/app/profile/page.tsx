@@ -128,10 +128,10 @@ export default function ProfilePage() {
         <RowLink href="/dashboard/seeker" icon={CalendarCheck} label="Activity" hint="Offers · Bookings · Agreements" />
         <RowLink href="/profile/notifications" icon={Bell} label="Notifications" />
         <RowLink
+          href="/profile/security"
           icon={Settings}
-          label="Settings & privacy"
-          hint="Coming soon"
-          disabled
+          label="Password & security"
+          hint="Manage sign-in"
         />
         <button
           type="button"

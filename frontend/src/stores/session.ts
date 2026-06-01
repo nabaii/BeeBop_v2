@@ -23,6 +23,7 @@ export interface SessionUser {
   firstName?: string | null;
   lastName?: string | null;
   onboardingComplete: boolean;
+  hasPassword?: boolean;
 }
 
 interface SessionState {

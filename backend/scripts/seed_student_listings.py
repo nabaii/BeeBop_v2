@@ -3,11 +3,11 @@
 Run:
 
     python -m scripts.seed_student_listings
-    python -m scripts.seed_student_listings --owner-email landlord-super@beebop.ng
+    python -m scripts.seed_student_listings --owner-email landlord-super@beebop.store
 
 Creates 8 off-campus student accommodation listings sourced from the
 BeeBop Listings Pipeline "Targeting" sheet (LEAD-001 through LEAD-008).
-Each listing is owned by ``landlord-super@beebop.ng`` and goes straight
+Each listing is owned by ``landlord-super@beebop.store`` and goes straight
 to LIVE_UNVERIFIED so it appears in seeker search immediately.
 
 All accommodations share a baseline of common student amenities (generator,
@@ -43,7 +43,7 @@ from app.models.student_accommodation import Room, UnitType
 from app.models.user import User
 
 TITLE_PREFIX = "[student]"
-DEFAULT_OWNER_EMAIL = "landlord-super@beebop.ng"
+DEFAULT_OWNER_EMAIL = "landlord-super@beebop.store"
 DEFAULT_BASE_URL = "http://localhost:8000/dev-assets"
 ASSET_ROOT = Path(__file__).resolve().parents[2] / "dummy listings"
 

@@ -15,6 +15,7 @@ export interface UserView {
   first_name?: string | null;
   last_name?: string | null;
   phone?: string | null;
+  has_password?: boolean;
   account_type?: 'individual' | 'agency' | null;
   nin_verified: boolean;
   nin_document_url?: string | null;
@@ -41,6 +42,7 @@ function applyToSession(u: UserView): SessionUser {
     firstName: u.first_name ?? null,
     lastName: u.last_name ?? null,
     onboardingComplete: u.onboarding_complete,
+    hasPassword: u.has_password ?? false,
   };
   useSession.getState().setUser(session);
   return session;

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Sign-in — OTP flow.
+ * Sign-in with password-first auth and OTP fallback.
  *
  * On success: if onboarding is complete, send the user to their role home;
  * if not, route to the shared onboarding entry point (/onboarding) which
@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import { OtpFlow } from '@/components/auth/otp-flow';
+import { LoginForm } from '@/components/auth/login-form';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/lib/api';
 import { devLoginAs, type DevRole } from '@/lib/auth';
@@ -77,7 +77,7 @@ export default function LoginPage() {
   return (
     <div>
       <h1 className="mb-6 text-xl font-semibold text-slate-900">Sign in</h1>
-      <OtpFlow roleIfNew="seeker" onAuthenticated={handleAuthenticated} submitLabel="Send code" />
+      <LoginForm onAuthenticated={handleAuthenticated} />
       <p className="mt-6 text-center text-sm text-slate-500">
         New to BeeBop?{' '}
         <Link href="/register" className="font-medium text-brand hover:underline">

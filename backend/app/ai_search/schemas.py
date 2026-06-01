@@ -5,15 +5,23 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models._enums import ListingCategory
 
 Intent = Literal["search", "clarification", "information", "transactional"]
 VerificationTier = Literal["fully_verified", "doc_verified", "unverified"]
+ReferenceKind = Literal["ordinal", "filter", "all", "action"]
+ActionKind = Literal["make_offer", "book", "schedule_visit", "bookmark"]
+
+
+def default_verification_tiers() -> list[VerificationTier]:
+    return ["fully_verified", "doc_verified", "unverified"]
 
 
 class ExtractedParameters(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     listing_category: ListingCategory | None = None
     raw_query: str
     locations: list[str] = Field(default_factory=list)
@@ -21,23 +29,25 @@ class ExtractedParameters(BaseModel):
     min_price: float | None = None
     max_price: float | None = None
     bedroom_count: int | None = None
-    verification_tiers: list[VerificationTier] = Field(
-        default_factory=lambda: ["fully_verified", "doc_verified", "unverified"]
-    )
+    verification_tiers: list[VerificationTier] = Field(default_factory=default_verification_tiers)
     duration_years: int | None = None
     urgency: Literal["immediate", "soon", "flexible"] | None = None
 
 
 class ReferenceResolution(BaseModel):
-    kind: str
+    model_config = ConfigDict(extra="forbid")
+
+    kind: ReferenceKind
     index: int | None = None
     amenity: str | None = None
-    action_kind: str | None = None
+    action_kind: ActionKind | None = None
 
 
 class LLMResponse(BaseModel):
     """The raw, validated shape we expect from the LLM. The pipeline
     consumes this and produces a `SearchResult` for the caller."""
+
+    model_config = ConfigDict(extra="forbid")
 
     intent: Intent
     parameters: ExtractedParameters
@@ -78,7 +88,7 @@ class ResultListingSummary(BaseModel):
     rating: float | None = None
     review_count: int = 0
     rank_score: float
-    rank_signals: dict
+    rank_signals: dict[str, object]
 
 
 class ChatResponse(BaseModel):

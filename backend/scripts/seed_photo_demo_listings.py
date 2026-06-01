@@ -25,7 +25,7 @@ from app.models.listing import Listing, ListingPhoto
 from app.models.user import User
 
 TITLE_PREFIX = "[photo-demo]"
-DEFAULT_OWNER_EMAIL = "landlord-super@beebop.ng"
+DEFAULT_OWNER_EMAIL = "landlord-super@beebop.store"
 DEFAULT_BASE_URL = "http://localhost:8000/dev-assets"
 ASSET_ROOT = Path(__file__).resolve().parents[2] / "dummy listings"
 

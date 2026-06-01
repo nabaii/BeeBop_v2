@@ -59,7 +59,7 @@ async def _seed_listing(
     db: AsyncSession, kind: UnitKind = UnitKind.TWO_IN_A_ROOM
 ) -> tuple[User, Listing, uuid.UUID]:
     owner = User(
-        email=f"owner-{uuid.uuid4().hex[:6]}@beebop.ng",
+        email=f"owner-{uuid.uuid4().hex[:6]}@beebop.store",
         role=UserRole.LANDLORD,
         account_type=AccountType.INDIVIDUAL,
     )

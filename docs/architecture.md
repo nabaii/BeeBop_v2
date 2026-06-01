@@ -38,8 +38,8 @@ Product Brief and Development Plan.
 ## Authentication
 
 - OTP via email (Resend, primary) and WhatsApp Business API (alternative).
+- Password login for accounts that have set a password hash.
 - JWT access token (30 min) + refresh token (14 days) with rotation.
-- No passwords.
 - Roles: `seeker`, `landlord`, `agent`, `inspector`, `trusted_agent`, `admin`.
 - Route guards enforce role at the FastAPI dependency layer.
 

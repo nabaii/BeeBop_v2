@@ -16,14 +16,16 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    hash_password,
     user_id_from_claims,
+    verify_password,
 )
 from app.models._enums import AccountType, ListingCategory, UserRole
 from app.models.user import User
 
 DEV_USERS: dict[UserRole, dict[str, str | bool | list[str]]] = {
     UserRole.SEEKER: {
-        "email": "seeker-super@beebop.ng",
+        "email": "seeker-super@beebop.store",
         "first_name": "Seeker",
         "last_name": "Super",
         "needs_account_type": False,
@@ -41,7 +43,7 @@ DEV_USERS: dict[UserRole, dict[str, str | bool | list[str]]] = {
         "needs_account_type": True,
     },
     UserRole.ADMIN: {
-        "email": "admin-super@beebop.ng",
+        "email": "admin-super@beebop.store",
         "first_name": "Admin",
         "last_name": "Super",
         "needs_account_type": False,
@@ -90,7 +92,17 @@ def _to_authenticated(user: User) -> AuthenticatedUser:
         first_name=user.first_name,
         last_name=user.last_name,
         onboarding_complete=_is_onboarded(user),
+        has_password=user.password_hash is not None,
     )
+
+
+def _normalise_email(email: str) -> str:
+    return email.strip().lower()
+
+
+def _assert_user_can_sign_in(user: User) -> None:
+    if not user.is_active or user.is_suspended:
+        raise UnauthorisedError("User not found or inactive.", code="user_inactive")
 
 
 async def _issue_token_pair(
@@ -100,6 +112,49 @@ async def _issue_token_pair(
     refresh, refresh_jti = create_refresh_token(user.id, user.role)
     await refresh_store.record(user_id=str(user.id), jti=refresh_jti)
     return TokenPair(access_token=access, refresh_token=refresh)
+
+
+async def login_with_password(
+    *,
+    email: str,
+    password: str,
+    db: AsyncSession,
+    redis: Redis,
+) -> VerifyResponse:
+    """Verify an existing user's password and issue tokens."""
+    result = await db.execute(select(User).where(User.email == _normalise_email(email)))
+    user = result.scalar_one_or_none()
+    if user is None or not verify_password(password, user.password_hash):
+        raise UnauthorisedError(
+            "Invalid email or password.",
+            code="invalid_credentials",
+        )
+
+    _assert_user_can_sign_in(user)
+    refresh_store = RefreshTokenStore(redis)
+    tokens = await _issue_token_pair(user=user, refresh_store=refresh_store)
+    return VerifyResponse(tokens=tokens, user=_to_authenticated(user), is_new_user=False)
+
+
+async def set_password(
+    *,
+    user: User,
+    current_password: str | None,
+    new_password: str,
+    db: AsyncSession,
+) -> AuthenticatedUser:
+    """Set or rotate the signed-in user's password."""
+    if user.password_hash and not verify_password(
+        current_password or "", user.password_hash
+    ):
+        raise UnauthorisedError(
+            "Current password is incorrect.",
+            code="invalid_current_password",
+        )
+
+    user.password_hash = hash_password(new_password)
+    await db.flush()
+    return _to_authenticated(user)
 
 
 async def verify_otp_and_issue_tokens(
@@ -130,13 +185,14 @@ async def verify_otp_and_issue_tokens(
     if user is None:
         is_new = True
         user = User(
-            email=identifier if channel == "email" else f"pending-{uuid.uuid4().hex[:12]}@beebop.ng",
+            email=identifier if channel == "email" else f"pending-{uuid.uuid4().hex[:12]}@beebop.store",
             phone=identifier if channel == "whatsapp" else None,
             role=role_if_new,
         )
         db.add(user)
         await db.flush()
 
+    _assert_user_can_sign_in(user)
     refresh_store = RefreshTokenStore(redis)
     tokens = await _issue_token_pair(user=user, refresh_store=refresh_store)
     await db.commit()
@@ -163,7 +219,7 @@ async def rotate_refresh_token(
 async def dev_login_as(
     *, role: UserRole, db: AsyncSession, redis: Redis
 ) -> VerifyResponse:
-    """Dev-only bypass: load or create a canonical `<role>-super@beebop.ng`
+    """Dev-only bypass: load or create a canonical `<role>-super@beebop.store`
     user and issue a real token pair. The landlord account owns listings
     created by `scripts.seed_listings`.
     """

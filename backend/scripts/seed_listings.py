@@ -3,11 +3,11 @@
 Run:
 
     python -m scripts.seed_listings
-    python -m scripts.seed_listings --owner-email someone@beebop.ng
+    python -m scripts.seed_listings --owner-email someone@beebop.store
     python -m scripts.seed_listings --asset-base-url http://127.0.0.1:8181/dev-assets
 
 Creates an Abuja-flavored mix of rent, sales, and off-campus listings owned
-by a seed landlord (auto-created at first run as `landlord-seed@beebop.ng`).
+by a seed landlord (auto-created at first run as `landlord-seed@beebop.store`).
 All listings go straight to LIVE_UNVERIFIED so they appear in seeker search
 without needing the admin doc-review queue. Photos are attached from the
 local `dummy listings` folder through the FastAPI `/dev-assets` mount.
@@ -44,7 +44,7 @@ from app.models.student_accommodation import Room, UnitType
 from app.models.user import User
 
 SEED_PREFIX = "[seed]"
-DEFAULT_OWNER_EMAIL = "landlord-super@beebop.ng"
+DEFAULT_OWNER_EMAIL = "landlord-super@beebop.store"
 DEFAULT_DEV_ASSET_BASE_URL = "http://127.0.0.1:8000/dev-assets"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 ASSET_ROOT = ROOT_DIR / "dummy listings"

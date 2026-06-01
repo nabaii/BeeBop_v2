@@ -2,7 +2,7 @@
 
 Run once per environment:
 
-    python -m scripts.seed_admin --email founder@beebop.ng --first Bee --last Bop
+    python -m scripts.seed_admin --email founder@beebop.store --first Bee --last Bop
 
 Idempotent — running again with the same email upgrades the user's role to
 admin without changing other fields.

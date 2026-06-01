@@ -21,6 +21,7 @@ class UserView(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     phone: str | None = None
+    has_password: bool = False
 
     account_type: AccountType | None = None
     nin_verified: bool = False

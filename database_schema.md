@@ -103,6 +103,7 @@ Defined in [_enums.py](file:///c:/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2/
 | Column | Type | Nullable | Notes |
 |---|---|---|---|
 | `email` | `String(255)` | ✗ | Unique, indexed |
+| `password_hash` | `String(255)` | ✓ | Optional PBKDF2-SHA256 password hash |
 | `role` | `Enum(UserRole)` | ✗ | |
 | `first_name` | `String(100)` | ✓ | |
 | `last_name` | `String(100)` | ✓ | |

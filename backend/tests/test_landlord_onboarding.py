@@ -37,6 +37,7 @@ def _user(**overrides: object) -> SimpleNamespace:
     base = {
         "id": uuid.uuid4(),
         "email": "ada@example.com",
+        "password_hash": None,
         "role": UserRole.SEEKER,
         "first_name": "Ada",
         "last_name": "Okafor",

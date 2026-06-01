@@ -9,11 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import service
 from app.auth.otp_service import OtpService
 from app.auth.schemas import (
+    AuthenticatedUser,
     DevLoginPayload,
     OtpRequestPayload,
     OtpRequestResponse,
     OtpVerifyPayload,
+    PasswordLoginPayload,
     RefreshPayload,
+    SetPasswordPayload,
     TokenPair,
     VerifyResponse,
 )
@@ -67,6 +70,38 @@ async def verify_otp(
     )
 
 
+@router.post("/password/login", response_model=VerifyResponse)
+async def password_login(
+    payload: PasswordLoginPayload,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> VerifyResponse:
+    """Sign in with email and password for accounts that have set one."""
+    return await service.login_with_password(
+        email=str(payload.email),
+        password=payload.password,
+        db=db,
+        redis=redis,
+    )
+
+
+@router.post("/password", response_model=AuthenticatedUser)
+async def set_password(
+    payload: SetPasswordPayload,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> AuthenticatedUser:
+    """Set or update the signed-in user's password."""
+    view = await service.set_password(
+        user=user,
+        current_password=payload.current_password,
+        new_password=payload.new_password,
+        db=db,
+    )
+    await db.commit()
+    return view
+
+
 @router.post("/refresh", response_model=TokenPair)
 async def refresh(
     payload: RefreshPayload,
@@ -86,7 +121,7 @@ async def dev_login(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ) -> VerifyResponse:
-    """Dev-only OTP bypass — signs in as the canonical `<role>-super@beebop.ng`
+    """Dev-only OTP bypass — signs in as the canonical `<role>-super@beebop.store`
     user (landlord or admin). Returns 404 outside the development environment
     so it cannot be triggered in staging or production even if the route is
     accidentally deployed.

@@ -23,6 +23,7 @@ from app.agents.routes import (
 )
 from app.agreements.routes import router as agreements_router
 from app.ai_search.routes import router as ai_search_router
+from app.auth.admin_bootstrap import bootstrap_admin_from_settings
 from app.auth.routes import router as auth_router
 from app.bookings.routes import router as bookings_router
 from app.bookmarks.routes import router as bookmarks_router
@@ -58,6 +59,7 @@ if settings.sentry_dsn:
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # Startup hooks go here (e.g., warming caches). Keep lightweight — Render
     # free tier cold starts matter. Heavy work belongs in Celery.
+    await bootstrap_admin_from_settings(settings)
     yield
     # Shutdown hooks (close pools, flush analytics).
 
@@ -76,7 +78,11 @@ app = FastAPI(
 allowed_origins = (
     ["*"]
     if settings.environment == "development"
-    else ["https://beebop.ng", "https://www.beebop.ng", "https://app.beebop.ng"]
+    else [
+        "https://beebop.store",
+        "https://www.beebop.store",
+        "https://app.beebop.store",
+    ]
 )
 
 app.add_middleware(
