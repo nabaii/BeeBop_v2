@@ -1,12 +1,21 @@
 'use client';
 
-import { Compass, MessageSquare, User } from 'lucide-react';
+import { Compass, MessageSquare, User, type LucideIcon } from 'lucide-react';
+import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { cn } from '@/lib/cn';
+import { useSession, type UserRole } from '@/stores/session';
 
-const TABS = [
+type Tab = {
+  href: Route;
+  label: string;
+  icon: LucideIcon;
+  match: (pathname: string) => boolean;
+};
+
+const STATIC_TABS: readonly Tab[] = [
   { href: '/', label: 'Chat', icon: MessageSquare, match: (p: string) => p === '/' },
   {
     href: '/browse',
@@ -14,21 +23,31 @@ const TABS = [
     icon: Compass,
     match: (p: string) => p.startsWith('/browse'),
   },
-  {
-    href: '/profile',
-    label: 'Profile',
-    icon: User,
-    match: (p: string) => p.startsWith('/profile') || p.startsWith('/dashboard'),
-  },
 ] as const;
 
 export function BottomNav() {
   const pathname = usePathname() ?? '/';
+  const role = useSession((s) => s.user?.role);
+  const accountHref = accountRoute(role);
+  const accountLabel = role === 'admin' ? 'Admin' : 'Profile';
+  const tabs: readonly Tab[] = [
+    ...STATIC_TABS,
+    {
+      href: accountHref,
+      label: accountLabel,
+      icon: User,
+      match: (p: string) =>
+        p.startsWith('/profile') ||
+        p.startsWith('/dashboard') ||
+        p.startsWith('/internal/admin') ||
+        p.startsWith('/internal/agent'),
+    },
+  ];
 
   return (
     <nav className="sticky bottom-0 z-40 shrink-0 border-t border-slate-100 bg-white/95 px-3 pt-2 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur safe-pb">
       <ul className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-50 p-1.5">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = tab.match(pathname);
           return (
@@ -54,4 +73,20 @@ export function BottomNav() {
       </ul>
     </nav>
   );
+}
+
+function accountRoute(role: UserRole | undefined): Route {
+  switch (role) {
+    case 'admin':
+      return '/internal/admin';
+    case 'trusted_agent':
+      return '/internal/agent';
+    case 'seeker':
+    case 'landlord':
+    case 'agent':
+      return '/profile';
+    case 'inspector':
+    case undefined:
+      return '/login';
+  }
 }

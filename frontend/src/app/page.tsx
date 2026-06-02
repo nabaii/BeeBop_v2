@@ -1,6 +1,7 @@
 'use client';
 
 import { Menu, UserRound } from 'lucide-react';
+import type { Route } from 'next';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -9,12 +10,15 @@ import { ChatSearchPanel } from '@/components/chat-search';
 import { MainSidebar } from '@/components/main-sidebar';
 import { clearChatSession } from '@/lib/ai-search';
 import { useSearch } from '@/stores/search';
+import { useSession, type UserRole } from '@/stores/session';
 
 export default function HomePage() {
   const sessionId = useSearch((state) => state.sessionId);
   const clearSession = useSearch((state) => state.clearSession);
+  const role = useSession((state) => state.user?.role);
   const [chatKey, setChatKey] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const accountHref = accountRoute(role);
 
   async function handleNewChat(): Promise<void> {
     const activeSessionId = sessionId;
@@ -50,7 +54,7 @@ export default function HomePage() {
             <span className="text-lg font-bold text-brand-700">BeeBop</span>
           </div>
           <Link
-            href="/dashboard/seeker"
+            href={accountHref}
             aria-label="Open profile"
             className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
           >
@@ -64,6 +68,22 @@ export default function HomePage() {
       </div>
     </div>
   );
+}
+
+function accountRoute(role: UserRole | undefined): Route {
+  switch (role) {
+    case 'admin':
+      return '/internal/admin';
+    case 'trusted_agent':
+      return '/internal/agent';
+    case 'seeker':
+    case 'landlord':
+    case 'agent':
+      return '/profile';
+    case 'inspector':
+    case undefined:
+      return '/login';
+  }
 }
 
 function BeeBopMark() {
