@@ -33,6 +33,6 @@ export function accountLabel(role: UserRole | undefined): string {
   }
 }
 
-export function landlordOnboardingRoute(next: string): string {
-  return `/onboarding/landlord?next=${encodeURIComponent(next)}`;
+export function landlordOnboardingRoute(next: string): Route {
+  return `/onboarding/landlord?next=${encodeURIComponent(next)}` as Route;
 }

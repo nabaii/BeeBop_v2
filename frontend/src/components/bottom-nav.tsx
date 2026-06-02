@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { cn } from '@/lib/cn';
-import { useSession, type UserRole } from '@/stores/session';
+import { accountLabel, accountRoute } from '@/lib/navigation';
+import { useSession } from '@/stores/session';
 
 type Tab = {
   href: Route;
@@ -29,12 +30,12 @@ export function BottomNav() {
   const pathname = usePathname() ?? '/';
   const role = useSession((s) => s.user?.role);
   const accountHref = accountRoute(role);
-  const accountLabel = role === 'admin' ? 'Admin' : 'Profile';
+  const label = accountLabel(role);
   const tabs: readonly Tab[] = [
     ...STATIC_TABS,
     {
       href: accountHref,
-      label: accountLabel,
+      label,
       icon: User,
       match: (p: string) =>
         p.startsWith('/profile') ||
@@ -73,20 +74,4 @@ export function BottomNav() {
       </ul>
     </nav>
   );
-}
-
-function accountRoute(role: UserRole | undefined): Route {
-  switch (role) {
-    case 'admin':
-      return '/internal/admin';
-    case 'trusted_agent':
-      return '/internal/agent';
-    case 'seeker':
-    case 'landlord':
-    case 'agent':
-      return '/profile';
-    case 'inspector':
-    case undefined:
-      return '/login';
-  }
 }

@@ -8,7 +8,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
-  UserPlus,
   Waves,
   X,
   type LucideIcon,
@@ -51,8 +50,8 @@ export function MainSidebar({ onNewChat, mobileOpen = false, onMobileClose }: Ma
 
   const hasLandlordAccess = user?.role === 'landlord' || user?.role === 'agent';
   const canShowLandlordAction = !user || user.role === 'seeker' || hasLandlordAccess;
-  const landlordActionLabel = hasLandlordAccess ? 'Landlord dashboard' : 'Become a landlord';
-  const LandlordActionIcon = hasLandlordAccess ? LayoutDashboard : UserPlus;
+  const landlordActionLabel = hasLandlordAccess ? 'Landlord dashboard' : 'List a property';
+  const LandlordActionIcon = hasLandlordAccess ? LayoutDashboard : Building2;
 
   function handleNavigate() {
     onMobileClose?.();

@@ -11,10 +11,10 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { LandlordAccessGate } from '@/components/landlord-access-gate';
 import { EmptyPanel } from '@/components/dashboard/empty-panel';
 import { NotificationsInbox } from '@/components/dashboard/notifications-inbox';
 import { StatTile } from '@/components/dashboard/stat-tile';
-import { RouteGuard } from '@/components/route-guard';
 import { ListingCard } from '@/components/listing/listing-card';
 import { AgreementsPanel } from '@/components/agreements/agreements-panel';
 import { OffersPanel } from '@/components/offers/offers-panel';
@@ -28,9 +28,9 @@ import { listMyListings, type ListingView } from '@/lib/listings';
 
 export default function LandlordDashboardPage() {
   return (
-    <RouteGuard roles={['landlord', 'agent']} redirectTo="/dashboard/seeker">
+    <LandlordAccessGate next="/dashboard/landlord">
       <LandlordDashboardContent />
-    </RouteGuard>
+    </LandlordAccessGate>
   );
 }
 

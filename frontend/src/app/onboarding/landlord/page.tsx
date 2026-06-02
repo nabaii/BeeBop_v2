@@ -6,7 +6,8 @@
  * live-unverified listings.
  */
 
-import { useRouter } from 'next/navigation';
+import type { Route } from 'next';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -19,9 +20,12 @@ type Step = 'identity' | 'accountType' | 'profile';
 
 export default function LandlordOnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useSession((s) => s.user);
+  const nextRoute = landlordNextRoute(searchParams.get('next'));
+  const hasIdentity = Boolean(user?.firstName && user?.lastName);
 
-  const [step, setStep] = useState<Step>(user?.firstName ? 'accountType' : 'identity');
+  const [step, setStep] = useState<Step>(hasIdentity ? 'accountType' : 'identity');
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
   const [lastName, setLastName] = useState(user?.lastName ?? '');
   const [bio, setBio] = useState('');
@@ -63,7 +67,7 @@ export default function LandlordOnboardingPage() {
         bio: bio.trim() || undefined,
         operating_area: operatingArea.trim() || undefined,
       });
-      router.replace('/dashboard/landlord');
+      router.replace(nextRoute);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -160,6 +164,18 @@ export default function LandlordOnboardingPage() {
       </Labelled>
     </Form>
   );
+}
+
+function landlordNextRoute(next: string | null): Route {
+  switch (next) {
+    case '/listings/new':
+    case '/dashboard/landlord':
+    case '/dashboard/student':
+    case '/dashboard/short-let':
+      return next;
+    default:
+      return '/dashboard/landlord';
+  }
 }
 
 function Form({

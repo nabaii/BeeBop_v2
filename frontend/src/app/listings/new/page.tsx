@@ -9,7 +9,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import { RouteGuard } from '@/components/route-guard';
+import { LandlordAccessGate } from '@/components/landlord-access-gate';
 import { Button } from '@/components/ui/button';
 import { createListing, type ListingCategory } from '@/lib/listings';
 
@@ -38,7 +38,7 @@ export default function NewListingPage() {
   }
 
   return (
-    <RouteGuard roles={['landlord', 'agent']}>
+    <LandlordAccessGate next="/listings/new" intent="create">
       <main className="mx-auto max-w-3xl p-8">
         <h1 className="text-2xl font-semibold text-slate-900">Create a listing</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -66,6 +66,6 @@ export default function NewListingPage() {
           </Button>
         </div>
       </main>
-    </RouteGuard>
+    </LandlordAccessGate>
   );
 }

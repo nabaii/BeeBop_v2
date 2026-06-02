@@ -1,7 +1,6 @@
 'use client';
 
 import { Menu, UserRound } from 'lucide-react';
-import type { Route } from 'next';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -9,8 +8,9 @@ import { BottomNav } from '@/components/bottom-nav';
 import { ChatSearchPanel } from '@/components/chat-search';
 import { MainSidebar } from '@/components/main-sidebar';
 import { clearChatSession } from '@/lib/ai-search';
+import { accountRoute } from '@/lib/navigation';
 import { useSearch } from '@/stores/search';
-import { useSession, type UserRole } from '@/stores/session';
+import { useSession } from '@/stores/session';
 
 export default function HomePage() {
   const sessionId = useSearch((state) => state.sessionId);
@@ -55,7 +55,7 @@ export default function HomePage() {
           </div>
           <Link
             href={accountHref}
-            aria-label="Open profile"
+            aria-label="Open account area"
             className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
           >
             <UserRound className="h-5 w-5" aria-hidden />
@@ -68,22 +68,6 @@ export default function HomePage() {
       </div>
     </div>
   );
-}
-
-function accountRoute(role: UserRole | undefined): Route {
-  switch (role) {
-    case 'admin':
-      return '/internal/admin';
-    case 'trusted_agent':
-      return '/internal/agent';
-    case 'seeker':
-    case 'landlord':
-    case 'agent':
-      return '/profile';
-    case 'inspector':
-    case undefined:
-      return '/login';
-  }
 }
 
 function BeeBopMark() {

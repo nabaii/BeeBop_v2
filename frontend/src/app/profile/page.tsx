@@ -4,6 +4,7 @@ import type { Route } from 'next';
 import {
   Bell,
   Bookmark,
+  Building2,
   CalendarCheck,
   ChevronRight,
   CreditCard,
@@ -11,6 +12,7 @@ import {
   MapPin,
   MessageSquare,
   Pencil,
+  PlusCircle,
   Settings,
   ShieldCheck,
   type LucideIcon,
@@ -61,6 +63,7 @@ export default function ProfilePage() {
     user?.email?.split('@')[0] ||
     'Your profile';
   const initials = (user?.firstName?.[0] ?? user?.email?.[0] ?? 'U').toUpperCase();
+  const hasLandlordAccess = user?.role === 'landlord' || user?.role === 'agent';
 
   async function handleLogout() {
     await logout();
@@ -126,6 +129,18 @@ export default function ProfilePage() {
 
       <nav className="space-y-2">
         <RowLink href="/dashboard/seeker" icon={CalendarCheck} label="Activity" hint="Offers · Bookings · Agreements" />
+        <RowLink
+          href="/dashboard/landlord"
+          icon={Building2}
+          label={hasLandlordAccess ? 'Manage listings' : 'List a property'}
+          hint={hasLandlordAccess ? 'Dashboard / Uploads / Analytics' : 'Start landlord setup'}
+        />
+        <RowLink
+          href="/listings/new"
+          icon={PlusCircle}
+          label="Create listing"
+          hint="Upload property details"
+        />
         <RowLink href="/profile/notifications" icon={Bell} label="Notifications" />
         <RowLink
           href="/profile/security"

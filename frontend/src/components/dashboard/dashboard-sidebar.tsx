@@ -92,7 +92,7 @@ export function DashboardSidebar() {
               onClick={() => void handleBecomeLandlord()}
               disabled={landlordBusy}
             >
-              {landlordBusy ? 'Switching...' : 'Become a landlord'}
+              {landlordBusy ? 'Starting...' : 'List a property'}
             </Button>
             {landlordError && <p className="text-xs text-red-600">{landlordError}</p>}
           </>
