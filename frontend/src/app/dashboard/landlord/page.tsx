@@ -17,13 +17,8 @@ import {
   Eye,
   Plus,
   Search,
-  SlidersHorizontal,
   ChevronRight,
-  TrendingDown,
   Sparkles,
-  HelpCircle,
-  Bell,
-  CheckCircle2,
 } from 'lucide-react';
 
 import { LandlordAccessGate } from '@/components/landlord-access-gate';
@@ -35,7 +30,6 @@ import { Button } from '@/components/ui/button';
 import {
   dashboards,
   type LandlordOverview,
-  type ListingRevenueStats,
 } from '@/lib/dashboards';
 import { listMyListings, type ListingView } from '@/lib/listings';
 
@@ -125,9 +119,15 @@ const MOCK_LISTINGS: ListingView[] = [
     district: 'Lekki Phase 1',
     photos: [],
     owner_id: 'owner-id',
-    view_count: 342,
-    save_count: 85,
-    enquiry_count: 28,
+    subtitle: null,
+    description: null,
+    address_line: null,
+    gps_lat: null,
+    gps_lng: null,
+    amenities: {},
+    type_data: {},
+    documents: [],
+    unit_types: [],
   },
   {
     id: 'mock-2',
@@ -138,9 +138,15 @@ const MOCK_LISTINGS: ListingView[] = [
     district: 'Ikeja GRA',
     photos: [],
     owner_id: 'owner-id',
-    view_count: 185,
-    save_count: 42,
-    enquiry_count: 14,
+    subtitle: null,
+    description: null,
+    address_line: null,
+    gps_lat: null,
+    gps_lng: null,
+    amenities: {},
+    type_data: {},
+    documents: [],
+    unit_types: [],
   },
   {
     id: 'mock-3',
@@ -151,11 +157,17 @@ const MOCK_LISTINGS: ListingView[] = [
     district: 'Yaba',
     photos: [],
     owner_id: 'owner-id',
-    view_count: 512,
-    save_count: 135,
-    enquiry_count: 45,
+    subtitle: null,
+    description: null,
+    address_line: null,
+    gps_lat: null,
+    gps_lng: null,
+    amenities: {},
+    type_data: {},
+    documents: [],
+    unit_types: [],
   },
-] as any;
+];
 
 export default function LandlordDashboardPage() {
   return (
@@ -190,7 +202,7 @@ function LandlordDashboardContent() {
           setDemoMode(false);
         }
       })
-      .catch((err) => {
+      .catch(() => {
         if (!cancelled) {
           setError('Could not load your live dashboard data.');
         }
@@ -913,6 +925,7 @@ function LandlordDashboardContent() {
                 {/* Listing Cover Photo */}
                 <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
                   {l.photos && l.photos.length > 0 ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={l.photos.find((p) => p.is_cover)?.url ?? l.photos[0].url}
                       alt={l.title ?? 'Property image'}
