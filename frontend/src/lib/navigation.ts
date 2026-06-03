@@ -10,7 +10,6 @@ export function accountRoute(role: UserRole | undefined): Route {
       return '/internal/agent';
     case 'landlord':
     case 'agent':
-      return '/dashboard/landlord';
     case 'seeker':
       return '/profile';
     case 'inspector':
@@ -23,9 +22,6 @@ export function accountLabel(role: UserRole | undefined): string {
   switch (role) {
     case 'admin':
       return 'Admin';
-    case 'landlord':
-    case 'agent':
-      return 'Listings';
     case 'trusted_agent':
       return 'Visits';
     default:
