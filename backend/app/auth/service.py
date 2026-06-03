@@ -165,6 +165,7 @@ async def verify_otp_and_issue_tokens(
     role_if_new: UserRole,
     db: AsyncSession,
     redis: Redis,
+    password: str | None = None,
 ) -> VerifyResponse:
     if role_if_new not in PUBLIC_SIGNUP_ROLES:
         raise ValidationError(
@@ -184,10 +185,29 @@ async def verify_otp_and_issue_tokens(
     is_new = False
     if user is None:
         is_new = True
+        if not password:
+            raise ValidationError(
+                "Password is required for registration.",
+                code="password_required",
+            )
+        if len(password) <= 10:
+            raise ValidationError(
+                "Password must be above 10 characters.",
+                code="password_too_short",
+            )
+        if not any(c.isdigit() for c in password):
+            raise ValidationError(
+                "Password must contain at least one number.",
+                code="password_no_number",
+            )
+
         user = User(
             email=identifier if channel == "email" else f"pending-{uuid.uuid4().hex[:12]}@beebop.store",
             phone=identifier if channel == "whatsapp" else None,
             role=role_if_new,
+            password_hash=hash_password(password),
+            is_active=True,
+            is_suspended=False,
         )
         db.add(user)
         await db.flush()

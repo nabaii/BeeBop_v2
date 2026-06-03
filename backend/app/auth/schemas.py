@@ -44,6 +44,7 @@ class OtpVerifyPayload(BaseModel):
     channel: Channel
     identifier: str
     code: str = Field(..., min_length=6, max_length=6, pattern=r"^\d{6}$")
+    password: str | None = Field(default=None, max_length=128)
 
 
 class PasswordLoginPayload(BaseModel):

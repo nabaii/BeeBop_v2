@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { Check, X, Eye, EyeOff } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,13 +22,17 @@ interface Props {
   roleIfNew: UserRole;
   onAuthenticated: (args: { user: SessionUser; isNewUser: boolean }) => void;
   submitLabel?: string;
+  isSignup?: boolean;
 }
 
-export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue' }: Props) {
+export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue', isSignup = false }: Props) {
   const [step, setStep] = useState<Step>('identifier');
   const [channel, setChannel] = useState<OtpChannel>('email');
   const [identifier, setIdentifier] = useState('');
   const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resendIn, setResendIn] = useState(0);
@@ -40,6 +45,12 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue' }
   }, [resendIn]);
 
   const normalisedIdentifier = channel === 'email' ? identifier.trim().toLowerCase() : identifier.trim();
+
+  // Password validation criteria
+  const isLengthValid = password.length > 10;
+  const hasNumber = /\d/.test(password);
+  const passwordsMatch = password.length > 0 && password === confirmPassword;
+  const isPasswordValid = !isSignup || (isLengthValid && hasNumber && passwordsMatch);
 
   async function sendCode() {
     setError(null);
@@ -70,6 +81,7 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue' }
         identifier: normalisedIdentifier,
         code,
         role_if_new: roleIfNew,
+        password: isSignup ? password : undefined,
       });
       onAuthenticated(res);
     } catch (err) {
@@ -85,7 +97,9 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue' }
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
-          void sendCode();
+          if (isPasswordValid) {
+            void sendCode();
+          }
         }}
       >
         <div className="flex gap-2">
@@ -96,8 +110,9 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue' }
             WhatsApp
           </ChannelTab>
         </div>
+        
         <label className="block text-sm">
-          <span className="mb-1 block text-slate-700">
+          <span className="mb-1 block text-slate-700 font-medium">
             {channel === 'email' ? 'Email address' : 'WhatsApp number'}
           </span>
           <Input
@@ -110,8 +125,60 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue' }
             required
           />
         </label>
+
+        {isSignup && (
+          <>
+            <label className="block text-sm">
+              <span className="mb-1 block text-slate-700 font-medium">Password</span>
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Create a strong password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-slate-700 font-medium">Confirm password</span>
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Confirm password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </label>
+
+            {/* Checklist */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 space-y-2 text-xs">
+              <p className="font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Password Requirements</p>
+              <div className="space-y-1.5">
+                <ChecklistItem met={isLengthValid} text="Above 10 characters" />
+                <ChecklistItem met={hasNumber} text="Contains at least one number" />
+                <ChecklistItem met={passwordsMatch} text="Passwords match" />
+              </div>
+            </div>
+          </>
+        )}
+
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <Button type="submit" disabled={busy || !normalisedIdentifier} className="w-full">
+        
+        <Button 
+          type="submit" 
+          disabled={busy || !normalisedIdentifier || !isPasswordValid} 
+          className="w-full transition-all duration-200"
+        >
           {busy ? 'Sending…' : submitLabel}
         </Button>
       </form>
@@ -170,6 +237,25 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue' }
         </button>
       </div>
     </form>
+  );
+}
+
+function ChecklistItem({ met, text }: { met: boolean; text: string }) {
+  return (
+    <div className="flex items-center gap-2 transition-all duration-300">
+      {met ? (
+        <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white transition-all scale-100">
+          <Check className="h-3 w-3 stroke-[3]" />
+        </div>
+      ) : (
+        <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border border-slate-300 text-slate-400 bg-white transition-all">
+          <X className="h-2.5 w-2.5" />
+        </div>
+      )}
+      <span className={`transition-colors duration-300 ${met ? 'text-emerald-700 font-medium' : 'text-slate-400'}`}>
+        {text}
+      </span>
+    </div>
   );
 }
 

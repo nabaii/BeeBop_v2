@@ -7,8 +7,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.auth.service import login_with_password, set_password
-from app.core.exceptions import UnauthorisedError
+from app.auth.service import login_with_password, set_password, verify_otp_and_issue_tokens
+from app.auth.otp_service import OtpService
+from app.core.exceptions import UnauthorisedError, ValidationError
 from app.core.security import decode_token, hash_password, verify_password
 from app.models._enums import UserRole
 
@@ -128,3 +129,99 @@ async def test_login_with_password_rejects_invalid_credentials(fake_redis) -> No
         )
 
     assert exc.value.code == "invalid_credentials"
+
+
+class FakeRegisterDb:
+    def __init__(self, user: SimpleNamespace | None = None) -> None:
+        self.user = user
+        self.added: list[object] = []
+        self.committed = False
+        self.flushed = False
+
+    async def execute(self, statement: object) -> FakeLoginResult:
+        return FakeLoginResult(self.user)
+
+    def add(self, obj: object) -> None:
+        self.added.append(obj)
+
+    async def commit(self) -> None:
+        self.committed = True
+
+    async def flush(self) -> None:
+        self.flushed = True
+
+
+async def mock_async_verify(*args, **kwargs) -> None:
+    pass
+
+
+@pytest.mark.asyncio
+async def test_verify_otp_new_user_requires_password(monkeypatch, fake_redis) -> None:
+    monkeypatch.setattr(OtpService, "verify", mock_async_verify)
+    db = FakeRegisterDb(None)
+
+    with pytest.raises(ValidationError) as exc:
+        await verify_otp_and_issue_tokens(
+            channel="email",
+            identifier="newuser@example.com",
+            code="123456",
+            role_if_new=UserRole.SEEKER,
+            db=db,  # type: ignore
+            redis=fake_redis,  # type: ignore
+            password=None,
+        )
+    assert exc.value.code == "password_required"
+
+
+@pytest.mark.asyncio
+async def test_verify_otp_new_user_rejects_weak_password(monkeypatch, fake_redis) -> None:
+    monkeypatch.setattr(OtpService, "verify", mock_async_verify)
+    db = FakeRegisterDb(None)
+
+    # Test short password
+    with pytest.raises(ValidationError) as exc:
+        await verify_otp_and_issue_tokens(
+            channel="email",
+            identifier="newuser@example.com",
+            code="123456",
+            role_if_new=UserRole.SEEKER,
+            db=db,  # type: ignore
+            redis=fake_redis,  # type: ignore
+            password="123",
+        )
+    assert exc.value.code == "password_too_short"
+
+    # Test password without number
+    with pytest.raises(ValidationError) as exc:
+        await verify_otp_and_issue_tokens(
+            channel="email",
+            identifier="newuser@example.com",
+            code="123456",
+            role_if_new=UserRole.SEEKER,
+            db=db,  # type: ignore
+            redis=fake_redis,  # type: ignore
+            password="strongpassword",
+        )
+    assert exc.value.code == "password_no_number"
+
+
+@pytest.mark.asyncio
+async def test_verify_otp_new_user_creates_account_with_password(monkeypatch, fake_redis) -> None:
+    monkeypatch.setattr(OtpService, "verify", mock_async_verify)
+    db = FakeRegisterDb(None)
+
+    result = await verify_otp_and_issue_tokens(
+        channel="email",
+        identifier="newuser@example.com",
+        code="123456",
+        role_if_new=UserRole.SEEKER,
+        db=db,  # type: ignore
+        redis=fake_redis,  # type: ignore
+        password="strongpass123",
+    )
+
+    assert result.is_new_user is True
+    assert len(db.added) == 1
+    new_user = db.added[0]
+    assert new_user.email == "newuser@example.com"
+    assert verify_password("strongpass123", new_user.password_hash)

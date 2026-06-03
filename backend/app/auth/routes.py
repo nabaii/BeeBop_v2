@@ -70,6 +70,7 @@ async def verify_otp(
         role_if_new=role_if_new,
         db=db,
         redis=redis,
+        password=payload.password,
     )
 
 

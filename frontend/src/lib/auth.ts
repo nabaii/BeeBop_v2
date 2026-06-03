@@ -64,12 +64,14 @@ export async function verifyOtp(args: {
   identifier: string;
   code: string;
   role_if_new?: UserRole;
+  password?: string;
 }): Promise<{ user: SessionUser; isNewUser: boolean }> {
   const params = args.role_if_new ? `?role_if_new=${args.role_if_new}` : '';
   const data = await api.post<VerifyResponse>(`/auth/otp/verify${params}`, {
     channel: args.channel,
     identifier: args.identifier,
     code: args.code,
+    password: args.password || undefined,
   });
   return applyVerifyResponse(data);
 }

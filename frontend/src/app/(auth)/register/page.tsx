@@ -66,6 +66,7 @@ export default function RegisterPage() {
         roleIfNew={role}
         onAuthenticated={(args) => void handleAuthenticated(args)}
         submitLabel="Send code"
+        isSignup
       />
       {conversionError && <p className="mt-3 text-sm text-red-600">{conversionError}</p>}
       <p className="mt-6 text-center text-sm text-slate-500">
