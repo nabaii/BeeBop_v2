@@ -21,11 +21,34 @@ class SeekerOverview(BaseModel):
     unread_notifications: int
 
 
+class MonthlyIncome(BaseModel):
+    month: str
+    amount: float
+
+
+class ListingRevenueStats(BaseModel):
+    listing_id: str
+    title: str | None
+    category: ListingCategory
+    status: ListingStatus
+    price: float | None
+    total_income: float
+    occupancy_rate: float
+    view_count: int
+    save_count: int
+    enquiry_count: int
+    cover_photo_url: str | None = None
+
+
 class LandlordOverview(BaseModel):
     listings_total: int
     listings_by_status: list[CountByStatus]
-    pending_offers_count: int = 0          # Sprint 8
+    pending_offers_count: int = 0
     unread_notifications: int
+    total_income: float
+    occupancy_rate: float
+    monthly_income: list[MonthlyIncome]
+    listing_stats: list[ListingRevenueStats]
 
 
 class ListingAnalytics(BaseModel):

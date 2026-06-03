@@ -15,11 +15,34 @@ export interface CountByStatus {
   count: number;
 }
 
+export interface MonthlyIncome {
+  month: string;
+  amount: number;
+}
+
+export interface ListingRevenueStats {
+  listing_id: string;
+  title: string | null;
+  category: ListingCategory;
+  status: ListingStatus;
+  price: number | null;
+  total_income: number;
+  occupancy_rate: number;
+  view_count: number;
+  save_count: number;
+  enquiry_count: number;
+  cover_photo_url?: string | null;
+}
+
 export interface LandlordOverview {
   listings_total: number;
   listings_by_status: CountByStatus[];
   pending_offers_count: number;
   unread_notifications: number;
+  total_income: number;
+  occupancy_rate: number;
+  monthly_income: MonthlyIncome[];
+  listing_stats: ListingRevenueStats[];
 }
 
 export interface ListingAnalytics {

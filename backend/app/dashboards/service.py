@@ -23,18 +23,25 @@ from app.dashboards.schemas import (
     ShortLetPricingView,
     StudentPMS,
     UnitOccupancy,
+    MonthlyIncome,
+    ListingRevenueStats,
 )
 from app.models._enums import (
     Gender,
     ListingCategory,
     NotificationChannel,
     UserRole,
+    ListingStatus,
+    BookingStatus,
 )
 from app.models.bookmark import Bookmark
 from app.models.listing import Listing
 from app.models.notification import Notification
 from app.models.student_accommodation import Room, UnitType
 from app.models.user import User
+from app.models.agreement import Agreement
+from app.models.offer import Offer
+from app.models.booking import Booking
 
 
 # ---------------------------------------------------------------------------
@@ -72,12 +79,160 @@ async def landlord_overview(*, user: User, db: AsyncSession) -> LandlordOverview
     )
     rows = (await db.execute(stmt)).all()
     breakdown = [CountByStatus(status=s, count=int(c)) for s, c in rows]
-    total = sum(r.count for r in breakdown)
+    total_listings = sum(r.count for r in breakdown)
+
+    # 2. Fetch all listings for this landlord with their photo records
+    listings_stmt = (
+        select(Listing)
+        .where(Listing.owner_id == user.id)
+        .options(selectinload(Listing.photos))
+    )
+    listings = (await db.execute(listings_stmt)).scalars().all()
+
+    total_income = 0.0
+    listing_stats = []
+    occupancy_rates = []
+
+    # Map month keys for historical trend (past 6 months)
+    today = datetime.now(timezone.utc).date()
+    months_keys = []
+    monthly_map = {}
+    for i in range(5, -1, -1):
+        first_of_month = (today.replace(day=1) - timedelta(days=i*30))
+        month_name = first_of_month.strftime("%b")
+        months_keys.append(month_name)
+        monthly_map[first_of_month.strftime("%Y-%m")] = {"name": month_name, "amount": 0.0}
+
+    for l in listings:
+        l_income = 0.0
+        l_occupancy = 0.0
+        
+        # A. Calculate Income & Monthly distribution
+        if l.category == ListingCategory.SHORT_LET:
+            bookings_stmt = select(Booking).where(
+                Booking.listing_id == l.id,
+                Booking.payment_confirmed_at.is_not(None)
+            )
+            bookings = (await db.execute(bookings_stmt)).scalars().all()
+            for b in bookings:
+                amt = float(b.base_total)
+                l_income += amt
+                if b.payment_confirmed_at:
+                    m_key = b.payment_confirmed_at.strftime("%Y-%m")
+                    if m_key in monthly_map:
+                        monthly_map[m_key]["amount"] += amt
+
+            # Short let occupancy: ratio of booked days in last 30 days
+            start_window = today - timedelta(days=30)
+            booked_days = 0
+            for b in bookings:
+                if b.status == BookingStatus.CONFIRMED:
+                    overlap_start = max(b.check_in, start_window)
+                    overlap_end = min(b.check_out, today)
+                    if overlap_start < overlap_end:
+                        booked_days += (overlap_end - overlap_start).days
+            l_occupancy = min(100.0, (booked_days / 30.0) * 100.0)
+
+        elif l.category == ListingCategory.OFF_CAMPUS:
+            ag_stmt = (
+                select(Offer.price, Agreement.payment_confirmed_at)
+                .join(Agreement, Agreement.offer_id == Offer.id)
+                .where(
+                    Agreement.listing_id == l.id,
+                    Agreement.payment_confirmed_at.is_not(None)
+                )
+            )
+            results = (await db.execute(ag_stmt)).all()
+            for price, confirmed_at in results:
+                amt = float(price)
+                l_income += amt
+                if confirmed_at:
+                    m_key = confirmed_at.strftime("%Y-%m")
+                    if m_key in monthly_map:
+                        monthly_map[m_key]["amount"] += amt
+
+            # Student occupancy: from rooms table beds
+            rooms_stmt = (
+                select(Room)
+                .join(UnitType, Room.unit_type_id == UnitType.id)
+                .where(UnitType.listing_id == l.id)
+            )
+            rooms = (await db.execute(rooms_stmt)).scalars().all()
+            total_beds = sum(r.beds_total for r in rooms)
+            avail_beds = sum(r.beds_available for r in rooms)
+            if total_beds > 0:
+                l_occupancy = ((total_beds - avail_beds) / total_beds) * 100.0
+            else:
+                l_occupancy = 0.0
+
+        else: # Rent or Sales
+            ag_stmt = (
+                select(Offer.price, Agreement.payment_confirmed_at)
+                .join(Agreement, Agreement.offer_id == Offer.id)
+                .where(
+                    Agreement.listing_id == l.id,
+                    Agreement.payment_confirmed_at.is_not(None)
+                )
+            )
+            results = (await db.execute(ag_stmt)).all()
+            for price, confirmed_at in results:
+                amt = float(price)
+                l_income += amt
+                if confirmed_at:
+                    m_key = confirmed_at.strftime("%Y-%m")
+                    if m_key in monthly_map:
+                        monthly_map[m_key]["amount"] += amt
+
+            # Rent / Sales occupancy: status based
+            if l.status in (ListingStatus.LET_AGREED, ListingStatus.SALE_AGREED):
+                l_occupancy = 100.0
+            else:
+                l_occupancy = 0.0
+
+        total_income += l_income
+        occupancy_rates.append(l_occupancy)
+
+        cover_photo = next((p.url for p in l.photos if p.is_cover), None)
+        if not cover_photo and l.photos:
+            cover_photo = l.photos[0].url
+
+        price_val = float(l.price) if l.price is not None else None
+
+        listing_stats.append(
+            ListingRevenueStats(
+                listing_id=str(l.id),
+                title=l.title,
+                category=l.category,
+                status=l.status,
+                price=price_val,
+                total_income=l_income,
+                occupancy_rate=l_occupancy,
+                view_count=l.view_count,
+                save_count=l.save_count,
+                enquiry_count=l.enquiry_count,
+                cover_photo_url=cover_photo,
+            )
+        )
+
+    avg_occupancy = sum(occupancy_rates) / len(occupancy_rates) if occupancy_rates else 0.0
+
+    monthly_income = []
+    for k in sorted(monthly_map.keys()):
+        monthly_income.append(
+            MonthlyIncome(
+                month=monthly_map[k]["name"],
+                amount=monthly_map[k]["amount"]
+            )
+        )
 
     return LandlordOverview(
-        listings_total=total,
+        listings_total=total_listings,
         listings_by_status=breakdown,
         unread_notifications=await _unread_count(user.id, db=db),
+        total_income=total_income,
+        occupancy_rate=avg_occupancy,
+        monthly_income=monthly_income,
+        listing_stats=listing_stats,
     )
 
 
