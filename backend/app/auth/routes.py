@@ -46,8 +46,11 @@ async def request_otp(
     email/phone values are registered.
     """
     otp = OtpService(redis)
-    await otp.request(channel=payload.channel, identifier=payload.identifier)
-    return OtpRequestResponse()
+    code = await otp.request(channel=payload.channel, identifier=payload.identifier)
+    dev_otp_code = None
+    if get_settings().environment == "development":
+        dev_otp_code = code
+    return OtpRequestResponse(dev_otp_code=dev_otp_code)
 
 
 @router.post("/otp/verify", response_model=VerifyResponse)

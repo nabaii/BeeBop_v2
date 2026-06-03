@@ -37,6 +37,7 @@ class OtpRequestPayload(BaseModel):
 class OtpRequestResponse(BaseModel):
     delivered: bool = True
     resend_available_in_seconds: int = 30
+    dev_otp_code: str | None = None
 
 
 class OtpVerifyPayload(BaseModel):

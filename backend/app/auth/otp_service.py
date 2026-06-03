@@ -73,7 +73,7 @@ class OtpService:
     def __init__(self, redis: Redis) -> None:
         self._redis = redis
 
-    async def request(self, *, channel: Channel, identifier: str) -> None:
+    async def request(self, *, channel: Channel, identifier: str) -> str:
         """Generate, store, and deliver a code. Raises RateLimitedError if
         the identifier has requested too many codes in the window."""
         # Rate limit: 5 requests / 10 minutes / identifier.
@@ -91,6 +91,7 @@ class OtpService:
         record_value = f"{_hash_code(code)}|0"
         await self._redis.set(_key(channel, identifier), record_value, ex=OTP_TTL_SECONDS)
         await self._deliver(channel=channel, identifier=identifier, code=code)
+        return code
 
     async def verify(self, *, channel: Channel, identifier: str, code: str) -> None:
         """Validate the code. Raises UnauthorisedError on mismatch/expiry/over-attempts.

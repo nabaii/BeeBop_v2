@@ -11,6 +11,7 @@ export type OtpChannel = 'email' | 'whatsapp';
 interface OtpRequestResponse {
   delivered: boolean;
   resend_available_in_seconds: number;
+  dev_otp_code?: string;
 }
 
 interface AuthenticatedUserResponse {

@@ -91,6 +91,13 @@ class Settings(BaseSettings):
     admin_bootstrap_last_name: str = "Admin"
     admin_bootstrap_password: str = ""
 
+    # Optional landlord seed for deployed environments. When set, startup creates
+    # or promotes this email to UserRole.LANDLORD.
+    landlord_bootstrap_email: str = ""
+    landlord_bootstrap_first_name: str = "BeeBop"
+    landlord_bootstrap_last_name: str = "Landlord"
+    landlord_bootstrap_password: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

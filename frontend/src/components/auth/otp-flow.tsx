@@ -31,6 +31,7 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue' }
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resendIn, setResendIn] = useState(0);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -46,6 +47,12 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue' }
     try {
       const res = await requestOtp(channel, normalisedIdentifier);
       setResendIn(res.resend_available_in_seconds);
+      if (res.dev_otp_code) {
+        setDevOtp(res.dev_otp_code);
+        setCode(res.dev_otp_code);
+      } else {
+        setDevOtp(null);
+      }
       setStep('code');
     } catch (err) {
       setError(errorMessage(err, 'Could not send the code. Please try again.'));
@@ -122,6 +129,12 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue' }
       <div className="text-sm text-slate-600">
         We sent a 6-digit code to <span className="font-medium text-slate-900">{normalisedIdentifier}</span>.
       </div>
+      {devOtp && (
+        <div className="rounded-md border border-dashed border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+          <p className="font-semibold uppercase tracking-wide text-xs mb-1">Dev only notice</p>
+          <p>OTP code <strong>{devOtp}</strong> has been auto-filled (stubbed in development mode).</p>
+        </div>
+      )}
       <label className="block text-sm">
         <span className="mb-1 block text-slate-700">Verification code</span>
         <Input
