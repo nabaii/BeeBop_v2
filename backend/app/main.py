@@ -124,6 +124,28 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/db-enums", tags=["system"])
+async def db_enums() -> dict:
+    from sqlalchemy import text
+    from app.database import AsyncSessionLocal
+    try:
+        async with AsyncSessionLocal() as session:
+            res = await session.execute(text("""
+                SELECT t.typname, e.enumlabel
+                FROM pg_enum e
+                JOIN pg_type t ON e.enumtypid = t.oid
+                ORDER BY t.typname, e.enumsortorder;
+            """))
+            enums = {}
+            for row in res.fetchall():
+                enums.setdefault(row[0], []).append(row[1])
+            res_alembic = await session.execute(text("SELECT version_num FROM alembic_version;"))
+            version = res_alembic.scalar_one_or_none()
+            return {"version": version, "enums": enums}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 # Routers are registered here as each sprint lands them.
 # Sprint 1 — auth, users.
 app.include_router(auth_router)
