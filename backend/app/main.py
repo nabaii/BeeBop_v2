@@ -126,52 +126,26 @@ async def health() -> dict[str, str]:
 
 @app.get("/db-enums", tags=["system"])
 async def db_enums() -> dict:
-    from sqlalchemy import text, delete
+    from sqlalchemy import select
     from app.database import AsyncSessionLocal
     from app.models.user import User
-    from app.models.listing import Listing
-    from app.models._enums import UserRole, AccountType, ListingCategory, ListingStatus
     import traceback
     
     try:
         async with AsyncSessionLocal() as session:
-            await session.execute(delete(Listing).where(Listing.title == "Diag Temp Listing"))
-            await session.execute(delete(User).where(User.email == "test-landlord-diag@beebop.store"))
-            await session.commit()
-            
-            user = User(
-                email="test-landlord-diag@beebop.store",
-                role=UserRole.LANDLORD,
-                account_type=AccountType.INDIVIDUAL,
-                first_name="Diag",
-                last_name="Landlord",
-                is_active=True,
-                is_suspended=False
-            )
-            session.add(user)
-            await session.flush()
-            
-            listing = Listing(
-                owner_id=user.id,
-                category=ListingCategory.OFF_CAMPUS,
-                status=ListingStatus.DRAFT,
-                title="Diag Temp Listing",
-                amenities={},
-                type_data={},
-            )
-            session.add(listing)
-            try:
-                await session.flush()
-                await session.delete(listing)
-                await session.delete(user)
-                await session.commit()
-                return {"status": "success", "msg": "Listing created and cleaned up successfully"}
-            except Exception as inner_e:
-                tb = traceback.format_exc()
-                await session.rollback()
-                return {"status": "error", "error": str(inner_e), "traceback": tb}
+            res = await session.execute(select(User.email, User.role, User.account_type, User.first_name, User.last_name))
+            users = []
+            for row in res.fetchall():
+                users.append({
+                    "email": row[0],
+                    "role": str(row[1]),
+                    "account_type": str(row[2]) if row[2] else None,
+                    "first_name": row[3],
+                    "last_name": row[4],
+                })
+            return {"users": users}
     except Exception as e:
-        return {"status": "error_outer", "error": str(e), "traceback": traceback.format_exc()}
+        return {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
 
 
 # Routers are registered here as each sprint lands them.
