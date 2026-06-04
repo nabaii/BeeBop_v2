@@ -126,24 +126,52 @@ async def health() -> dict[str, str]:
 
 @app.get("/db-enums", tags=["system"])
 async def db_enums() -> dict:
-    from sqlalchemy import text
+    from sqlalchemy import text, delete
     from app.database import AsyncSessionLocal
+    from app.models.user import User
+    from app.models.listing import Listing
+    from app.models._enums import UserRole, AccountType, ListingCategory, ListingStatus
+    import traceback
+    
     try:
         async with AsyncSessionLocal() as session:
-            res = await session.execute(text("""
-                SELECT t.typname, e.enumlabel
-                FROM pg_enum e
-                JOIN pg_type t ON e.enumtypid = t.oid
-                ORDER BY t.typname, e.enumsortorder;
-            """))
-            enums = {}
-            for row in res.fetchall():
-                enums.setdefault(row[0], []).append(row[1])
-            res_alembic = await session.execute(text("SELECT version_num FROM alembic_version;"))
-            version = res_alembic.scalar_one_or_none()
-            return {"version": version, "enums": enums}
+            await session.execute(delete(Listing).where(Listing.title == "Diag Temp Listing"))
+            await session.execute(delete(User).where(User.email == "test-landlord-diag@beebop.store"))
+            await session.commit()
+            
+            user = User(
+                email="test-landlord-diag@beebop.store",
+                role=UserRole.LANDLORD,
+                account_type=AccountType.INDIVIDUAL,
+                first_name="Diag",
+                last_name="Landlord",
+                is_active=True,
+                is_suspended=False
+            )
+            session.add(user)
+            await session.flush()
+            
+            listing = Listing(
+                owner_id=user.id,
+                category=ListingCategory.OFF_CAMPUS,
+                status=ListingStatus.DRAFT,
+                title="Diag Temp Listing",
+                amenities={},
+                type_data={},
+            )
+            session.add(listing)
+            try:
+                await session.flush()
+                await session.delete(listing)
+                await session.delete(user)
+                await session.commit()
+                return {"status": "success", "msg": "Listing created and cleaned up successfully"}
+            except Exception as inner_e:
+                tb = traceback.format_exc()
+                await session.rollback()
+                return {"status": "error", "error": str(inner_e), "traceback": tb}
     except Exception as e:
-        return {"error": str(e)}
+        return {"status": "error_outer", "error": str(e), "traceback": traceback.format_exc()}
 
 
 # Routers are registered here as each sprint lands them.
