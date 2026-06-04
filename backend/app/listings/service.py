@@ -120,7 +120,8 @@ async def create_listing(
     )
     db.add(listing)
     await db.flush()
-    return _view(listing)
+    loaded = await _load(db, listing.id)
+    return _view(loaded)
 
 
 async def get_listing_for_owner(
