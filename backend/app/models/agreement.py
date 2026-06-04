@@ -23,10 +23,10 @@ class Agreement(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
     type: Mapped[AgreementType] = mapped_column(
-        Enum(AgreementType, name="agreement_type"), nullable=False
+        Enum(AgreementType, name="agreement_type", values_callable=lambda x: [e.value for e in x]), nullable=False
     )
     status: Mapped[AgreementStatus] = mapped_column(
-        Enum(AgreementStatus, name="agreement_status"),
+        Enum(AgreementStatus, name="agreement_status", values_callable=lambda x: [e.value for e in x]),
         default=AgreementStatus.DRAFT,
         nullable=False,
         index=True,

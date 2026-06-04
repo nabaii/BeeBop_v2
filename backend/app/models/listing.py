@@ -29,10 +29,10 @@ class Listing(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
     category: Mapped[ListingCategory] = mapped_column(
-        Enum(ListingCategory, name="listing_category"), nullable=False, index=True
+        Enum(ListingCategory, name="listing_category", values_callable=lambda x: [e.value for e in x]), nullable=False, index=True
     )
     status: Mapped[ListingStatus] = mapped_column(
-        Enum(ListingStatus, name="listing_status"),
+        Enum(ListingStatus, name="listing_status", values_callable=lambda x: [e.value for e in x]),
         default=ListingStatus.DRAFT,
         nullable=False,
         index=True,

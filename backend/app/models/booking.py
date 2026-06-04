@@ -27,7 +27,7 @@ class Booking(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     guest_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
     status: Mapped[BookingStatus] = mapped_column(
-        Enum(BookingStatus, name="booking_status"),
+        Enum(BookingStatus, name="booking_status", values_callable=lambda x: [e.value for e in x]),
         default=BookingStatus.REQUESTED,
         nullable=False,
         index=True,

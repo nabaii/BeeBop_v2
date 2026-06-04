@@ -33,7 +33,7 @@ class Visit(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
     status: Mapped[VisitStatus] = mapped_column(
-        Enum(VisitStatus, name="visit_status"),
+        Enum(VisitStatus, name="visit_status", values_callable=lambda x: [e.value for e in x]),
         default=VisitStatus.PENDING_ASSIGNMENT,
         nullable=False,
         index=True,
@@ -68,7 +68,7 @@ class Visit(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancellation_reason: Mapped[str | None] = mapped_column(Text)
     cancelled_by: Mapped[VisitCancelledBy | None] = mapped_column(
-        Enum(VisitCancelledBy, name="visit_cancelled_by")
+        Enum(VisitCancelledBy, name="visit_cancelled_by", values_callable=lambda x: [e.value for e in x])
     )
     cancelled_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")

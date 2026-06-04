@@ -23,7 +23,7 @@ class UnitType(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("listings.id", ondelete="CASCADE"), index=True, nullable=False
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)      # e.g., "Single room"
-    kind: Mapped[UnitKind] = mapped_column(Enum(UnitKind, name="unit_kind"), nullable=False)
+    kind: Mapped[UnitKind] = mapped_column(Enum(UnitKind, name="unit_kind", values_callable=lambda x: [e.value for e in x]), nullable=False)
     beds_per_room: Mapped[int] = mapped_column(Integer, nullable=False)
     total_units: Mapped[int] = mapped_column(Integer, nullable=False)
 
@@ -43,11 +43,11 @@ class Room(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     # Gender tag is silently applied to seeker search. Self-contain rooms use ANY.
-    gender_tag: Mapped[Gender] = mapped_column(Enum(Gender, name="gender"), nullable=False)
+    gender_tag: Mapped[Gender] = mapped_column(Enum(Gender, name="gender", values_callable=lambda x: [e.value for e in x]), nullable=False)
     beds_total: Mapped[int] = mapped_column(Integer, nullable=False)
     beds_available: Mapped[int] = mapped_column(Integer, nullable=False)
     bed_status_summary: Mapped[BedStatus] = mapped_column(
-        Enum(BedStatus, name="bed_status"), default=BedStatus.AVAILABLE, nullable=False
+        Enum(BedStatus, name="bed_status", values_callable=lambda x: [e.value for e in x]), default=BedStatus.AVAILABLE, nullable=False
     )
 
     unit_type: Mapped[UnitType] = relationship(back_populates="rooms")

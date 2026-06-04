@@ -30,7 +30,7 @@ class Offer(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     conditions: Mapped[str | None] = mapped_column(Text)
 
     status: Mapped[OfferStatus] = mapped_column(
-        Enum(OfferStatus, name="offer_status"),
+        Enum(OfferStatus, name="offer_status", values_callable=lambda x: [e.value for e in x]),
         default=OfferStatus.PENDING,
         nullable=False,
         index=True,

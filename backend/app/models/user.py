@@ -21,7 +21,7 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     password_hash: Mapped[str | None] = mapped_column(String(255))
-    role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), nullable=False)
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role", values_callable=lambda x: [e.value for e in x]), nullable=False)
 
     # Identity (all roles)
     first_name: Mapped[str | None] = mapped_column(String(100))
@@ -29,7 +29,7 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     phone: Mapped[str | None] = mapped_column(String(32))
 
     # Landlord / agent onboarding
-    account_type: Mapped[AccountType | None] = mapped_column(Enum(AccountType, name="account_type"))
+    account_type: Mapped[AccountType | None] = mapped_column(Enum(AccountType, name="account_type", values_callable=lambda x: [e.value for e in x]))
     nin: Mapped[str | None] = mapped_column(String(11))             # not retained, only verified flag kept
     nin_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Manual NIN review (MVP). Landlord uploads an ID image; admin reviews and
@@ -59,7 +59,7 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     category_preferences: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     institution: Mapped[str | None] = mapped_column(String(255))      # student seekers
     academic_level: Mapped[str | None] = mapped_column(String(64))
-    gender: Mapped[Gender | None] = mapped_column(Enum(Gender, name="gender"))
+    gender: Mapped[Gender | None] = mapped_column(Enum(Gender, name="gender", values_callable=lambda x: [e.value for e in x]))
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_suspended: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

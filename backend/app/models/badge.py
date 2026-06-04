@@ -23,9 +23,9 @@ class Badge(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     listing_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("listings.id", ondelete="CASCADE"), index=True, nullable=False
     )
-    type: Mapped[BadgeType] = mapped_column(Enum(BadgeType, name="badge_type"), nullable=False)
+    type: Mapped[BadgeType] = mapped_column(Enum(BadgeType, name="badge_type", values_callable=lambda x: [e.value for e in x]), nullable=False)
     status: Mapped[BadgeStatus] = mapped_column(
-        Enum(BadgeStatus, name="badge_status"), default=BadgeStatus.ACTIVE, nullable=False
+        Enum(BadgeStatus, name="badge_status", values_callable=lambda x: [e.value for e in x]), default=BadgeStatus.ACTIVE, nullable=False
     )
 
     issued_by_id: Mapped[uuid.UUID] = mapped_column(

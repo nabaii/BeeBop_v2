@@ -27,7 +27,7 @@ class InspectionReport(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), index=True, nullable=False
     )
     status: Mapped[InspectionReportStatus] = mapped_column(
-        Enum(InspectionReportStatus, name="inspection_report_status"),
+        Enum(InspectionReportStatus, name="inspection_report_status", values_callable=lambda x: [e.value for e in x]),
         default=InspectionReportStatus.ASSIGNED,
         nullable=False,
         index=True,

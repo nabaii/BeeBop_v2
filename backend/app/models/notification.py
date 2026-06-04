@@ -22,10 +22,10 @@ class Notification(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     # Event classification — "offer.received", "agreement.ready_to_sign", etc.
     event_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     channel: Mapped[NotificationChannel] = mapped_column(
-        Enum(NotificationChannel, name="notification_channel"), nullable=False
+        Enum(NotificationChannel, name="notification_channel", values_callable=lambda x: [e.value for e in x]), nullable=False
     )
     status: Mapped[NotificationStatus] = mapped_column(
-        Enum(NotificationStatus, name="notification_status"),
+        Enum(NotificationStatus, name="notification_status", values_callable=lambda x: [e.value for e in x]),
         default=NotificationStatus.QUEUED,
         nullable=False,
         index=True,
