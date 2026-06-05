@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { Home, DollarSign, LayoutGrid } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { type ListingView, updateDraft } from '@/lib/listings';
@@ -63,8 +64,16 @@ function RentFields({ listing, onSaved }: Props) {
   }
 
   return (
-    <section className="space-y-4">
-      <h2 className="text-base font-semibold text-slate-900">Rent details</h2>
+    <section className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm transition-all duration-300 hover:shadow-md hover:border-brand/40 space-y-6">
+      <header className="flex items-center gap-3 border-b border-slate-100 pb-4">
+        <div className="rounded-xl bg-blue-50 p-2.5 text-blue-600 shrink-0">
+          <Home className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-slate-900">Rent details</h2>
+          <p className="text-xs text-slate-500">Provide specific tenancy and rental details</p>
+        </div>
+      </header>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Labelled label="Bedrooms">
           <Input
@@ -156,8 +165,16 @@ function SalesFields({ listing, onSaved }: Props) {
   }
 
   return (
-    <section className="space-y-4">
-      <h2 className="text-base font-semibold text-slate-900">Sale details</h2>
+    <section className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm transition-all duration-300 hover:shadow-md hover:border-brand/40 space-y-6">
+      <header className="flex items-center gap-3 border-b border-slate-100 pb-4">
+        <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600 shrink-0">
+          <DollarSign className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-slate-900">Sale details</h2>
+          <p className="text-xs text-slate-500">Provide property structure and ownership documents</p>
+        </div>
+      </header>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Labelled label="Bedrooms (if applicable)">
           <Input
@@ -229,25 +246,35 @@ function OffCampusFields({ listing, onSaved }: Props) {
   const save = useAutoSave(listing, onSaved);
 
   return (
-    <section className="space-y-4">
-      <h2 className="text-base font-semibold text-slate-900">Off-campus details</h2>
-      <Labelled label="Institutions accepted" hint="Comma-separated.">
-        <Input
-          value={institutionsText}
-          onChange={(e) => {
-            setInstitutionsText(e.target.value);
-            const list = e.target.value
-              .split(',')
-              .map((s) => s.trim())
-              .filter(Boolean);
-            save({ institutions_accepted: list });
-          }}
-          placeholder="e.g. University of Abuja, Baze University"
-        />
-      </Labelled>
-      <p className="text-xs text-slate-500">
-        Set room-level pricing and gender tags in the inventory section below.
-      </p>
+    <section className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm transition-all duration-300 hover:shadow-md hover:border-brand/40 space-y-6">
+      <header className="flex items-center gap-3 border-b border-slate-100 pb-4">
+        <div className="rounded-xl bg-rose-50 p-2.5 text-rose-600 shrink-0">
+          <LayoutGrid className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-slate-900">Off-campus details</h2>
+          <p className="text-xs text-slate-500">Provide accepted academic institutions</p>
+        </div>
+      </header>
+      <div className="space-y-4">
+        <Labelled label="Institutions accepted" hint="Comma-separated.">
+          <Input
+            value={institutionsText}
+            onChange={(e) => {
+              setInstitutionsText(e.target.value);
+              const list = e.target.value
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean);
+              save({ institutions_accepted: list });
+            }}
+            placeholder="e.g. University of Abuja, Baze University"
+          />
+        </Labelled>
+        <p className="text-xs text-slate-500">
+          Set room-level pricing and gender tags in the inventory section below.
+        </p>
+      </div>
     </section>
   );
 }
@@ -285,7 +312,7 @@ function Select({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20 cursor-pointer"
     >
       {options.map(([v, label]) => (
         <option key={v} value={v}>

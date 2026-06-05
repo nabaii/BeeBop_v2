@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { DollarSign } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { setShortLetPricing, type ListingView } from '@/lib/listings';
@@ -54,76 +55,83 @@ export function ShortLetPricing({ listing, onSaved }: Props) {
   }
 
   return (
-    <section className="space-y-4">
-      <header className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Pricing &amp; availability</h2>
-          <p className="text-xs text-slate-500">Set the nightly rate. Weekend uplift optional.</p>
+    <section className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm transition-all duration-300 hover:shadow-md hover:border-brand/40 space-y-6">
+      <header className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600 shrink-0">
+            <DollarSign className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Pricing &amp; availability</h2>
+            <p className="text-xs text-slate-500">Set the nightly rate and booking rules</p>
+          </div>
         </div>
         <span className="text-xs text-slate-500">
           {status === 'saving' && 'Saving…'}
-          {status === 'saved' && 'Saved'}
-          {status === 'error' && <span className="text-red-600">Save failed</span>}
+          {status === 'saved' && <span className="text-emerald-600 font-medium">Saved</span>}
+          {status === 'error' && <span className="text-red-600 font-medium">Save failed</span>}
         </span>
       </header>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Labelled label="Base nightly rate (₦)">
-          <Input
-            inputMode="numeric"
-            value={baseRate}
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Labelled label="Base nightly rate (₦)">
+            <Input
+              inputMode="numeric"
+              value={baseRate}
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^0-9]/g, '');
+                setBaseRate(v);
+                schedule({ base: v });
+              }}
+            />
+          </Labelled>
+          <Labelled label="Weekend rate (₦, optional)">
+            <Input
+              inputMode="numeric"
+              value={weekendRate}
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^0-9]/g, '');
+                setWeekendRate(v);
+                schedule({ weekend: v });
+              }}
+            />
+          </Labelled>
+          <Labelled label="Minimum stay (nights)">
+            <Input
+              inputMode="numeric"
+              value={minStay}
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^0-9]/g, '');
+                setMinStay(v);
+                schedule({ min: v });
+              }}
+            />
+          </Labelled>
+          <Labelled label="Turnaround window (days)">
+            <Input
+              inputMode="numeric"
+              value={turnaround}
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^0-9]/g, '');
+                setTurnaround(v);
+                schedule({ turn: v });
+              }}
+            />
+          </Labelled>
+        </div>
+        <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={instant}
             onChange={(e) => {
-              const v = e.target.value.replace(/[^0-9]/g, '');
-              setBaseRate(v);
-              schedule({ base: v });
+              setInstant(e.target.checked);
+              schedule({ instant: e.target.checked });
             }}
+            className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
           />
-        </Labelled>
-        <Labelled label="Weekend rate (₦, optional)">
-          <Input
-            inputMode="numeric"
-            value={weekendRate}
-            onChange={(e) => {
-              const v = e.target.value.replace(/[^0-9]/g, '');
-              setWeekendRate(v);
-              schedule({ weekend: v });
-            }}
-          />
-        </Labelled>
-        <Labelled label="Minimum stay (nights)">
-          <Input
-            inputMode="numeric"
-            value={minStay}
-            onChange={(e) => {
-              const v = e.target.value.replace(/[^0-9]/g, '');
-              setMinStay(v);
-              schedule({ min: v });
-            }}
-          />
-        </Labelled>
-        <Labelled label="Turnaround window (days)">
-          <Input
-            inputMode="numeric"
-            value={turnaround}
-            onChange={(e) => {
-              const v = e.target.value.replace(/[^0-9]/g, '');
-              setTurnaround(v);
-              schedule({ turn: v });
-            }}
-          />
-        </Labelled>
+          <span>Allow instant booking (no host approval per booking)</span>
+        </label>
       </div>
-      <label className="flex items-center gap-2 text-sm text-slate-700">
-        <input
-          type="checkbox"
-          checked={instant}
-          onChange={(e) => {
-            setInstant(e.target.checked);
-            schedule({ instant: e.target.checked });
-          }}
-          className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
-        />
-        Allow instant booking (no host approval per booking)
-      </label>
     </section>
   );
 }

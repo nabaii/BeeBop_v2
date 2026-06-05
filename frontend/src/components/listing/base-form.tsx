@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { FileText } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { type ListingView, updateDraft } from '@/lib/listings';
@@ -83,78 +84,88 @@ export function ListingBaseForm({ listing, onSaved }: Props) {
   const priceLabel = priceLabelFor(listing.category);
 
   return (
-    <section className="space-y-4">
-      <header className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-slate-900">Listing details</h2>
+    <section className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm transition-all duration-300 hover:shadow-md hover:border-brand/40 space-y-6">
+      <header className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-amber-50 p-2.5 text-brand shrink-0">
+            <FileText className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Listing details</h2>
+            <p className="text-xs text-slate-500">Provide basic description and pricing</p>
+          </div>
+        </div>
         <SaveIndicator status={status} />
       </header>
-      <Labelled label="Title">
-        <Input
-          value={draft.title}
-          maxLength={200}
-          onChange={(e) => updateField('title', e.target.value)}
-          placeholder="e.g. Spacious 2-bed flat in Wuse 2"
-        />
-      </Labelled>
-      <Labelled label="Subtitle (optional)">
-        <Input
-          value={draft.subtitle}
-          maxLength={300}
-          onChange={(e) => updateField('subtitle', e.target.value)}
-          placeholder="Quiet estate, 24/7 power"
-        />
-      </Labelled>
-      <Labelled label="Description" hint="Minimum 200 characters.">
-        <textarea
-          rows={6}
-          value={draft.description}
-          onChange={(e) => updateField('description', e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
-          placeholder="Describe the property — rooms, condition, neighbourhood, what the seeker should expect."
-        />
-        <div className="mt-1 text-xs text-slate-500">{draft.description.length} / 200+ characters</div>
-      </Labelled>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Labelled label="Address">
+      <div className="space-y-4">
+        <Labelled label="Title">
           <Input
-            value={draft.address_line}
-            onChange={(e) => updateField('address_line', e.target.value)}
-            placeholder="12 Gimbiya Street, Area 11"
+            value={draft.title}
+            maxLength={200}
+            onChange={(e) => updateField('title', e.target.value)}
+            placeholder="e.g. Spacious 2-bed flat in Wuse 2"
           />
         </Labelled>
-        <Labelled label="District / estate">
+        <Labelled label="Subtitle (optional)">
           <Input
-            value={draft.district}
-            onChange={(e) => updateField('district', e.target.value)}
-            placeholder="Wuse 2"
+            value={draft.subtitle}
+            maxLength={300}
+            onChange={(e) => updateField('subtitle', e.target.value)}
+            placeholder="Quiet estate, 24/7 power"
+          />
+        </Labelled>
+        <Labelled label="Description" hint="Minimum 200 characters.">
+          <textarea
+            rows={6}
+            value={draft.description}
+            onChange={(e) => updateField('description', e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none transition-colors"
+            placeholder="Describe the property — rooms, condition, neighbourhood, what the seeker should expect."
+          />
+          <div className="mt-1 text-xs text-slate-500">{draft.description.length} / 200+ characters</div>
+        </Labelled>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Labelled label="Address">
+            <Input
+              value={draft.address_line}
+              onChange={(e) => updateField('address_line', e.target.value)}
+              placeholder="12 Gimbiya Street, Area 11"
+            />
+          </Labelled>
+          <Labelled label="District / estate">
+            <Input
+              value={draft.district}
+              onChange={(e) => updateField('district', e.target.value)}
+              placeholder="Wuse 2"
+            />
+          </Labelled>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Labelled label="GPS latitude">
+            <Input
+              inputMode="decimal"
+              value={draft.gps_lat}
+              onChange={(e) => updateField('gps_lat', e.target.value.replace(/[^0-9.\-]/g, ''))}
+              placeholder="9.0765"
+            />
+          </Labelled>
+          <Labelled label="GPS longitude">
+            <Input
+              inputMode="decimal"
+              value={draft.gps_lng}
+              onChange={(e) => updateField('gps_lng', e.target.value.replace(/[^0-9.\-]/g, ''))}
+              placeholder="7.4985"
+            />
+          </Labelled>
+        </div>
+        <Labelled label={priceLabel} hint="Naira.">
+          <Input
+            inputMode="numeric"
+            value={draft.price}
+            onChange={(e) => updateField('price', e.target.value.replace(/[^0-9]/g, ''))}
           />
         </Labelled>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Labelled label="GPS latitude">
-          <Input
-            inputMode="decimal"
-            value={draft.gps_lat}
-            onChange={(e) => updateField('gps_lat', e.target.value.replace(/[^0-9.\-]/g, ''))}
-            placeholder="9.0765"
-          />
-        </Labelled>
-        <Labelled label="GPS longitude">
-          <Input
-            inputMode="decimal"
-            value={draft.gps_lng}
-            onChange={(e) => updateField('gps_lng', e.target.value.replace(/[^0-9.\-]/g, ''))}
-            placeholder="7.4985"
-          />
-        </Labelled>
-      </div>
-      <Labelled label={priceLabel} hint="Naira.">
-        <Input
-          inputMode="numeric"
-          value={draft.price}
-          onChange={(e) => updateField('price', e.target.value.replace(/[^0-9]/g, ''))}
-        />
-      </Labelled>
     </section>
   );
 }
