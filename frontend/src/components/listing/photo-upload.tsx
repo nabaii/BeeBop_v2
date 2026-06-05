@@ -11,11 +11,8 @@
  *   • Delete
  */
 
-import Image from 'next/image';
 import { useState } from 'react';
 import { Image as ImageIcon, Trash2, Star, Upload, Plus } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
 import {
   deletePhoto,
   getPhotoUploadSignature,

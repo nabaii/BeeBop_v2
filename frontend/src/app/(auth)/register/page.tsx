@@ -30,7 +30,7 @@ export default function RegisterPage() {
 
   async function handleAuthenticated({
     user,
-    isNewUser,
+    isNewUser: _isNewUser,
   }: {
     user: SessionUser;
     isNewUser: boolean;

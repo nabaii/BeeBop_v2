@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { LayoutGrid, Plus, Trash2, Home, Sparkles } from 'lucide-react';
+import { LayoutGrid, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

@@ -12,7 +12,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { use, useEffect, useState } from 'react';
-import type { Route } from 'next';
 import {
   FileText,
   Home,
@@ -131,7 +130,7 @@ function EditingShell({ id }: { id: string }) {
   const isAmenitiesComplete = Boolean(
     listing.amenities && 
     Object.values(listing.amenities).some(
-      (group) => group && Object.values(group).some((meta: any) => meta?.present)
+      (group) => group && Object.values(group).some((meta) => meta?.present)
     )
   );
 
