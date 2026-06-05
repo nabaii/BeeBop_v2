@@ -8,6 +8,7 @@
  * dispatches by role.
  */
 
+import type { Route } from 'next';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -47,16 +48,25 @@ export default function LoginPage() {
   const [devError, setDevError] = useState<string | null>(null);
 
   function handleAuthenticated({ user }: { user: SessionUser; isNewUser: boolean }) {
-    if (!user.onboardingComplete) {
-      router.replace('/onboarding');
+    const params = new URLSearchParams(window.location.search);
+    const returnTo = params.get('return_to');
+    if (returnTo) {
+      router.replace(returnTo as Route);
       return;
     }
+
     const destination = roleHome(user);
     if (destination.startsWith('http')) {
       window.location.assign(destination);
       return;
     }
-    router.replace(destination);
+
+    if (user.role === 'admin' || user.role === 'trusted_agent') {
+      router.replace(destination);
+      return;
+    }
+
+    router.replace('/');
   }
 
   async function handleDevLogin(role: DevRole) {
