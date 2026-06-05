@@ -42,17 +42,38 @@ export function PhotoUpload({ listing, onSaved }: Props) {
     setUploading(true);
     setError(null);
     try {
-      const sig = await getPhotoUploadSignature(listing.id);
+      let sig: Awaited<ReturnType<typeof getPhotoUploadSignature>>;
+      try {
+        sig = await getPhotoUploadSignature(listing.id);
+      } catch (err) {
+        console.error('[PhotoUpload] signature request failed', err);
+        setError('Could not get upload signature. The server may be unavailable.');
+        return;
+      }
+
       const next = [...photos];
       for (const file of Array.from(files)) {
-        const result = await uploadPhotoToCloudinary(sig, file);
-        const photo = await registerPhoto(listing.id, { url: result.secure_url });
-        next.push(photo);
+        let result: { secure_url: string };
+        try {
+          result = await uploadPhotoToCloudinary(sig, file);
+        } catch (err) {
+          console.error('[PhotoUpload] Cloudinary upload failed', err);
+          const detail = err instanceof Error ? err.message : 'unknown error';
+          setError(`Photo upload to storage failed: ${detail}`);
+          return;
+        }
+
+        try {
+          const photo = await registerPhoto(listing.id, { url: result.secure_url });
+          next.push(photo);
+        } catch (err) {
+          console.error('[PhotoUpload] photo registration failed', err);
+          setError('Photo was uploaded but could not be saved. Please try again.');
+          return;
+        }
       }
       setPhotos(next);
       onSaved({ photos: next });
-    } catch {
-      setError('Upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
