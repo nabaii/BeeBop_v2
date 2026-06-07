@@ -8,6 +8,7 @@ updates remain loose.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import select
@@ -16,8 +17,10 @@ from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
+from app.core.security import verify_password
 from app.listings.schemas import (
     AMENITY_GROUPS,
+    ListingDeletePayload,
     ListingDraftPayload,
     ListingView,
     OffCampusTypeData,
@@ -129,6 +132,8 @@ async def get_listing_for_owner(
 ) -> ListingView:
     listing = await _load(db, listing_id)
     _ensure_owner(user, listing)
+    if listing.deleted_at is not None:
+        raise NotFoundError("Listing not found.", code="listing_not_found")
     return _view(listing)
 
 
@@ -137,12 +142,41 @@ async def list_my_listings(
 ) -> list[ListingView]:
     stmt = (
         select(Listing)
-        .where(Listing.owner_id == user.id)
+        .where(Listing.owner_id == user.id, Listing.deleted_at.is_(None))
         .options(selectinload(Listing.photos), selectinload(Listing.documents))
         .order_by(Listing.created_at.desc())
     )
     rows = (await db.execute(stmt)).scalars().all()
     return [_view(r) for r in rows]
+
+
+async def delete_listing(
+    *,
+    user: User,
+    listing_id: uuid.UUID,
+    payload: ListingDeletePayload,
+    db: AsyncSession,
+) -> None:
+    listing = await _load(db, listing_id)
+    _ensure_owner(user, listing)
+    if listing.deleted_at is not None:
+        raise NotFoundError("Listing not found.", code="listing_not_found")
+
+    if listing.status != ListingStatus.DRAFT:
+        if not payload.password:
+            raise ValidationError(
+                "Password verification required to delete published listing.",
+                code="password_required",
+            )
+        if not verify_password(payload.password, user.password_hash):
+            raise ForbiddenError(
+                "Incorrect password.",
+                code="incorrect_password",
+            )
+
+    listing.status = ListingStatus.DELISTED
+    listing.deleted_at = datetime.now(timezone.utc)
+
 
 
 async def update_draft(

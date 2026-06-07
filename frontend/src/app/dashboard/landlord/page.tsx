@@ -19,6 +19,7 @@ import {
   Search,
   ChevronRight,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 
 import { LandlordAccessGate } from '@/components/landlord-access-gate';
@@ -31,7 +32,7 @@ import {
   dashboards,
   type LandlordOverview,
 } from '@/lib/dashboards';
-import { listMyListings, type ListingView } from '@/lib/listings';
+import { listMyListings, deleteListing, type ListingView } from '@/lib/listings';
 
 // Pre-seeded high fidelity mock data for Demo Mode
 const MOCK_OVERVIEW: LandlordOverview = {
@@ -189,6 +190,15 @@ function LandlordDashboardContent() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
+  // Deletion modal state
+  const [listingToDelete, setListingToDelete] = useState<ListingView | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Demo Mode listing state to support interactive deletion
+  const [demoListings, setDemoListings] = useState<ListingView[]>(MOCK_LISTINGS);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -222,8 +232,44 @@ function LandlordDashboardContent() {
 
   // Compute listings array
   const listings = useMemo(() => {
-    return demoMode ? MOCK_LISTINGS : dbListings;
-  }, [demoMode, dbListings]);
+    return demoMode ? demoListings : dbListings;
+  }, [demoMode, demoListings, dbListings]);
+
+  const handleDeleteConfirm = async () => {
+    if (!listingToDelete) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      if (demoMode) {
+        if (listingToDelete.status !== 'draft') {
+          if (!deletePassword) {
+            setDeleteError('Password is required.');
+            setIsDeleting(false);
+            return;
+          }
+        }
+        setDemoListings((prev) => prev.filter((l) => l.id !== listingToDelete.id));
+        setListingToDelete(null);
+        setDeletePassword('');
+      } else {
+        await deleteListing(
+          listingToDelete.id,
+          listingToDelete.status === 'draft' ? undefined : deletePassword,
+        );
+        setDbListings((prev) => (prev ? prev.filter((l) => l.id !== listingToDelete.id) : null));
+        const updatedOverview = await dashboards.landlord();
+        setDbOverview(updatedOverview);
+        setListingToDelete(null);
+        setDeletePassword('');
+      }
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'An error occurred during deletion.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
 
   // Filtered stats list for the analytics breakdown table
   const filteredStats = useMemo(() => {
@@ -958,12 +1004,26 @@ function LandlordDashboardContent() {
                       {l.category === 'short_let' && <span className="text-[10px] font-normal text-slate-500"> / night</span>}
                       {l.category === 'rent' && <span className="text-[10px] font-normal text-slate-500"> / year</span>}
                     </span>
-                    <Link
-                      href={`/listings/edit/${l.id}`}
-                      className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-brand uppercase"
-                    >
-                      {l.status === 'draft' ? 'Draft' : 'Manage'} <ChevronRight className="h-3 w-3" />
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href={`/listings/edit/${l.id}`}
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-brand uppercase"
+                      >
+                        {l.status === 'draft' ? 'Draft' : 'Manage'} <ChevronRight className="h-3 w-3" />
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setListingToDelete(l);
+                          setDeletePassword('');
+                          setDeleteError(null);
+                        }}
+                        className="text-slate-400 hover:text-red-600 transition-colors duration-150 p-1"
+                        title="Delete listing"
+                        aria-label={`Delete listing ${l.title}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -988,6 +1048,78 @@ function LandlordDashboardContent() {
           comingIn="Sprint 10"
         />
       </div>
+
+      {listingToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl transition-all p-6 space-y-4">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="rounded-full bg-red-50 p-2">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">
+                {listingToDelete.status === 'draft' ? 'Discard Draft' : 'Delete Listing'}
+              </h3>
+            </div>
+
+            <div className="space-y-2 text-sm text-slate-600">
+              <p>
+                Are you sure you want to delete <strong className="text-slate-900">{listingToDelete.title || 'this listing'}</strong>?
+                This action is permanent and cannot be undone.
+              </p>
+              {listingToDelete.status !== 'draft' && (
+                <div className="space-y-1 pt-2">
+                  <label htmlFor="delete-confirm-password" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    id="delete-confirm-password"
+                    placeholder="Enter your account password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                    autoFocus
+                  />
+                </div>
+              )}
+            </div>
+
+            {deleteError && (
+              <p className="rounded-lg bg-red-50 p-3 text-xs font-medium text-red-600 border border-red-100">
+                {deleteError}
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setListingToDelete(null);
+                  setDeletePassword('');
+                  setDeleteError(null);
+                }}
+                disabled={isDeleting}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting || (listingToDelete.status !== 'draft' && !deletePassword)}
+                className="rounded-xl bg-red-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Permanently'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

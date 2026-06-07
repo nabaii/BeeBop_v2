@@ -99,6 +99,10 @@ export async function submitListing(id: string): Promise<ListingView> {
   return api.post(`/listings/${id}/submit`, undefined, { auth: true });
 }
 
+export async function deleteListing(id: string, password?: string): Promise<void> {
+  return api.delete(`/listings/${id}`, { body: { password }, auth: true });
+}
+
 // --- Amenities vocabulary -----------------------------------------------
 
 export async function getAmenityVocabulary(): Promise<Record<string, string[]>> {

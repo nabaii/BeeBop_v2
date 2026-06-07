@@ -139,8 +139,8 @@ export const api = {
     void opts;
     return apiFetch<T>(path, { method: 'PATCH', body });
   },
-  delete<T>(path: string, opts?: { auth?: boolean }): Promise<T> {
+  delete<T>(path: string, opts?: { body?: unknown; auth?: boolean }): Promise<T> {
     void opts;
-    return apiFetch<T>(path, { method: 'DELETE' });
+    return apiFetch<T>(path, { method: 'DELETE', body: opts?.body });
   },
 };

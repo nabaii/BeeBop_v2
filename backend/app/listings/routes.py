@@ -20,6 +20,7 @@ from app.listings.schemas import (
     DocumentUploadSignaturePayload,
     DocumentUploadSignatureResponse,
     ListingCreatePayload,
+    ListingDeletePayload,
     ListingDraftPayload,
     ListingView,
     PhotoRegisterPayload,
@@ -105,6 +106,18 @@ async def submit(
     view = await service.submit_listing(user=user, listing_id=listing_id, db=db)
     await db.commit()
     return view
+
+
+@router.delete("/{listing_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_listing(
+    listing_id: uuid.UUID,
+    payload: ListingDeletePayload,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await service.delete_listing(user=user, listing_id=listing_id, payload=payload, db=db)
+    await db.commit()
+
 
 
 # -----------------------------------------------------------------------------

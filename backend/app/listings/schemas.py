@@ -262,3 +262,8 @@ class OffCampusTypeData(BaseModel):
     # Payment structure is per-unit-type — captured on the UnitType record,
     # not here. This block is reserved for future shared off-campus metadata
     # (e.g. "self_contain_available": bool, "rules": list[str]).
+
+
+class ListingDeletePayload(BaseModel):
+    password: str | None = None
+

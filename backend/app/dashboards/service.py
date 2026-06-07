@@ -74,7 +74,7 @@ async def landlord_overview(*, user: User, db: AsyncSession) -> LandlordOverview
 
     stmt = (
         select(Listing.status, func.count())
-        .where(Listing.owner_id == user.id)
+        .where(Listing.owner_id == user.id, Listing.deleted_at.is_(None))
         .group_by(Listing.status)
     )
     rows = (await db.execute(stmt)).all()
@@ -84,7 +84,7 @@ async def landlord_overview(*, user: User, db: AsyncSession) -> LandlordOverview
     # 2. Fetch all listings for this landlord with their photo records
     listings_stmt = (
         select(Listing)
-        .where(Listing.owner_id == user.id)
+        .where(Listing.owner_id == user.id, Listing.deleted_at.is_(None))
         .options(selectinload(Listing.photos))
     )
     listings = (await db.execute(listings_stmt)).scalars().all()
@@ -239,7 +239,11 @@ async def landlord_overview(*, user: User, db: AsyncSession) -> LandlordOverview
 async def landlord_analytics(*, user: User, db: AsyncSession) -> list[ListingAnalytics]:
     if user.role not in (UserRole.LANDLORD, UserRole.AGENT):
         raise ForbiddenError("Landlord analytics is for landlords/agents.")
-    stmt = select(Listing).where(Listing.owner_id == user.id).order_by(Listing.created_at.desc())
+    stmt = (
+        select(Listing)
+        .where(Listing.owner_id == user.id, Listing.deleted_at.is_(None))
+        .order_by(Listing.created_at.desc())
+    )
     listings = (await db.execute(stmt)).scalars().all()
     return [
         ListingAnalytics(
