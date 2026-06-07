@@ -61,6 +61,13 @@ export function ListingBaseForm({ listing, onSaved }: Props) {
     timer.current = setTimeout(() => void flush(), DEBOUNCE_MS);
   }
 
+  function updateCoordinates(lat: string, lng: string) {
+    setDraft((d) => ({ ...d, gps_lat: lat, gps_lng: lng }));
+    setStatus('saving');
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => void flush(), DEBOUNCE_MS);
+  }
+
   async function flush() {
     try {
       const d = latest.current;
@@ -140,24 +147,11 @@ export function ListingBaseForm({ listing, onSaved }: Props) {
             />
           </Labelled>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Labelled label="GPS latitude">
-            <Input
-              inputMode="decimal"
-              value={draft.gps_lat}
-              onChange={(e) => updateField('gps_lat', e.target.value.replace(/[^0-9.\-]/g, ''))}
-              placeholder="9.0765"
-            />
-          </Labelled>
-          <Labelled label="GPS longitude">
-            <Input
-              inputMode="decimal"
-              value={draft.gps_lng}
-              onChange={(e) => updateField('gps_lng', e.target.value.replace(/[^0-9.\-]/g, ''))}
-              placeholder="7.4985"
-            />
-          </Labelled>
-        </div>
+        <LocationPicker
+          gpsLat={draft.gps_lat}
+          gpsLng={draft.gps_lng}
+          onChange={updateCoordinates}
+        />
         <Labelled label={priceLabel} hint="Naira.">
           <Input
             inputMode="numeric"
@@ -215,4 +209,151 @@ function priceLabelFor(category: ListingView['category']): string {
     case 'off_campus':
       return 'Base price (per unit)';
   }
+}
+
+interface LocationPickerProps {
+  gpsLat: string;
+  gpsLng: string;
+  onChange: (lat: string, lng: string) => void;
+}
+
+function LocationPicker({ gpsLat, gpsLng, onChange }: LocationPickerProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [mapsLoaded, setMapsLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+
+  const latNum = gpsLat ? Number(gpsLat) : NaN;
+  const lngNum = gpsLng ? Number(gpsLng) : NaN;
+  const hasValidCoords = !isNaN(latNum) && !isNaN(lngNum);
+
+  const defaultCenter = { lat: 9.0765, lng: 7.4985 }; // Abuja
+  const activeCenter = hasValidCoords ? { lat: latNum, lng: lngNum } : defaultCenter;
+
+  useEffect(() => {
+    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!key) {
+      setLoadFailed(true);
+      return;
+    }
+
+    let cancelled = false;
+    import('@googlemaps/js-api-loader')
+      .then(({ Loader }) => {
+        if (cancelled) return;
+        const loader = new Loader({ apiKey: key, version: 'weekly' });
+        return loader.importLibrary('maps');
+      })
+      .then(() => {
+        if (!cancelled) setMapsLoaded(true);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadFailed(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!mapsLoaded || !containerRef.current) return;
+    const google = (window as any).google;
+    if (!google || !google.maps) return;
+
+    const map = new google.maps.Map(containerRef.current, {
+      center: activeCenter,
+      zoom: hasValidCoords ? 15 : 12,
+      disableDefaultUI: false,
+      zoomControl: true,
+    });
+    mapRef.current = map;
+
+    const marker = new google.maps.Marker({
+      position: activeCenter,
+      map: map,
+      draggable: true,
+      title: 'Drag me to property location',
+    });
+    markerRef.current = marker;
+
+    marker.addListener('dragend', () => {
+      const pos = marker.getPosition();
+      if (pos) {
+        onChange(pos.lat().toFixed(6), pos.lng().toFixed(6));
+      }
+    });
+
+    map.addListener('click', (e: any) => {
+      const latLng = e.latLng;
+      if (latLng) {
+        marker.setPosition(latLng);
+        onChange(latLng.lat().toFixed(6), latLng.lng().toFixed(6));
+      }
+    });
+  }, [mapsLoaded]);
+
+  useEffect(() => {
+    if (!mapsLoaded || !mapRef.current || !markerRef.current) return;
+    if (hasValidCoords) {
+      const target = { lat: latNum, lng: lngNum };
+      markerRef.current.setPosition(target);
+      const currentCenter = mapRef.current.getCenter();
+      if (currentCenter) {
+        const diffLat = Math.abs(currentCenter.lat() - latNum);
+        const diffLng = Math.abs(currentCenter.lng() - lngNum);
+        if (diffLat > 0.005 || diffLng > 0.005) {
+          mapRef.current.panTo(target);
+        }
+      }
+    }
+  }, [gpsLat, gpsLng, mapsLoaded]);
+
+  if (loadFailed) {
+    return (
+      <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+        <div className="text-xs text-slate-500">
+          <p className="font-semibold text-slate-700 mb-1">Interactive map picker unavailable</p>
+          To enable the visual location picker, set <code className="rounded bg-slate-100 px-1 py-0.5 text-[11px] font-mono">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code>. You can enter the GPS coordinates manually:
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-slate-600">GPS latitude</span>
+            <Input
+              inputMode="decimal"
+              value={gpsLat}
+              onChange={(e) => onChange(e.target.value.replace(/[^0-9.\-]/g, ''), gpsLng)}
+              placeholder="9.0765"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-slate-600">GPS longitude</span>
+            <Input
+              inputMode="decimal"
+              value={gpsLng}
+              onChange={(e) => onChange(gpsLat, e.target.value.replace(/[^0-9.\-]/g, ''))}
+              placeholder="7.4985"
+            />
+          </label>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <span className="block text-sm font-medium text-slate-700">Property location</span>
+      <p className="text-xs text-slate-500">Drag the pin or click on the map to pinpoint the property location.</p>
+      <div
+        ref={containerRef}
+        className="h-[250px] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-inner"
+      />
+      {hasValidCoords && (
+        <div className="text-right text-[11px] text-slate-400">
+          Coordinates: {latNum.toFixed(6)}, {lngNum.toFixed(6)}
+        </div>
+      )}
+    </div>
+  );
 }
