@@ -226,7 +226,7 @@ export function ChatSearchPanel() {
                   canOpenBrowse={Boolean(entry.response.parameters?.listing_category)}
                 />
               )}
-              {entry.response.used_fallback && (
+              {entry.response.used_fallback && process.env.NODE_ENV === 'development' && (
                 <p className="ml-12 text-[11px] font-medium text-amber-700">
                   Dev fallback mode
                 </p>

@@ -141,7 +141,7 @@ RESPONSE_SCHEMA: dict[str, Any] = {
             "properties": {
                 "listing_category": {
                     "type": ["string", "null"],
-                    "enum": ["off_campus", "short_let", "rent", "sales", None],
+                    "enum": ["off_campus", "short_let", "rent", "sales"],
                 },
                 "raw_query": {"type": "string"},
                 "locations": {"type": "array", "items": {"type": "string"}},
@@ -159,7 +159,7 @@ RESPONSE_SCHEMA: dict[str, Any] = {
                 "duration_years": {"type": ["integer", "null"]},
                 "urgency": {
                     "type": ["string", "null"],
-                    "enum": ["immediate", "soon", "flexible", None],
+                    "enum": ["immediate", "soon", "flexible"],
                 },
             },
         },
@@ -185,7 +185,6 @@ RESPONSE_SCHEMA: dict[str, Any] = {
                                 "book",
                                 "schedule_visit",
                                 "bookmark",
-                                None,
                             ],
                         },
                     },

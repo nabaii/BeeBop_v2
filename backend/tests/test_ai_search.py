@@ -278,3 +278,30 @@ async def test_clear_session_removes_saved_state(fake_redis, monkeypatch: pytest
     assert state.parameters is None
     assert state.last_result_listing_ids == []
     assert state.turns == []
+
+
+@pytest.mark.asyncio
+async def test_run_chat_query_handles_llm_client_initialization_error(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.exceptions import ExternalServiceError
+
+    def fake_get_llm_client() -> Any:
+        raise ExternalServiceError("LLM unconfigured", code="openai_unconfigured")
+
+    monkeypatch.setattr(service, "get_llm_client", fake_get_llm_client)
+
+    async def fake_execute_search(*, parameters: ExtractedParameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+        del parameters, db
+        return []
+
+    monkeypatch.setattr(service, "_execute_search", fake_execute_search)
+
+    response = await service.run_chat_query(
+        payload=ChatRequestPayload(query="rent near Baze"),
+        db=cast("object", object()),  # type: ignore[arg-type]
+        redis=cast("object", fake_redis),  # type: ignore[arg-type]
+        llm=None,
+    )
+
+    assert response.used_fallback is True
+    assert response.parameters is not None
+    assert response.parameters.listing_category == ListingCategory.OFF_CAMPUS

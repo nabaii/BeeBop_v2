@@ -8,6 +8,7 @@ and browse pages stay aligned.
 
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from collections.abc import Callable
@@ -16,6 +17,8 @@ from datetime import UTC, datetime
 
 from pydantic import ValidationError as PydanticValidationError
 from redis.asyncio import Redis
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -34,6 +37,7 @@ from app.ai_search.schemas import (
 )
 from app.ai_search.session_store import SessionStore, new_session_id
 from app.ai_search.vocabulary import ABUJA_LOCATIONS, LANDMARKS, normalise_location
+from app.core.exceptions import ExternalServiceError
 from app.integrations.openai_client import (
     LLMClient,
     StubLLMClient,
@@ -122,10 +126,17 @@ async def run_chat_query(
     session_id = payload.session_id or new_session_id()
     state = await store.load(session_id)
 
+    llm_client: LLMClient
+    try:
+        llm_client = llm or get_llm_client()
+    except ExternalServiceError as exc:
+        logger.warning("Failed to initialize LLM client: %s. Falling back to StubLLMClient.", exc)
+        llm_client = StubLLMClient()
+
     interpreted, used_fallback = await _interpret_query(
         query=payload.query,
         state=state,
-        llm=llm or get_llm_client(),
+        llm=llm_client,
     )
 
     handled = await _handle_intent(
@@ -207,7 +218,11 @@ async def _interpret_query(
         except Exception as exc:
             last_error = exc
 
-    del last_error
+    logger.warning(
+        "OpenAI structured completion failed after 3 attempts. Falling back to heuristic interpreter. Last error: %s",
+        last_error,
+        exc_info=True,
+    )
     return _heuristic_interpretation(query=query, previous=state.parameters), True
 
 
