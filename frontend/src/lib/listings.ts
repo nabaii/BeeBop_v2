@@ -167,7 +167,18 @@ export async function uploadPhotoToCloudinary(
     `https://api.cloudinary.com/v1_1/${signature.cloud_name}/image/upload`,
     { method: 'POST', body: form },
   );
-  if (!res.ok) throw new Error('Cloudinary upload failed');
+  if (!res.ok) {
+    // Read the Cloudinary error body so callers can surface the real reason
+    // (e.g. "Invalid Signature", "Unknown cloud_name").
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = (await res.json()) as { error?: { message?: string } };
+      if (body?.error?.message) detail = body.error.message;
+    } catch {
+      /* body wasn't JSON — keep the status code */
+    }
+    throw new Error(`Cloudinary upload rejected: ${detail}`);
+  }
   return res.json() as Promise<{ secure_url: string }>;
 }
 

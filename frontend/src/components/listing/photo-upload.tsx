@@ -11,10 +11,8 @@
  *   • Delete
  */
 
-import Image from 'next/image';
 import { useState } from 'react';
-
-import { Button } from '@/components/ui/button';
+import { Image as ImageIcon, Trash2, Star, Upload, Plus } from 'lucide-react';
 import {
   deletePhoto,
   getPhotoUploadSignature,
@@ -42,17 +40,38 @@ export function PhotoUpload({ listing, onSaved }: Props) {
     setUploading(true);
     setError(null);
     try {
-      const sig = await getPhotoUploadSignature(listing.id);
+      let sig: Awaited<ReturnType<typeof getPhotoUploadSignature>>;
+      try {
+        sig = await getPhotoUploadSignature(listing.id);
+      } catch (err) {
+        console.error('[PhotoUpload] signature request failed', err);
+        setError('Could not get upload signature. The server may be unavailable.');
+        return;
+      }
+
       const next = [...photos];
       for (const file of Array.from(files)) {
-        const result = await uploadPhotoToCloudinary(sig, file);
-        const photo = await registerPhoto(listing.id, { url: result.secure_url });
-        next.push(photo);
+        let result: { secure_url: string };
+        try {
+          result = await uploadPhotoToCloudinary(sig, file);
+        } catch (err) {
+          console.error('[PhotoUpload] Cloudinary upload failed', err);
+          const detail = err instanceof Error ? err.message : 'unknown error';
+          setError(`Photo upload to storage failed: ${detail}`);
+          return;
+        }
+
+        try {
+          const photo = await registerPhoto(listing.id, { url: result.secure_url });
+          next.push(photo);
+        } catch (err) {
+          console.error('[PhotoUpload] photo registration failed', err);
+          setError('Photo was uploaded but could not be saved. Please try again.');
+          return;
+        }
       }
       setPhotos(next);
       onSaved({ photos: next });
-    } catch {
-      setError('Upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -83,20 +102,30 @@ export function PhotoUpload({ listing, onSaved }: Props) {
   }
 
   return (
-    <section className="space-y-3">
-      <header className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Photos</h2>
-          <p className="text-xs text-slate-500">
-            Drag to reorder. First photo is the cover by default.
-          </p>
+    <section className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm transition-all duration-300 hover:shadow-md hover:border-brand/40 space-y-6">
+      <header className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-amber-50 p-2.5 text-brand shrink-0">
+            <ImageIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Photos</h2>
+            <p className="text-xs text-slate-500">
+              Drag to reorder. First photo is the cover.
+            </p>
+          </div>
         </div>
         <label
           className={
-            'inline-flex cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 ' +
+            'inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-2.5 px-4 shadow-sm transition-colors ' +
             (uploading ? 'pointer-events-none opacity-60' : '')
           }
         >
+          {uploading ? (
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          ) : (
+            <Plus className="h-3.5 w-3.5" />
+          )}
           {uploading ? 'Uploading…' : 'Add photos'}
           <input
             type="file"
@@ -107,8 +136,8 @@ export function PhotoUpload({ listing, onSaved }: Props) {
           />
         </label>
       </header>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {photos.map((p, index) => (
           <li
             key={p.id}
@@ -123,53 +152,59 @@ export function PhotoUpload({ listing, onSaved }: Props) {
               setDragIndex(null);
               void commitReorder(next);
             }}
-            className="group relative overflow-hidden rounded-lg border border-slate-200 bg-white"
+            className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white hover:border-brand/40 shadow-sm transition-all cursor-move"
           >
             <div className="relative aspect-square">
-              {/* Using a native img tag — source URLs are user-provided and
-                  can point to Cloudinary or the dev-stub blob URL. Next/image
-                  remotePatterns is configured for Cloudinary only. */}
               <img src={p.url} alt={p.room_label ?? 'Listing photo'} className="h-full w-full object-cover" />
-              {p.is_cover && (
-                <span className="absolute left-2 top-2 rounded bg-brand px-2 py-0.5 text-xs font-medium text-white">
-                  Cover
+              {p.is_cover ? (
+                <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                  <Star className="h-3 w-3 fill-current" /> Cover
                 </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void setCover(p.id)}
+                  className="absolute left-2.5 top-2.5 opacity-0 group-hover:opacity-100 flex items-center gap-1 rounded-full bg-slate-900/80 backdrop-blur-sm px-2 py-0.5 text-[10px] font-bold text-slate-200 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                >
+                  <Star className="h-3 w-3" /> Make Cover
+                </button>
               )}
+              <button
+                type="button"
+                onClick={() => void removePhoto(p.id)}
+                className="absolute right-2.5 top-2.5 opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-full bg-red-600/80 backdrop-blur-sm text-white hover:bg-red-600 transition-all shadow-sm"
+                aria-label="Remove photo"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
             </div>
-            <div className="space-y-2 p-2">
+            <div className="p-2.5 border-t border-slate-100">
               <input
                 type="text"
                 defaultValue={p.room_label ?? ''}
                 onBlur={(e) => void setLabel(p.id, e.target.value.trim())}
-                placeholder="Room label (e.g. Living Room)"
-                className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                placeholder="Label (e.g. Living Room)"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all"
               />
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                {!p.is_cover && (
-                  <button
-                    type="button"
-                    onClick={() => void setCover(p.id)}
-                    className="hover:text-brand"
-                  >
-                    Make cover
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => void removePhoto(p.id)}
-                  className="hover:text-red-600"
-                >
-                  Remove
-                </button>
-              </div>
             </div>
           </li>
         ))}
       </ul>
       {photos.length === 0 && (
-        <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm text-slate-500">
-          No photos yet. Add at least one before submitting.
-        </p>
+        <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 bg-slate-50/50 hover:bg-slate-50 rounded-2xl p-10 cursor-pointer text-center group transition-colors">
+          <div className="rounded-xl bg-amber-50 p-3 text-brand group-hover:scale-110 transition-transform">
+            <Upload className="h-6 w-6" />
+          </div>
+          <span className="mt-3 text-sm font-bold text-slate-800">Add property photos</span>
+          <span className="mt-1 text-xs text-slate-500 max-w-xs">Drag files here or click to browse. Add at least one photo.</span>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(e) => void onFiles(e.target.files)}
+          />
+        </label>
       )}
     </section>
   );

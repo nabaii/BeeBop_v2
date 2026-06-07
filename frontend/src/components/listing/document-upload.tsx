@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react';
+import { FileCheck, FileText, Upload, Trash2, Plus } from 'lucide-react';
 
 import {
   deleteDocument,
@@ -82,20 +83,27 @@ export function DocumentUpload({ listing, onSaved }: Props) {
   }
 
   return (
-    <section className="space-y-3">
-      <header>
-        <h2 className="text-base font-semibold text-slate-900">Title documents (optional)</h2>
-        <p className="text-xs text-slate-500">
-          Add documents now if you want them ready for later verification. Max 25MB per file.
-        </p>
+    <section className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm transition-all duration-300 hover:shadow-md hover:border-brand/40 space-y-6">
+      <header className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-indigo-50 p-2.5 text-indigo-600 shrink-0">
+            <FileCheck className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Title documents (optional)</h2>
+            <p className="text-xs text-slate-500">
+              Add documents to verify ownership. Max 25MB per file.
+            </p>
+          </div>
+        </div>
       </header>
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="text-sm">
-          <span className="mr-2 text-slate-700">Document type</span>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-slate-50/50 rounded-xl p-4 border border-slate-100">
+        <label className="flex flex-col gap-1 text-xs font-semibold text-slate-500 flex-1">
+          <span>DOCUMENT TYPE</span>
           <select
             value={docType}
             onChange={(e) => setDocType(e.target.value as typeof docType)}
-            className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 cursor-pointer w-full sm:max-w-xs"
           >
             {DOC_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
@@ -106,11 +114,16 @@ export function DocumentUpload({ listing, onSaved }: Props) {
         </label>
         <label
           className={
-            'inline-flex cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 ' +
+            'inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-2.5 px-4 shadow-sm transition-colors self-end sm:self-auto ' +
             (uploading ? 'pointer-events-none opacity-60' : '')
           }
         >
-          {uploading ? 'Uploading…' : 'Upload'}
+          {uploading ? (
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          ) : (
+            <Plus className="h-3.5 w-3.5" />
+          )}
+          {uploading ? 'Uploading…' : 'Upload File'}
           <input
             type="file"
             multiple
@@ -120,31 +133,39 @@ export function DocumentUpload({ listing, onSaved }: Props) {
           />
         </label>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
       {docs.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-          No documents uploaded yet. You can still submit the listing.
-        </p>
+        <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 bg-slate-50/20 rounded-xl p-6 text-center text-slate-400">
+          <Upload className="h-5 w-5 mb-2" />
+          <span className="text-xs font-semibold">No documents uploaded yet.</span>
+          <span className="text-[10px]">You can still submit and verify later.</span>
+        </div>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {docs.map((d) => (
             <li
               key={d.id}
-              className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm hover:border-brand/40 transition-colors"
             >
-              <div>
-                <div className="font-medium text-slate-900">{d.filename}</div>
-                <div className="text-xs text-slate-500">
-                  {humanLabelFor(d.doc_type)} · {d.content_type}
-                  {d.size_bytes ? ` · ${Math.ceil(d.size_bytes / 1024)} KB` : ''}
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-slate-50 p-2 text-slate-400">
+                  <FileText className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 truncate max-w-[200px] sm:max-w-md">{d.filename}</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">
+                    {humanLabelFor(d.doc_type)} · {d.content_type.split('/')[1]?.toUpperCase()}
+                    {d.size_bytes ? ` · ${Math.ceil(d.size_bytes / 1024)} KB` : ''}
+                  </div>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => void removeDoc(d.id)}
-                className="text-xs text-slate-500 hover:text-red-600"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-100 hover:bg-red-50/50 transition-colors"
+                aria-label="Remove document"
               >
-                Remove
+                <Trash2 className="h-4 w-4" />
               </button>
             </li>
           ))}

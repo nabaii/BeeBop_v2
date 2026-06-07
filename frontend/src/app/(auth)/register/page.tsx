@@ -6,6 +6,7 @@
  * always have `onboardingComplete: false`.
  */
 
+import type { Route } from 'next';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -29,7 +30,7 @@ export default function RegisterPage() {
 
   async function handleAuthenticated({
     user,
-    isNewUser,
+    isNewUser: _isNewUser,
   }: {
     user: SessionUser;
     isNewUser: boolean;
@@ -37,22 +38,23 @@ export default function RegisterPage() {
     setConversionError(null);
     if (role === 'landlord' && user.role === 'seeker') {
       try {
-        const updated = await becomeLandlord();
-        router.replace(updated.onboarding_complete ? '/dashboard/landlord' : '/onboarding/landlord');
+        await becomeLandlord();
       } catch (err) {
         setConversionError(
           err instanceof ApiError ? err.message : 'Could not switch this account. Try again.',
         );
+        return;
       }
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const returnTo = params.get('return_to');
+    if (returnTo) {
+      router.replace(returnTo as Route);
       return;
     }
-    if (!isNewUser && user.onboardingComplete) {
-      if (user.role === 'seeker') router.replace('/dashboard/seeker');
-      else if (user.role === 'landlord' || user.role === 'agent') router.replace('/dashboard/landlord');
-      else router.replace('/');
-      return;
-    }
-    router.replace('/onboarding');
+
+    router.replace('/');
   }
 
   return (
