@@ -229,6 +229,20 @@ _REQUIRED_CORE_FIELDS = (
 
 _MIN_DESCRIPTION_CHARS = 200
 
+# Human-readable labels for the missing-field codes returned by
+# `_validate_ready_for_submission`, surfaced in the submission error message.
+_FIELD_LABELS: dict[str, str] = {
+    "title": "a title",
+    "description": "a description",
+    "description_too_short": f"a longer description (at least {_MIN_DESCRIPTION_CHARS} characters)",
+    "address_line": "a street address",
+    "gps_lat": "the map latitude",
+    "gps_lng": "the map longitude",
+    "price": "a price",
+    "photos": "at least one photo",
+    "documents": "a title document",
+}
+
 
 def _validate_type_data(listing: Listing) -> None:
     try:
@@ -299,8 +313,9 @@ async def submit_listing(
 
     missing = _validate_ready_for_submission(listing)
     if missing:
+        readable = ", ".join(_FIELD_LABELS.get(code, code) for code in missing)
         raise ValidationError(
-            f"Missing required fields: {', '.join(missing)}",
+            f"Please add the following before submitting: {readable}.",
             code="listing_not_ready",
         )
 

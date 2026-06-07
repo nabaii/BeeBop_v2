@@ -109,12 +109,18 @@ function EditingShell({ id }: { id: string }) {
   const patch = (partial: Partial<ListingView>) =>
     setListing((prev) => (prev ? { ...prev, ...partial } : prev));
 
-  // Determine section completeness for checklist
+  // Determine section completeness for checklist. These conditions must mirror
+  // the backend's `_validate_ready_for_submission` (listings/service.py) — a
+  // green checkmark here must mean submission will pass, otherwise the user
+  // hits an opaque 422 with every section showing "Done".
   const isBaseComplete = Boolean(
-    listing.title && 
-    listing.description && 
-    listing.address_line && 
-    listing.district && 
+    listing.title &&
+    listing.description &&
+    listing.description.length >= 200 &&
+    listing.address_line &&
+    listing.district &&
+    listing.gps_lat != null &&
+    listing.gps_lng != null &&
     listing.price
   );
   

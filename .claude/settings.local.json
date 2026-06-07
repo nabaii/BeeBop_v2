@@ -49,7 +49,13 @@
       "Bash(python -c \"import importlib.util; spec = importlib.util.spec_from_file_location\\('m', 'alembic/versions/1a3f9c2b5e7d_add_nin_document_fields.py'\\); m = importlib.util.module_from_spec\\(spec\\); spec.loader.exec_module\\(m\\); print\\('migration imports OK, revision:', m.revision, 'down_revision:', m.down_revision\\)\")",
       "Bash(python -c \"import importlib.util; spec = importlib.util.spec_from_file_location\\('m', 'alembic/versions/1a3f9c2b5e7d_add_nin_document_fields.py'\\); m = importlib.util.module_from_spec\\(spec\\); spec.loader.exec_module\\(m\\); print\\('migration OK, revision:', m.revision, 'down:', m.down_revision\\)\")",
       "Bash(cd /c/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2/frontend/src && find . -name \"layout.tsx\" -path \"*/dashboard/*\" -o -name \"layout.tsx\" -path \"*/app/*\" | head -5)",
-      "Read(//c/c/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2/frontend/**)"
+      "Read(//c/c/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2/frontend/**)",
+      "Bash(node -e ' *)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('app/listings/service.py'\\).read\\(\\)\\); print\\('service.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('../frontend/src/lib/api.ts'\\).read\\(\\)\\) if False else print\\('skip'\\)\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\({deps:p.dependencies,dev:p.devDependencies},null,2\\)\\)\")",
+      "Bash(npx eslint *)",
+      "Bash(npx next *)"
     ]
   }
 }

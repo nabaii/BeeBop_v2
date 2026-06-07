@@ -22,21 +22,44 @@ function apiUrl(path: string): string {
 }
 
 export class ApiError extends Error {
+  status: number;
+  body: { error?: { code?: string; message?: string } } | unknown;
+
   constructor(
-    public status: number,
-    public body: { error?: { code?: string; message?: string } } | unknown,
+    status: number,
+    body: { error?: { code?: string; message?: string } } | unknown,
   ) {
-    super(`API error ${status}`);
+    // Derive the message in the constructor and pass it to `super`. A `message`
+    // getter would NOT work here: Error's constructor sets an own `message`
+    // property on the instance, and an own data property always shadows a
+    // prototype accessor — so the getter would be dead code and callers would
+    // only ever see "API error <status>".
+    super(ApiError.extractMessage(status, body));
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+
+  /** Pull the human-readable reason from our domain-error shape
+   * (`{error:{message}}`) or FastAPI's request-validation shape (`{detail}`),
+   * falling back to the bare status. */
+  private static extractMessage(status: number, body: unknown): string {
+    const b = body as {
+      error?: { message?: string };
+      detail?: string | { msg?: string }[];
+    };
+    if (b?.error?.message) return b.error.message;
+    if (typeof b?.detail === 'string') return b.detail;
+    if (Array.isArray(b?.detail)) {
+      const msgs = b.detail.map((d) => d?.msg).filter(Boolean);
+      if (msgs.length) return msgs.join('; ');
+    }
+    return `API error ${status}`;
   }
 
   get code(): string | undefined {
     const body = this.body as { error?: { code?: string } };
     return body?.error?.code;
-  }
-
-  get message(): string {
-    const body = this.body as { error?: { message?: string } };
-    return body?.error?.message ?? super.message;
   }
 }
 
