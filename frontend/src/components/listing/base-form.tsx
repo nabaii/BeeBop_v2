@@ -221,7 +221,9 @@ function LocationPicker({ gpsLat, gpsLng, onChange }: LocationPickerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [mapsLoaded, setMapsLoaded] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markerRef = useRef<any>(null);
 
   const latNum = gpsLat ? Number(gpsLat) : NaN;
@@ -259,6 +261,7 @@ function LocationPicker({ gpsLat, gpsLng, onChange }: LocationPickerProps) {
 
   useEffect(() => {
     if (!mapsLoaded || !containerRef.current) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const google = (window as any).google;
     if (!google || !google.maps) return;
 
@@ -285,6 +288,7 @@ function LocationPicker({ gpsLat, gpsLng, onChange }: LocationPickerProps) {
       }
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     map.addListener('click', (e: any) => {
       const latLng = e.latLng;
       if (latLng) {
@@ -292,6 +296,7 @@ function LocationPicker({ gpsLat, gpsLng, onChange }: LocationPickerProps) {
         onChange(latLng.lat().toFixed(6), latLng.lng().toFixed(6));
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapsLoaded]);
 
   useEffect(() => {
@@ -308,6 +313,7 @@ function LocationPicker({ gpsLat, gpsLng, onChange }: LocationPickerProps) {
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gpsLat, gpsLng, mapsLoaded]);
 
   if (loadFailed) {
