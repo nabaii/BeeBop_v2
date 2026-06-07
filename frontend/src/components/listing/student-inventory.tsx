@@ -10,6 +10,7 @@ import { LayoutGrid, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ApiError } from '@/lib/api';
 import {
   addRoom,
   addUnitType,
@@ -32,12 +33,24 @@ export function StudentInventory({ listingId }: Props) {
   const [kind, setKind] = useState<UnitTypeView['kind']>('single_room');
   const [bedsPerRoom, setBedsPerRoom] = useState('1');
   const [totalUnits, setTotalUnits] = useState('1');
+  const [price, setPrice] = useState('');
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listingId]);
+
+  // Make beds responsive to selected kind
+  useEffect(() => {
+    if (kind === 'single_room' || kind === 'self_contain') {
+      setBedsPerRoom('1');
+    } else if (kind === 'two_in_a_room') {
+      setBedsPerRoom('2');
+    } else if (kind === 'three_in_a_room') {
+      setBedsPerRoom('3');
+    }
+  }, [kind]);
 
   async function refresh() {
     setLoading(true);
@@ -58,13 +71,20 @@ export function StudentInventory({ listingId }: Props) {
         kind,
         beds_per_room: Number(bedsPerRoom),
         total_units: Number(totalUnits),
+        price: Number(price),
       });
       setName('');
+      setPrice('');
+      setKind('single_room');
       setBedsPerRoom('1');
       setTotalUnits('1');
       await refresh();
-    } catch {
-      setError('Could not add unit type.');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message || 'Could not add unit type.');
+      } else {
+        setError('Could not add unit type.');
+      }
     } finally {
       setAdding(false);
     }
@@ -111,20 +131,37 @@ export function StudentInventory({ listingId }: Props) {
             <option value="self_contain">Self-contain</option>
             <option value="custom">Custom</option>
           </select>
-          <Input
-            inputMode="numeric"
-            placeholder="Beds per room"
-            value={bedsPerRoom}
-            onChange={(e) => setBedsPerRoom(e.target.value.replace(/[^0-9]/g, ''))}
-            required
-          />
-          <Input
-            inputMode="numeric"
-            placeholder="Total units"
-            value={totalUnits}
-            onChange={(e) => setTotalUnits(e.target.value.replace(/[^0-9]/g, ''))}
-            required
-          />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-slate-500 ml-1">Beds per room</label>
+            <Input
+              inputMode="numeric"
+              placeholder="Beds per room"
+              value={bedsPerRoom}
+              disabled={kind !== 'custom'}
+              onChange={(e) => setBedsPerRoom(e.target.value.replace(/[^0-9]/g, ''))}
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-slate-500 ml-1">Total units</label>
+            <Input
+              inputMode="numeric"
+              placeholder="Total units"
+              value={totalUnits}
+              onChange={(e) => setTotalUnits(e.target.value.replace(/[^0-9]/g, ''))}
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
+            <label className="text-xs font-medium text-slate-500 ml-1">Price (₦)</label>
+            <Input
+              inputMode="numeric"
+              placeholder="Price (per unit in Naira)"
+              value={price}
+              onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ''))}
+              required
+            />
+          </div>
         </div>
         {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
         <Button type="submit" disabled={adding || !name.trim()} className="w-full sm:w-auto">
@@ -195,16 +232,19 @@ function UnitTypeCard({
   return (
     <li className="rounded-xl border border-slate-200 bg-slate-50/30 p-4 sm:p-5 hover:border-brand/40 transition-colors">
       <header className="flex items-start justify-between border-b border-slate-100 pb-3">
-        <div>
-          <div className="text-sm font-bold text-slate-900">{unit.name}</div>
-          <div className="text-xs text-slate-500 mt-0.5 capitalize">
+        <div className="flex-1 min-w-0 pr-4">
+          <div className="text-sm font-bold text-slate-900 flex justify-between items-center w-full">
+            <span className="truncate">{unit.name}</span>
+            <span className="text-brand font-bold shrink-0 ml-2">₦{unit.price.toLocaleString()}</span>
+          </div>
+          <div className="text-xs text-slate-500 mt-1 capitalize">
             {unit.kind.replaceAll('_', ' ')} · {unit.beds_per_room} bed(s)/room · {unit.total_units} units
           </div>
         </div>
         <button
           type="button"
           onClick={() => void onDelete(unit.id)}
-          className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-red-600 transition-colors"
+          className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-red-600 transition-colors shrink-0"
         >
           <Trash2 className="h-3.5 w-3.5" /> Delete
         </button>

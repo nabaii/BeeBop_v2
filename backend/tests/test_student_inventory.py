@@ -79,7 +79,7 @@ async def _seed_listing(
     ut = await student_inventory.add_unit_type(
         user=owner,
         listing_id=listing.id,
-        payload=UnitTypePayload(name="2-in-a-room", kind=kind, beds_per_room=2, total_units=4),
+        payload=UnitTypePayload(name="2-in-a-room", kind=kind, beds_per_room=2, total_units=4, price=50000.0),
         db=db,
     )
     return owner, listing, ut.id

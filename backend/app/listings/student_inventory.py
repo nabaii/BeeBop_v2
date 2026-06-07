@@ -70,6 +70,7 @@ async def add_unit_type(
         kind=payload.kind,
         beds_per_room=payload.beds_per_room,
         total_units=payload.total_units,
+        price=payload.price,
     )
     db.add(ut)
     await db.flush()

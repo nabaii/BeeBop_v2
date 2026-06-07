@@ -308,6 +308,7 @@ def _unit_view(ut) -> UnitTypeView:  # type: ignore[no-untyped-def]
         kind=ut.kind,
         beds_per_room=ut.beds_per_room,
         total_units=ut.total_units,
+        price=float(ut.price),
         rooms=[
             {
                 "id": str(r.id),

@@ -7,7 +7,7 @@ a check constraint: once a bed is occupied the room's gender tag is locked.
 
 import uuid
 
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, Integer, String
+from sqlalchemy import CheckConstraint, Enum, ForeignKey, Integer, String, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,6 +26,7 @@ class UnitType(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     kind: Mapped[UnitKind] = mapped_column(Enum(UnitKind, name="unit_kind", values_callable=lambda x: [e.value for e in x]), nullable=False)
     beds_per_room: Mapped[int] = mapped_column(Integer, nullable=False)
     total_units: Mapped[int] = mapped_column(Integer, nullable=False)
+    price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, server_default="0.0")
 
     rooms: Mapped[list["Room"]] = relationship(
         back_populates="unit_type", cascade="all, delete-orphan"

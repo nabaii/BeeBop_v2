@@ -97,6 +97,7 @@ class UnitTypeView(BaseModel):
     kind: UnitKind
     beds_per_room: int
     total_units: int
+    price: float
     rooms: list[RoomView] = Field(default_factory=list)
 
 
@@ -200,6 +201,7 @@ class UnitTypePayload(BaseModel):
     kind: UnitKind
     beds_per_room: int = Field(..., ge=1, le=8)
     total_units: int = Field(..., ge=1, le=500)
+    price: float = Field(..., ge=0)
 
 
 class RoomPayload(BaseModel):

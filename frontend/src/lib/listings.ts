@@ -48,6 +48,7 @@ export interface UnitTypeView {
   kind: 'single_room' | 'two_in_a_room' | 'three_in_a_room' | 'self_contain' | 'custom';
   beds_per_room: number;
   total_units: number;
+  price: number;
   rooms: RoomView[];
 }
 
@@ -236,7 +237,7 @@ export async function listUnitTypes(listingId: string): Promise<UnitTypeView[]> 
 
 export async function addUnitType(
   listingId: string,
-  args: { name: string; kind: UnitTypeView['kind']; beds_per_room: number; total_units: number },
+  args: { name: string; kind: UnitTypeView['kind']; beds_per_room: number; total_units: number; price: number },
 ): Promise<UnitTypeView> {
   return api.post(`/listings/${listingId}/unit-types`, args, { auth: true });
 }
