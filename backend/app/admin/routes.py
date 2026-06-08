@@ -21,6 +21,7 @@ from app.admin.schemas import (
     DocumentPresignedView,
     NinReviewQueue,
     NinReviewRejectPayload,
+    SeekerInsights,
     SuspendPayload,
 )
 from app.core.dependencies import require_role
@@ -45,6 +46,12 @@ router = APIRouter(
 @router.get("/doc-review", response_model=DocReviewQueue)
 async def doc_review_queue(db: AsyncSession = Depends(get_db)) -> DocReviewQueue:
     return await service.doc_review_queue(db=db)
+
+
+@router.get("/seeker-insights", response_model=SeekerInsights)
+async def seeker_insights(db: AsyncSession = Depends(get_db)) -> SeekerInsights:
+    """Aggregate self-reported seeker demographics from optional onboarding."""
+    return await service.seeker_insights(db=db)
 
 
 @router.post("/doc-review/{listing_id}/approve")

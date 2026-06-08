@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -27,10 +27,12 @@ from app.admin.schemas import (
     AdminListingInspectionSummary,
     AdminListingRow,
     AdminListingsResponse,
+    CountBucket,
     DocReviewQueue,
     DocReviewQueueRow,
     NinReviewQueue,
     NinReviewQueueRow,
+    SeekerInsights,
 )
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.listings.service import _validate_ready_for_submission, _validate_type_data
@@ -731,3 +733,81 @@ async def document_view_url(
         raise NotFoundError("Document not found.", code="document_not_found")
     storage = get_storage()
     return storage.presigned_get(key=doc.s3_key, expiry_seconds=DEFAULT_GET_EXPIRY), doc
+
+
+# ---------------------------------------------------------------------------
+# Seeker insights — aggregate the optional onboarding profile for analytics
+# ---------------------------------------------------------------------------
+
+# Canonical age-band ordering so the chart reads youngest → oldest regardless
+# of how the database returns the grouped rows.
+_AGE_BAND_ORDER = {b: i for i, b in enumerate(["18-24", "25-34", "35-44", "45-54", "55+"])}
+
+
+async def seeker_insights(*, db: AsyncSession) -> SeekerInsights:
+    """Aggregate self-reported seeker demographics. Read-only; seekers only."""
+    seeker = UserRole.SEEKER
+
+    total = await db.scalar(
+        select(func.count()).select_from(User).where(User.role == seeker)
+    )
+
+    optional_fields = (
+        User.age_band,
+        User.occupation,
+        User.budget_min,
+        User.budget_max,
+        User.preferred_area,
+    )
+    profile_provided = await db.scalar(
+        select(func.count())
+        .select_from(User)
+        .where(User.role == seeker, or_(*[f.isnot(None) for f in optional_fields]))
+    )
+
+    async def _buckets(column, *, limit: int | None = None) -> list[CountBucket]:  # type: ignore[no-untyped-def]
+        stmt = (
+            select(column, func.count())
+            .where(User.role == seeker, column.isnot(None))
+            .group_by(column)
+            .order_by(func.count().desc())
+        )
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        rows = (await db.execute(stmt)).all()
+        return [CountBucket(label=str(label), count=count) for label, count in rows]
+
+    age_bands = await _buckets(User.age_band)
+    age_bands.sort(key=lambda b: _AGE_BAND_ORDER.get(b.label, 99))
+    occupations = await _buckets(User.occupation)
+    preferred_areas = await _buckets(User.preferred_area, limit=10)
+
+    budget_responses = await db.scalar(
+        select(func.count())
+        .select_from(User)
+        .where(
+            User.role == seeker,
+            or_(User.budget_min.isnot(None), User.budget_max.isnot(None)),
+        )
+    )
+    avg_min = await db.scalar(
+        select(func.avg(User.budget_min)).where(
+            User.role == seeker, User.budget_min.isnot(None)
+        )
+    )
+    avg_max = await db.scalar(
+        select(func.avg(User.budget_max)).where(
+            User.role == seeker, User.budget_max.isnot(None)
+        )
+    )
+
+    return SeekerInsights(
+        total_seekers=total or 0,
+        profile_provided=profile_provided or 0,
+        age_bands=age_bands,
+        occupations=occupations,
+        preferred_areas=preferred_areas,
+        budget_responses=budget_responses or 0,
+        avg_budget_min=int(avg_min) if avg_min is not None else None,
+        avg_budget_max=int(avg_max) if avg_max is not None else None,
+    )

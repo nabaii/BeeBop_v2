@@ -41,6 +41,13 @@ class UserView(BaseModel):
     academic_level: str | None = None
     gender: Gender | None = None
 
+    # Optional self-reported seeker profile.
+    age_band: str | None = None
+    occupation: str | None = None
+    budget_min: int | None = None
+    budget_max: int | None = None
+    preferred_area: str | None = None
+
     onboarding_complete: bool
 
 
@@ -65,6 +72,37 @@ class StudentExtrasPayload(BaseModel):
     institution: str = Field(..., min_length=1, max_length=255)
     academic_level: Literal["100", "200", "300", "400", "500", "Postgrad"]
     gender: Literal[Gender.FEMALE, Gender.MALE]
+
+
+class SeekerExtrasPayload(BaseModel):
+    """Optional seeker profile — age band, occupation, budget, preferred area.
+
+    Every field is optional; the onboarding step is skippable and these never
+    gate onboarding completion. Only provided fields are written (a None for a
+    field means "leave unchanged"), so the step can be saved partially.
+    """
+
+    age_band: Literal["18-24", "25-34", "35-44", "45-54", "55+"] | None = None
+    occupation: str | None = Field(default=None, max_length=100)
+    budget_min: int | None = Field(default=None, ge=0)
+    budget_max: int | None = Field(default=None, ge=0)
+    preferred_area: str | None = Field(default=None, max_length=255)
+
+    @field_validator("occupation", "preferred_area")
+    @classmethod
+    def _blank_to_none(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
+
+    @field_validator("budget_max")
+    @classmethod
+    def _max_not_below_min(cls, v: int | None, info) -> int | None:  # type: ignore[no-untyped-def]
+        lo = info.data.get("budget_min")
+        if v is not None and lo is not None and v < lo:
+            raise ValueError("Maximum budget cannot be less than the minimum.")
+        return v
 
 
 class LandlordAccountTypePayload(BaseModel):

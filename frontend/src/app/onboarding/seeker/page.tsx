@@ -17,14 +17,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/lib/api';
 import {
+  type AgeBand,
   type ListingCategory,
   saveIdentity,
   saveSeekerCategories,
+  saveSeekerExtras,
   saveStudentExtras,
 } from '@/lib/users';
 import { useSession } from '@/stores/session';
 
-type Step = 'identity' | 'categories' | 'student' | 'done';
+type Step = 'identity' | 'categories' | 'student' | 'extras' | 'done';
 
 const CATEGORIES: { value: ListingCategory; label: string; caption: string }[] = [
   { value: 'off_campus', label: 'Off-campus', caption: 'Student accommodation' },
@@ -34,6 +36,10 @@ const CATEGORIES: { value: ListingCategory; label: string; caption: string }[] =
 ];
 
 const LEVELS = ['100', '200', '300', '400', '500', 'Postgrad'] as const;
+
+const AGE_BANDS: AgeBand[] = ['18-24', '25-34', '35-44', '45-54', '55+'];
+
+const OCCUPATIONS = ['Student', 'Employed', 'Self-employed', 'Business owner', 'Other'] as const;
 
 export default function SeekerOnboardingPage() {
   const router = useRouter();
@@ -46,6 +52,13 @@ export default function SeekerOnboardingPage() {
   const [institution, setInstitution] = useState('');
   const [level, setLevel] = useState<(typeof LEVELS)[number]>('100');
   const [gender, setGender] = useState<'female' | 'male'>('female');
+  // Optional profile (extras step)
+  const [ageBand, setAgeBand] = useState<AgeBand | null>(null);
+  const [occupation, setOccupation] = useState<(typeof OCCUPATIONS)[number] | null>(null);
+  const [occupationOther, setOccupationOther] = useState('');
+  const [budgetMin, setBudgetMin] = useState('');
+  const [budgetMax, setBudgetMax] = useState('');
+  const [preferredArea, setPreferredArea] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -67,12 +80,9 @@ export default function SeekerOnboardingPage() {
     setBusy(true);
     try {
       await saveSeekerCategories(selected);
-      if (selected.includes('off_campus')) {
-        setStep('student');
-      } else {
-        setStep('done');
-        router.replace('/dashboard/seeker');
-      }
+      // Off-campus seekers fill required student details first; everyone then
+      // lands on the optional extras step before the dashboard.
+      setStep(selected.includes('off_campus') ? 'student' : 'extras');
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -89,12 +99,41 @@ export default function SeekerOnboardingPage() {
         academic_level: level,
         gender,
       });
+      setStep('extras');
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveExtras() {
+    setError(null);
+    if (budgetMin && budgetMax && Number(budgetMax) < Number(budgetMin)) {
+      setError('Maximum budget cannot be less than the minimum.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const occ =
+        occupation === 'Other' ? occupationOther.trim() || null : occupation ?? null;
+      await saveSeekerExtras({
+        age_band: ageBand,
+        occupation: occ,
+        budget_min: budgetMin ? Number(budgetMin) : null,
+        budget_max: budgetMax ? Number(budgetMax) : null,
+        preferred_area: preferredArea.trim() || null,
+      });
       router.replace('/dashboard/seeker');
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
+  }
+
+  function skipExtras() {
+    router.replace('/dashboard/seeker');
   }
 
   function toggleCategory(c: ListingCategory) {
@@ -215,6 +254,96 @@ export default function SeekerOnboardingPage() {
     );
   }
 
+  if (step === 'extras') {
+    return (
+      <Form
+        title="Help us tailor your search"
+        subtitle="Optional — this helps us show you better matches. You can skip and add it later."
+        onSubmit={saveExtras}
+        busy={busy}
+        error={error}
+        cta="Continue"
+        disabled={false}
+        onSkip={skipExtras}
+      >
+        <Labelled label="Age range">
+          <div className="flex flex-wrap gap-2">
+            {AGE_BANDS.map((b) => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setAgeBand((prev) => (prev === b ? null : b))}
+                className={
+                  'rounded-lg border px-3 py-2 text-sm transition-colors ' +
+                  (ageBand === b
+                    ? 'border-brand bg-brand/5 text-brand'
+                    : 'border-slate-300 text-slate-600 hover:bg-slate-50')
+                }
+              >
+                {b}
+              </button>
+            ))}
+          </div>
+        </Labelled>
+
+        <Labelled label="Occupation">
+          <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3">
+            {OCCUPATIONS.map((o) => (
+              <button
+                key={o}
+                type="button"
+                onClick={() => setOccupation((prev) => (prev === o ? null : o))}
+                className={
+                  'rounded-lg border px-3 py-2 text-sm transition-colors ' +
+                  (occupation === o
+                    ? 'border-brand bg-brand/5 text-brand'
+                    : 'border-slate-300 text-slate-600 hover:bg-slate-50')
+                }
+              >
+                {o}
+              </button>
+            ))}
+          </div>
+          {occupation === 'Other' && (
+            <Input
+              className="mt-2"
+              value={occupationOther}
+              onChange={(e) => setOccupationOther(e.target.value)}
+              placeholder="Tell us your occupation"
+              maxLength={100}
+            />
+          )}
+        </Labelled>
+
+        <Labelled label="Budget range (₦, optional)">
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              inputMode="numeric"
+              value={budgetMin}
+              onChange={(e) => setBudgetMin(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="Min"
+            />
+            <Input
+              inputMode="numeric"
+              value={budgetMax}
+              onChange={(e) => setBudgetMax(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="Max"
+            />
+          </div>
+        </Labelled>
+
+        <Labelled label="Preferred area / district">
+          <Input
+            value={preferredArea}
+            onChange={(e) => setPreferredArea(e.target.value)}
+            placeholder="e.g. Wuse 2, Gwarinpa"
+            maxLength={255}
+          />
+        </Labelled>
+      </Form>
+    );
+  }
+
   return <p className="text-sm text-slate-500">Redirecting…</p>;
 }
 
@@ -226,6 +355,7 @@ function Form({
   error,
   cta,
   disabled,
+  onSkip,
   children,
 }: {
   title: string;
@@ -235,6 +365,7 @@ function Form({
   error: string | null;
   cta: string;
   disabled: boolean;
+  onSkip?: () => void;
   children: React.ReactNode;
 }) {
   return (
@@ -254,6 +385,16 @@ function Form({
       <Button type="submit" className="w-full" disabled={busy || disabled}>
         {busy ? 'Saving…' : cta}
       </Button>
+      {onSkip && (
+        <button
+          type="button"
+          onClick={onSkip}
+          disabled={busy}
+          className="w-full text-center text-sm font-medium text-slate-500 hover:text-slate-700 disabled:opacity-50"
+        >
+          Skip for now
+        </button>
+      )}
     </form>
   );
 }

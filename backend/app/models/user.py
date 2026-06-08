@@ -7,7 +7,7 @@ are internal staff accounts created only by admins (no self-registration).
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Enum, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -60,6 +60,16 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     institution: Mapped[str | None] = mapped_column(String(255))      # student seekers
     academic_level: Mapped[str | None] = mapped_column(String(64))
     gender: Mapped[Gender | None] = mapped_column(Enum(Gender, name="gender", values_callable=lambda x: [e.value for e in x]))
+
+    # Optional self-reported seeker profile (collected in onboarding, skippable).
+    # Kept distinct from `date_of_birth` (the NIMC-verified value) — this is an
+    # analytics/segmentation hint, never a verified fact. All nullable so a
+    # seeker can skip the step entirely.
+    age_band: Mapped[str | None] = mapped_column(String(16))
+    occupation: Mapped[str | None] = mapped_column(String(100))
+    budget_min: Mapped[int | None] = mapped_column(Integer)
+    budget_max: Mapped[int | None] = mapped_column(Integer)
+    preferred_area: Mapped[str | None] = mapped_column(String(255))
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_suspended: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

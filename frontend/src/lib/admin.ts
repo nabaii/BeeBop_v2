@@ -183,6 +183,22 @@ export interface NinReviewQueue {
   total: number;
 }
 
+export interface CountBucket {
+  label: string;
+  count: number;
+}
+
+export interface SeekerInsights {
+  total_seekers: number;
+  profile_provided: number;
+  age_bands: CountBucket[];
+  occupations: CountBucket[];
+  preferred_areas: CountBucket[];
+  budget_responses: number;
+  avg_budget_min: number | null;
+  avg_budget_max: number | null;
+}
+
 export const admin = {
   docReviewQueue: () => api.get<DocReviewQueue>('/internal/admin/doc-review', { auth: true }),
   approve: (listingId: string, note?: string) =>
@@ -262,6 +278,8 @@ export const admin = {
     api.post(`/internal/admin/listings/${listingId}/restore`, undefined, { auth: true }),
   softDelete: (listingId: string) =>
     api.delete(`/internal/admin/listings/${listingId}`, { auth: true }),
+  seekerInsights: () =>
+    api.get<SeekerInsights>('/internal/admin/seeker-insights', { auth: true }),
   ninReviewQueue: () =>
     api.get<NinReviewQueue>('/internal/admin/nin-review', { auth: true }),
   approveNin: (userId: string) =>

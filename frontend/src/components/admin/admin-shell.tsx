@@ -6,6 +6,7 @@
  */
 
 import {
+  BarChart3,
   Building2,
   ClipboardCheck,
   FileCheck2,
@@ -40,7 +41,8 @@ type AdminRoute =
   | '/internal/admin/visits'
   | '/internal/admin/visit-reports'
   | '/internal/admin/agents'
-  | '/internal/admin/listings';
+  | '/internal/admin/listings'
+  | '/internal/admin/seekers';
 
 type WebsiteRoute =
   | '/'
@@ -65,6 +67,7 @@ const ADMIN_SECTIONS: readonly NavItem<AdminRoute>[] = [
   { href: '/internal/admin/visit-reports', label: 'Visit reports', icon: ShieldCheck },
   { href: '/internal/admin/agents', label: 'Trusted agents', icon: UserRoundCheck },
   { href: '/internal/admin/listings', label: 'All listings', icon: Building2 },
+  { href: '/internal/admin/seekers', label: 'Seeker insights', icon: BarChart3 },
 ] as const;
 
 const WEBSITE_LINKS: readonly NavItem<WebsiteRoute>[] = [

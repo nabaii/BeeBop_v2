@@ -57,6 +57,11 @@ def _user(**overrides: object) -> SimpleNamespace:
         "institution": None,
         "academic_level": None,
         "gender": None,
+        "age_band": None,
+        "occupation": None,
+        "budget_min": None,
+        "budget_max": None,
+        "preferred_area": None,
     }
     base.update(overrides)
     return SimpleNamespace(**base)

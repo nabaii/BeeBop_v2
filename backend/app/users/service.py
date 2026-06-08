@@ -27,6 +27,7 @@ from app.users.schemas import (
     NinVerifyResponse,
     ProfilePayload,
     SeekerCategoryPayload,
+    SeekerExtrasPayload,
     StudentExtrasPayload,
     UserView,
 )
@@ -65,6 +66,11 @@ def _view(user: User) -> UserView:
         institution=user.institution,
         academic_level=user.academic_level,
         gender=user.gender,
+        age_band=user.age_band,
+        occupation=user.occupation,
+        budget_min=user.budget_min,
+        budget_max=user.budget_max,
+        preferred_area=user.preferred_area,
         onboarding_complete=onboarded,
     )
 
@@ -120,6 +126,24 @@ async def set_student_extras(
     user.institution = payload.institution.strip()
     user.academic_level = payload.academic_level
     user.gender = Gender(payload.gender)
+    await db.flush()
+    return _view(user)
+
+
+async def set_seeker_extras(
+    *, user: User, payload: SeekerExtrasPayload, db: AsyncSession
+) -> UserView:
+    """Persist the optional self-reported seeker profile. Seekers only.
+
+    Only fields explicitly sent are updated (model_dump excludes unset), so a
+    partial save leaves the rest untouched. None of these gate onboarding.
+    """
+    if user.role != UserRole.SEEKER:
+        raise ForbiddenError("Only seekers may set these preferences.")
+    data = payload.model_dump(exclude_unset=True)
+    for field in ("age_band", "occupation", "budget_min", "budget_max", "preferred_area"):
+        if field in data:
+            setattr(user, field, data[field])
     await db.flush()
     return _view(user)
 

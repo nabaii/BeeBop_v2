@@ -23,6 +23,7 @@ from app.users.schemas import (
     NinVerifyResponse,
     ProfilePayload,
     SeekerCategoryPayload,
+    SeekerExtrasPayload,
     StudentExtrasPayload,
     UserView,
 )
@@ -64,6 +65,17 @@ async def set_student_extras(
     db: AsyncSession = Depends(get_db),
 ) -> UserView:
     view = await service.set_student_extras(user=user, payload=payload, db=db)
+    await db.commit()
+    return view
+
+
+@router.patch("/me/seeker-extras", response_model=UserView)
+async def set_seeker_extras(
+    payload: SeekerExtrasPayload,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserView:
+    view = await service.set_seeker_extras(user=user, payload=payload, db=db)
     await db.commit()
     return view
 

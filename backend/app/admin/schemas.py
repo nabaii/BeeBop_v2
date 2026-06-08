@@ -227,3 +227,26 @@ class InspectionReviewDetail(BaseModel):
     assessment: dict
     evidence: list[InspectionEvidenceView]
     area_score: AreaScoreView | None = None
+
+
+# ---------------------------------------------------------------------------
+# Seeker insights — aggregate demographics from optional onboarding profile
+# ---------------------------------------------------------------------------
+
+
+class CountBucket(BaseModel):
+    """A labelled tally for a single facet value (e.g. one age band)."""
+
+    label: str
+    count: int
+
+
+class SeekerInsights(BaseModel):
+    total_seekers: int
+    profile_provided: int          # seekers who filled at least one optional field
+    age_bands: list[CountBucket]
+    occupations: list[CountBucket]
+    preferred_areas: list[CountBucket]   # top 10 by frequency
+    budget_responses: int          # seekers who set a min and/or max budget
+    avg_budget_min: int | None = None
+    avg_budget_max: int | None = None

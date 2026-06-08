@@ -31,7 +31,22 @@ export interface UserView {
   institution?: string | null;
   academic_level?: string | null;
   gender?: 'female' | 'male' | 'any' | null;
+  age_band?: string | null;
+  occupation?: string | null;
+  budget_min?: number | null;
+  budget_max?: number | null;
+  preferred_area?: string | null;
   onboarding_complete: boolean;
+}
+
+export type AgeBand = '18-24' | '25-34' | '35-44' | '45-54' | '55+';
+
+export interface SeekerExtras {
+  age_band?: AgeBand | null;
+  occupation?: string | null;
+  budget_min?: number | null;
+  budget_max?: number | null;
+  preferred_area?: string | null;
 }
 
 function applyToSession(u: UserView): SessionUser {
@@ -76,6 +91,12 @@ export async function saveStudentExtras(args: {
   gender: 'female' | 'male';
 }): Promise<UserView> {
   const u = await api.patch<UserView>('/users/me/student-extras', args, { auth: true });
+  applyToSession(u);
+  return u;
+}
+
+export async function saveSeekerExtras(args: SeekerExtras): Promise<UserView> {
+  const u = await api.patch<UserView>('/users/me/seeker-extras', args, { auth: true });
   applyToSession(u);
   return u;
 }
