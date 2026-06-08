@@ -73,6 +73,10 @@ export function LocationPicker({ lat, lng, onChange }: Props) {
   const [phase, setPhase] = useState<'loading' | 'ready' | 'fallback'>(
     MAPS_KEY ? 'loading' : 'fallback',
   );
+  // Why we're showing the manual fallback — drives the explanatory note.
+  const [fallbackReason, setFallbackReason] = useState<'no_key' | 'auth' | null>(
+    MAPS_KEY ? null : 'no_key',
+  );
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     lat != null && lng != null ? { lat, lng } : null,
   );
@@ -82,6 +86,17 @@ export function LocationPicker({ lat, lng, onChange }: Props) {
   useEffect(() => {
     if (!MAPS_KEY) return;
     let cancelled = false;
+
+    // Google calls this global when the key is rejected at request time
+    // (bad key, referrer not allowed, API not enabled, billing off). The
+    // loader promise still resolves in that case, so this is the only signal
+    // we get — without it the user is stuck on Google's grey error overlay.
+    const w = window as Window & { gm_authFailure?: () => void };
+    w.gm_authFailure = () => {
+      if (cancelled) return;
+      setFallbackReason('auth');
+      setPhase('fallback');
+    };
 
     import('@googlemaps/js-api-loader')
       .then(({ Loader }) => {
@@ -124,6 +139,7 @@ export function LocationPicker({ lat, lng, onChange }: Props) {
 
     return () => {
       cancelled = true;
+      if (w.gm_authFailure) delete w.gm_authFailure;
     };
     // Initial coordinates are read once on mount by design; later updates flow
     // through the marker, not a re-init.
@@ -172,7 +188,7 @@ export function LocationPicker({ lat, lng, onChange }: Props) {
   }
 
   if (phase === 'fallback') {
-    return <ManualFallback lat={lat} lng={lng} onChange={onChange} />;
+    return <ManualFallback lat={lat} lng={lng} onChange={onChange} reason={fallbackReason} />;
   }
 
   return (
@@ -218,8 +234,14 @@ export function LocationPicker({ lat, lng, onChange }: Props) {
   );
 }
 
-/** Manual numeric entry — used when no Maps key is configured. */
-function ManualFallback({ lat, lng, onChange }: Props) {
+/** Manual numeric entry — used when no Maps key is configured, or when Google
+ * rejects the key at runtime (so the user is never stuck on Google's overlay). */
+function ManualFallback({
+  lat,
+  lng,
+  onChange,
+  reason,
+}: Props & { reason?: 'no_key' | 'auth' | null }) {
   const [latStr, setLatStr] = useState(lat?.toString() ?? '');
   const [lngStr, setLngStr] = useState(lng?.toString() ?? '');
 
@@ -231,8 +253,21 @@ function ManualFallback({ lat, lng, onChange }: Props) {
     }
   }
 
+  const note =
+    reason === 'auth'
+      ? "The map couldn't be loaded (Google rejected the request). You can still enter the location coordinates manually below."
+      : reason === 'no_key'
+        ? 'Interactive map is unavailable here. Enter the location coordinates manually below.'
+        : null;
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="space-y-3">
+      {note && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          {note}
+        </p>
+      )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Labelled label="GPS latitude">
         <Input
           inputMode="decimal"
@@ -257,6 +292,7 @@ function ManualFallback({ lat, lng, onChange }: Props) {
           placeholder="7.4985"
         />
       </Labelled>
+      </div>
     </div>
   );
 }
