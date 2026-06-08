@@ -20,8 +20,9 @@ import {
 } from '@/lib/admin';
 import type { ListingCategory, ListingStatus } from '@/lib/listings';
 
+// 'draft' is intentionally omitted — drafts are never shown to admins (the
+// backend excludes them), so offering a draft filter would return nothing.
 const STATUSES: ListingStatus[] = [
-  'draft',
   'under_doc_review',
   'live_unverified',
   'doc_verified',

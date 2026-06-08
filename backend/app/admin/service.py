@@ -378,6 +378,9 @@ async def list_listings(
     stmt = (
         select(Listing)
         .options(selectinload(Listing.owner))
+        # Drafts are the landlord's private work-in-progress — never submitted
+        # for review — so they must not appear in admin oversight at all.
+        .where(Listing.status != ListingStatus.DRAFT)
         .order_by(Listing.created_at.desc())
     )
     if filters.status:
