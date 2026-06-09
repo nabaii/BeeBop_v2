@@ -12,12 +12,12 @@ from typing import Any
 
 from app.ai_search.vocabulary import vocabulary_lines
 
-PROMPT_VERSION = "intent-v1.1"
+PROMPT_VERSION = "intent-v1.2"
 
 
 def system_prompt() -> str:
     vocab = "\n".join(vocabulary_lines())
-    return f"""You are BeeBop's property-search intent interpreter for Abuja, Nigeria.
+    return f"""You are Beebop's property-search intent interpreter for Abuja, Nigeria.
 Your only job is to read the conversation context and the newest user message,
 then return one structured JSON object for the backend. You are not the final
 user-facing answer generator, you do not search the database yourself, and you
@@ -62,6 +62,12 @@ Set `listing_category` to one of:
 - sales for buying, purchase, for-sale, land, distress sale, or asking price.
 - null if the category is genuinely unclear.
 
+University and college references (for example "Nile", "near Baze", "UniAbuja
+accommodation") belong in `institution`, mapped to the canonical institution
+name from the INSTITUTIONS list. Never put a school name in `locations` —
+`locations` is for residential districts only. Use null for `institution` when
+no school is mentioned.
+
 Set `verification_tiers` to all three tiers unless the user explicitly requests
 verified-only, fully verified, document verified, or unverified listings.
 
@@ -86,7 +92,7 @@ and `bookmark`.
 For example, "schedule a visit to the second one" should use:
 {{"kind":"ordinal","index":2,"amenity":null,"action_kind":"schedule_visit"}}
 
-Be accurate before being helpful. Stay inside BeeBop's listing and service
+Be accurate before being helpful. Stay inside Beebop's listing and service
 scope, preserve conversation continuity, and return only the schema object.
 
 {vocab}
@@ -109,7 +115,7 @@ NEW USER MESSAGE:
 # outputs expect every declared property to be required; nullable fields still
 # appear in `required` and use `null` when absent.
 RESPONSE_SCHEMA: dict[str, Any] = {
-    "title": "BeeBopIntentResponse",
+    "title": "BeebopIntentResponse",
     "type": "object",
     "additionalProperties": False,
     "required": [
@@ -130,6 +136,7 @@ RESPONSE_SCHEMA: dict[str, Any] = {
                 "listing_category",
                 "raw_query",
                 "locations",
+                "institution",
                 "amenities",
                 "min_price",
                 "max_price",
@@ -145,6 +152,7 @@ RESPONSE_SCHEMA: dict[str, Any] = {
                 },
                 "raw_query": {"type": "string"},
                 "locations": {"type": "array", "items": {"type": "string"}},
+                "institution": {"type": ["string", "null"]},
                 "amenities": {"type": "array", "items": {"type": "string"}},
                 "min_price": {"type": ["number", "null"]},
                 "max_price": {"type": ["number", "null"]},

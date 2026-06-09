@@ -93,6 +93,31 @@ ABUJA_LOCATIONS: dict[str, str] = {
     "city centre": "Central Area",
 }
 
+# Universities seekers reference when looking for off-campus housing. Maps a
+# colloquial form to a canonical institution name that is guaranteed to be a
+# substring of the values landlords store in
+# ``type_data["institutions_accepted"]`` (e.g. "Nile University" matches the
+# stored "Nile University of Nigeria"). Used to populate the off-campus
+# ``institution`` filter instead of leaking the school name into free-text
+# keyword matching.
+INSTITUTIONS: dict[str, str] = {
+    "uniabuja": "University of Abuja",
+    "uni abuja": "University of Abuja",
+    "university of abuja": "University of Abuja",
+    "baze": "Baze University",
+    "baze university": "Baze University",
+    "nile": "Nile University",
+    "nileuni": "Nile University",
+    "nile university": "Nile University",
+    "nile university of nigeria": "Nile University",
+    "veritas": "Veritas University",
+    "veritas university": "Veritas University",
+    "aust": "African University of Science and Technology",
+    "african university of science and technology": (
+        "African University of Science and Technology"
+    ),
+}
+
 # Universities + landmarks Abuja seekers reference for proximity searches.
 LANDMARKS: dict[str, str] = {
     "uniabuja": "University of Abuja",
@@ -118,6 +143,13 @@ def vocabulary_lines() -> list[str]:
     out.append("")
     out.append("ABUJA LOCATIONS (normalise to the canonical name):")
     for raw, canon in sorted(ABUJA_LOCATIONS.items()):
+        if raw == canon.lower():
+            out.append(f"  • {canon}")
+        else:
+            out.append(f'  • "{raw}" → {canon}')
+    out.append("")
+    out.append("INSTITUTIONS (put in `institution`, never in `locations`):")
+    for raw, canon in sorted(INSTITUTIONS.items()):
         if raw == canon.lower():
             out.append(f"  • {canon}")
         else:

@@ -36,7 +36,12 @@ from app.ai_search.schemas import (
     SessionStateView,
 )
 from app.ai_search.session_store import SessionStore, new_session_id
-from app.ai_search.vocabulary import ABUJA_LOCATIONS, LANDMARKS, normalise_location
+from app.ai_search.vocabulary import (
+    ABUJA_LOCATIONS,
+    INSTITUTIONS,
+    LANDMARKS,
+    normalise_location,
+)
 from app.core.exceptions import ExternalServiceError
 from app.integrations.openai_client import (
     LLMClient,
@@ -278,8 +283,8 @@ async def _handle_intent(
             next_result_listing_ids=None,
         )
 
-    results = await _execute_search(parameters=parameters, db=db)
-    message = _search_message(parameters=parameters, results=results)
+    results, relaxed = await _execute_search_with_fallback(parameters=parameters, db=db)
+    message = _search_message(parameters=parameters, results=results, relaxed=relaxed)
     return _HandledTurn(
         assistant_message=message,
         parameters=parameters,
@@ -310,9 +315,11 @@ async def _handle_clarification(
                 reference_resolution=None,
                 next_result_listing_ids=None,
             )
-        results = await _execute_search(parameters=parameters, db=db)
+        results, relaxed = await _execute_search_with_fallback(parameters=parameters, db=db)
         return _HandledTurn(
-            assistant_message=_search_message(parameters=parameters, results=results),
+            assistant_message=_search_message(
+                parameters=parameters, results=results, relaxed=relaxed
+            ),
             parameters=parameters,
             results=results,
             missing_parameter_prompt=None,
@@ -345,9 +352,11 @@ async def _handle_clarification(
                 reference_resolution=reference,
                 next_result_listing_ids=None,
             )
-        results = await _execute_search(parameters=parameters, db=db)
+        results, relaxed = await _execute_search_with_fallback(parameters=parameters, db=db)
         return _HandledTurn(
-            assistant_message=_search_message(parameters=parameters, results=results),
+            assistant_message=_search_message(
+                parameters=parameters, results=results, relaxed=relaxed
+            ),
             parameters=parameters,
             results=results,
             missing_parameter_prompt=None,
@@ -464,6 +473,11 @@ def _merge_parameters(
             heuristic.locations,
             base.locations,
             normaliser=normalise_location,
+        ),
+        institution=_coalesce(
+            incoming.institution,
+            heuristic.institution,
+            base.institution,
         ),
         amenities=_merge_list(
             incoming.amenities,
@@ -620,6 +634,7 @@ def _heuristic_parameters(
         listing_category=_infer_category(lower, previous=previous),
         raw_query=query,
         locations=_extract_locations(lower),
+        institution=_extract_institution(lower),
         amenities=_extract_amenities(lower),
         min_price=min_price,
         max_price=max_price,
@@ -628,6 +643,20 @@ def _heuristic_parameters(
         duration_years=_extract_duration_years(lower),
         urgency=_extract_urgency(lower),
     )
+
+
+# Synonyms tried longest-first so "nile university" wins over the bare "nile"
+# (both resolve to the same canonical name, but matching the longer form keeps
+# the keyword stripping below precise).
+_INSTITUTION_SYNONYMS_BY_LENGTH = sorted(INSTITUTIONS, key=len, reverse=True)
+
+
+def _extract_institution(lower: str) -> str | None:
+    """Map any university reference in the query to its canonical name."""
+    for synonym in _INSTITUTION_SYNONYMS_BY_LENGTH:
+        if re.search(rf"\b{re.escape(synonym)}\b", lower):
+            return INSTITUTIONS[synonym]
+    return None
 
 
 def _infer_category(
@@ -791,8 +820,11 @@ async def _execute_search(
     *,
     parameters: ExtractedParameters,
     db: AsyncSession,
+    drop_keywords: bool = False,
 ) -> list[ResultListingSummary]:
-    candidates = await _fetch_candidates(parameters=parameters, db=db)
+    candidates = await _fetch_candidates(
+        parameters=parameters, db=db, drop_keywords=drop_keywords
+    )
     if not candidates:
         return []
     ratings = await _rating_map(candidates=candidates, db=db)
@@ -811,15 +843,41 @@ async def _execute_search(
     return ranked[:_CHAT_RESULT_LIMIT]
 
 
+async def _execute_search_with_fallback(
+    *,
+    parameters: ExtractedParameters,
+    db: AsyncSession,
+) -> tuple[list[ResultListingSummary], bool]:
+    """Run the strict search, then relax brittle free-text on a miss.
+
+    Returns ``(results, relaxed)`` where ``relaxed`` is True when results came
+    from the keyword-dropped fallback. The structured filters (location, price,
+    institution, bedrooms, verification) are always kept; only the free-text
+    keyword gate is relaxed, so a single stray or misspelled word can't produce
+    a dead-end empty response.
+    """
+    results = await _execute_search(parameters=parameters, db=db)
+    if results:
+        return results, False
+    if _extract_search_keywords(parameters) is not None:
+        relaxed = await _execute_search(parameters=parameters, db=db, drop_keywords=True)
+        if relaxed:
+            return relaxed, True
+    return [], False
+
+
 async def _fetch_candidates(
     *,
     parameters: ExtractedParameters,
     db: AsyncSession,
+    drop_keywords: bool = False,
 ) -> list[Listing]:
     if parameters.listing_category is None:
         return []
 
-    response = await _search_response(parameters=parameters, db=db)
+    response = await _search_response(
+        parameters=parameters, db=db, drop_keywords=drop_keywords
+    )
     ids = [uuid.UUID(item.id) for item in response.results]
     if not ids:
         return []
@@ -843,13 +901,20 @@ async def _search_response(
     *,
     parameters: ExtractedParameters,
     db: AsyncSession,
+    drop_keywords: bool = False,
 ) -> SearchResponse:
     # Build a clean keyword string for the ILIKE search instead of using the
     # full conversational raw_query.  The raw_query is a natural-language
     # sentence like "2-bedroom in Wuse 2 under 300k" — passing it verbatim
     # as an ILIKE pattern returns zero rows because no listing title/description
     # contains that exact substring.
-    search_keywords = _extract_search_keywords(parameters)
+    #
+    # `drop_keywords` powers the relaxation fallback: when a strict search
+    # returns nothing we retry with the brittle free-text terms removed but the
+    # high-confidence structured filters (category, location, price, institution)
+    # intact, so a stray or misspelled word never zeroes out otherwise-good
+    # matches.
+    search_keywords = None if drop_keywords else _extract_search_keywords(parameters)
     shared = {
         "q": search_keywords if search_keywords else None,
         "locations": parameters.locations,
@@ -870,7 +935,7 @@ async def _search_response(
     category = parameters.listing_category
     if category == ListingCategory.OFF_CAMPUS:
         return await public_search.search_off_campus(
-            OffCampusFilters(**shared),
+            OffCampusFilters(**shared, institution=parameters.institution),
             db=db,
         )
     if category == ListingCategory.SHORT_LET:
@@ -904,7 +969,9 @@ _SEARCH_STOPWORDS: set[str] = {
     "around", "close", "please", "some", "any", "good", "nice",
     # Category tokens (handled by listing_category filter)
     "rent", "rental", "rentals", "sale", "sales", "buy", "purchase",
-    "short", "let", "hostel", "hostels", "student", "airbnb",
+    "short", "let", "hostel", "hostels", "student", "students", "airbnb",
+    "accommodation", "accomodation", "accom", "lodge", "lodging", "lodgings",
+    "university", "uni", "campus", "school", "college",
     # Price tokens (handled by min_price / max_price filter)
     "under", "below", "above", "over", "less", "than", "budget",
     "between", "from", "maximum", "max", "minimum", "min",
@@ -946,6 +1013,12 @@ def _extract_search_keywords(parameters: ExtractedParameters) -> str | None:
     # but their raw text shouldn't appear in the ILIKE keywords).
     for landmark in LANDMARKS:
         raw = raw.replace(landmark, " ")
+
+    # Remove university references — they're handled by the structured
+    # `institution` filter (against type_data["institutions_accepted"]), so the
+    # school name must not leak into the title/description ILIKE keywords.
+    for synonym in _INSTITUTION_SYNONYMS_BY_LENGTH:
+        raw = re.sub(rf"\b{re.escape(synonym)}\b", " ", raw)
 
     # Remove price-like tokens (e.g. "300k", "4,000,000", "2m").
     raw = re.sub(r"\b\d[\d,]*(?:\.\d+)?[km]?\b", " ", raw)
@@ -1193,20 +1266,59 @@ def _search_message(
     *,
     parameters: ExtractedParameters,
     results: list[ResultListingSummary],
+    relaxed: bool = False,
 ) -> str:
     category = _category_label(parameters.listing_category)
+    near = f" near {parameters.institution}" if parameters.institution else ""
     where = ""
     if parameters.locations:
         where = f" in {', '.join(parameters.locations)}"
     budget = _budget_label(parameters)
+    scope = f"{near}{where}{budget}"
+
     if not results:
-        return f"I could not find any {category}{where}{budget} yet. Try widening the area, budget, or verification filter."
+        return f"I could not find any {category}{scope} yet.{_empty_state_advice(parameters)}"
+
+    if relaxed:
+        return (
+            f"I could not find an exact match{scope}, but here are {len(results)} "
+            f"close {category} you might like. You can ask for a specific one, "
+            "compare amenities, or open the full browse view."
+        )
+
     selected_tiers = set(parameters.verification_tiers or [])
     qualifier = "verified " if selected_tiers and "unverified" not in selected_tiers else ""
     return (
-        f"I found {len(results)} {qualifier}{category}{where}{budget}. "
+        f"I found {len(results)} {qualifier}{category}{scope}. "
         "You can ask for a specific one, compare amenities, or open the full browse view."
     )
+
+
+def _empty_state_advice(parameters: ExtractedParameters) -> str:
+    """Suggest relaxing only the filters the seeker actually set.
+
+    The previous copy always told seekers to "widen the area, budget, or
+    verification filter" even when they had set none of those — which read as
+    robotic and unhelpful. This tailors the advice to the real constraints.
+    """
+    levers: list[str] = []
+    if parameters.institution:
+        levers.append("a nearby campus or area")
+    if parameters.locations:
+        levers.append("a different area")
+    if parameters.min_price is not None or parameters.max_price is not None:
+        levers.append("your budget")
+    if parameters.bedroom_count is not None:
+        levers.append("the bedroom count")
+    tiers = set(parameters.verification_tiers or [])
+    if tiers and "unverified" not in tiers:
+        levers.append("the verification filter")
+
+    if not levers:
+        return " New listings go live regularly, so check back soon or try a different area or category."
+    if len(levers) == 1:
+        return f" Try adjusting {levers[0]}."
+    return f" Try adjusting {', '.join(levers[:-1])} or {levers[-1]}."
 
 
 def _transactional_message(
@@ -1234,19 +1346,19 @@ def _information_message(query: str) -> str:
     lower = query.lower()
     if "verif" in lower or "badge" in lower:
         return (
-            "BeeBop uses two badges. Doc Verified means the title documents were approved. "
-            "Fully Verified means the listing also passed BeeBop's physical inspection."
+            "Beebop uses two badges. Doc Verified means the title documents were approved. "
+            "Fully Verified means the listing also passed Beebop's physical inspection."
         )
     if "category" in lower or "what can i find" in lower:
         return (
-            "BeeBop covers four categories: off-campus accommodation, short-let stays, homes for rent, and homes for sale."
+            "Beebop covers four categories: off-campus accommodation, short-let stays, homes for rent, and homes for sale."
         )
     if "visit" in lower or "offer" in lower or "book" in lower:
         return (
-            "Once you open a listing, BeeBop can guide you into visits, offers, agreements, or short-let booking depending on the category."
+            "Once you open a listing, Beebop can guide you into visits, offers, agreements, or short-let booking depending on the category."
         )
     return (
-        "I can help you search BeeBop listings across off-campus, short-let, rent, and sales. "
+        "I can help you search Beebop listings across off-campus, short-let, rent, and sales. "
         "Tell me the category, location, and budget you want."
     )
 

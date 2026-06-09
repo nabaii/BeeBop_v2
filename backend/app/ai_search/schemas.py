@@ -25,6 +25,11 @@ class ExtractedParameters(BaseModel):
     listing_category: ListingCategory | None = None
     raw_query: str
     locations: list[str] = Field(default_factory=list)
+    # University/college the seeker named (off-campus only). Stored as a
+    # canonical institution name and matched against
+    # ``type_data["institutions_accepted"]`` rather than the free-text keyword
+    # search, which only covers title/description/district.
+    institution: str | None = None
     amenities: list[str] = Field(default_factory=list)
     min_price: float | None = None
     max_price: float | None = None
