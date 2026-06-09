@@ -11,7 +11,12 @@ export function FeaturedCarousel({ showBrowseLink = true }: { showBrowseLink?: b
 
   useEffect(() => {
     let cancelled = false;
-    getFeaturedListings(8)
+    // Request a generous page of live listings. If the backend rejects the
+    // size (older deploys cap this lower and return 422), fall back to a
+    // conservative limit so a frontend/backend deploy-order mismatch can
+    // never silently blank the whole row.
+    getFeaturedListings(50)
+      .catch(() => getFeaturedListings(12))
       .then((l) => !cancelled && setItems(l))
       .catch(() => !cancelled && setItems([]));
     return () => {
@@ -25,7 +30,7 @@ export function FeaturedCarousel({ showBrowseLink = true }: { showBrowseLink?: b
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-slate-900">Popular right now</h2>
+        <h2 className="text-base font-semibold text-slate-900">Properties in Abuja</h2>
         {showBrowseLink && (
           <Link href="/browse" className="text-sm font-medium text-brand hover:text-brand-700">
             See all &rsaquo;

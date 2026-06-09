@@ -71,6 +71,12 @@ async def add_unit_type(
         beds_per_room=payload.beds_per_room,
         total_units=payload.total_units,
         price=payload.price,
+        # Initialise the relationship as a loaded, empty collection. Without
+        # this, serialising the unit after the route commits would trigger a
+        # lazy SELECT on `rooms` for the freshly-persisted object — which
+        # raises MissingGreenlet inside the async session. A new unit type
+        # has no rooms yet, so an empty list is both correct and load-free.
+        rooms=[],
     )
     db.add(ut)
     await db.flush()

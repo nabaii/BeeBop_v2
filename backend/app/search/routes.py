@@ -268,7 +268,7 @@ async def public_listing_detail(
 
 @router.get("/public/featured", response_model=list[dict])
 async def featured_listings(
-    limit: int = Query(default=6, ge=1, le=24),
+    limit: int = Query(default=6, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     stmt = (
