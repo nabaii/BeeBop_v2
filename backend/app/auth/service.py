@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.otp_service import OtpService
 from app.auth.refresh_store import RefreshTokenStore
 from app.auth.schemas import AuthenticatedUser, TokenPair, VerifyResponse
+from app.core.email_normalize import canonicalize_email
 from app.core.exceptions import UnauthorisedError, ValidationError
 from app.core.security import (
     create_access_token,
@@ -97,7 +98,7 @@ def _to_authenticated(user: User) -> AuthenticatedUser:
 
 
 def _normalise_email(email: str) -> str:
-    return email.strip().lower()
+    return canonicalize_email(email)
 
 
 def _assert_user_can_sign_in(user: User) -> None:

@@ -124,50 +124,6 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/db-enums", tags=["system"])
-async def db_enums() -> dict:
-    from sqlalchemy import select, delete
-    from app.database import AsyncSessionLocal
-    from app.models.user import User
-    from app.models.listing import Listing
-    from app.models._enums import ListingCategory
-    from app.listings import service as listings_service
-    import traceback
-    
-    try:
-        async with AsyncSessionLocal() as session:
-            # Delete any previous Diag listing
-            await session.execute(delete(Listing).where(Listing.title == "Diag Temp Listing"))
-            await session.commit()
-            
-            # Fetch the actual landlord user
-            res = await session.execute(select(User).where(User.email == "gabannabai@gmail.com"))
-            user = res.scalar_one_or_none()
-            if not user:
-                return {"status": "error", "error": "gabannabai@gmail.com not found"}
-                
-            try:
-                # Call create_listing
-                view = await listings_service.create_listing(
-                    user=user,
-                    category=ListingCategory.OFF_CAMPUS,
-                    db=session
-                )
-                await session.commit()
-                
-                # Delete the created listing to clean up
-                await session.execute(delete(Listing).where(Listing.id == view.id))
-                await session.commit()
-                
-                return {"status": "success", "msg": "Listing created and serialized successfully", "view": view.model_dump()}
-            except Exception as inner_e:
-                tb = traceback.format_exc()
-                await session.rollback()
-                return {"status": "error", "error": str(inner_e), "traceback": tb}
-    except Exception as e:
-        return {"status": "error_outer", "error": str(e), "traceback": traceback.format_exc()}
-
-
 # Routers are registered here as each sprint lands them.
 # Sprint 1 — auth, users.
 app.include_router(auth_router)

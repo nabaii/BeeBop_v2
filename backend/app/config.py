@@ -42,6 +42,17 @@ class Settings(BaseSettings):
     # Email (Resend)
     resend_api_key: str = ""
     resend_from_email: str = "noreply@beebop.store"
+    # Hard ceiling on outbound emails per UTC day, enforced in application code
+    # independently of any Resend dashboard cap. A successful signup/OTP flood
+    # cannot drain the prepaid balance past this. Set generously above real
+    # daily volume; lower it if abuse is active.
+    email_daily_send_cap: int = 2000
+
+    # Abuse controls
+    # Cloudflare Turnstile (CAPTCHA). Leave blank in development to skip
+    # verification; set in staging/production to enforce it. See
+    # app/integrations/turnstile.py for the unset-key policy.
+    turnstile_secret_key: str = ""
 
     # WhatsApp Business API
     whatsapp_business_api_token: str = ""

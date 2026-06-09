@@ -12,6 +12,7 @@ import { Check, X, Eye, EyeOff } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Turnstile, turnstileEnabled } from '@/components/auth/turnstile';
 import { ApiError } from '@/lib/api';
 import { requestOtp, verifyOtp, type OtpChannel } from '@/lib/auth';
 import type { UserRole, SessionUser } from '@/stores/session';
@@ -37,6 +38,11 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue', 
   const [busy, setBusy] = useState(false);
   const [resendIn, setResendIn] = useState(0);
   const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
+  // Honeypot — must stay empty. Hidden from real users; bots that fill every
+  // field set it, and the backend silently drops those submissions.
+  const [honeypot, setHoneypot] = useState('');
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -56,7 +62,12 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue', 
     setError(null);
     setBusy(true);
     try {
-      const res = await requestOtp(channel, normalisedIdentifier);
+      const res = await requestOtp(channel, normalisedIdentifier, {
+        turnstileToken: captchaToken,
+        honeypot,
+      });
+      // Token just consumed (single-use) — refresh it so "Resend code" works.
+      setCaptchaReset((n) => n + 1);
       setResendIn(res.resend_available_in_seconds);
       if (res.dev_otp_code) {
         setDevOtp(res.dev_otp_code);
@@ -172,11 +183,27 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue', 
           </>
         )}
 
+        {/* Honeypot: visually hidden, off the tab order, ignored by humans. */}
+        <div aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 overflow-hidden">
+          <label>
+            Company website
+            <input
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              value={honeypot}
+              onChange={(e) => setHoneypot(e.target.value)}
+            />
+          </label>
+        </div>
+
+        {turnstileEnabled && <Turnstile onToken={setCaptchaToken} resetSignal={captchaReset} />}
+
         {error && <p className="text-sm text-red-600">{error}</p>}
-        
-        <Button 
-          type="submit" 
-          disabled={busy || !normalisedIdentifier || !isPasswordValid} 
+
+        <Button
+          type="submit"
+          disabled={busy || !normalisedIdentifier || !isPasswordValid || (turnstileEnabled && !captchaToken)}
           className="w-full transition-all duration-200"
         >
           {busy ? 'Sending…' : submitLabel}
@@ -219,6 +246,8 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue', 
       <Button type="submit" disabled={busy || code.length !== 6} className="w-full">
         {busy ? 'Verifying…' : 'Verify'}
       </Button>
+      {/* Keeps a fresh single-use token available for "Resend code". */}
+      {turnstileEnabled && <Turnstile onToken={setCaptchaToken} resetSignal={captchaReset} />}
       <div className="flex items-center justify-between text-sm text-slate-600">
         <button
           type="button"
@@ -229,7 +258,7 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue', 
         </button>
         <button
           type="button"
-          disabled={resendIn > 0 || busy}
+          disabled={resendIn > 0 || busy || (turnstileEnabled && !captchaToken)}
           className="disabled:cursor-not-allowed disabled:opacity-50 hover:underline"
           onClick={() => void sendCode()}
         >

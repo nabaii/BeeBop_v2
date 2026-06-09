@@ -55,8 +55,14 @@ function applyVerifyResponse(data: VerifyResponse): { user: SessionUser; isNewUs
 export async function requestOtp(
   channel: OtpChannel,
   identifier: string,
+  opts?: { turnstileToken?: string | null; honeypot?: string },
 ): Promise<OtpRequestResponse> {
-  return api.post('/auth/otp/request', { channel, identifier });
+  return api.post('/auth/otp/request', {
+    channel,
+    identifier,
+    turnstile_token: opts?.turnstileToken || undefined,
+    company_website: opts?.honeypot || undefined,
+  });
 }
 
 export async function verifyOtp(args: {
