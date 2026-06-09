@@ -29,8 +29,8 @@ export default function ProfileLayout({ children }: { children: ReactNode }) {
               >
                 <Menu className="h-5 w-5" aria-hidden />
               </button>
-              <BeeBopMark />
-              <span className="text-lg font-bold text-brand-700">BeeBop</span>
+              <BeebopMark />
+              <span className="text-lg font-bold text-brand-700">Beebop</span>
             </div>
             <Link
               href="/profile"
@@ -48,7 +48,7 @@ export default function ProfileLayout({ children }: { children: ReactNode }) {
   );
 }
 
-function BeeBopMark() {
+function BeebopMark() {
   return (
     <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden>
       <circle cx="6" cy="9" r="3" fill="#f59e0b" />

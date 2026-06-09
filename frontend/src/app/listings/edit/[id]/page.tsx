@@ -121,7 +121,9 @@ function EditingShell({ id }: { id: string }) {
     listing.district &&
     listing.gps_lat != null &&
     listing.gps_lng != null &&
-    listing.price
+    // Off-campus prices per unit type (Room Inventory), not on the listing —
+    // mirrors the backend, which exempts off-campus from the base-price check.
+    (listing.category === 'off_campus' || listing.price)
   );
   
   const isCategoryComplete = (() => {

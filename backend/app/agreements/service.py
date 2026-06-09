@@ -366,7 +366,7 @@ async def _initiate_payments(*, agreement: Agreement, db: AsyncSession) -> None:
             email=landlord.email,
             reference=ref,
             due_in_hours=SALES_INVOICE_WINDOW_HOURS,
-            description=f"BeeBop sales facilitation fee for agreement {agreement.id}",
+            description=f"Beebop sales facilitation fee for agreement {agreement.id}",
             metadata={"agreement_id": str(agreement.id)},
         )
         agreement.sales_invoice_reference = invoice.reference

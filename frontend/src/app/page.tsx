@@ -50,8 +50,7 @@ export default function HomePage() {
             >
               <Menu className="h-5 w-5" aria-hidden />
             </button>
-            <BeeBopMark />
-            <span className="text-lg font-bold text-brand-700">BeeBop</span>
+            <span className="text-lg font-bold text-brand-700">Beebop</span>
           </div>
           <Link
             href={accountHref}
@@ -67,15 +66,5 @@ export default function HomePage() {
         <BottomNav />
       </div>
     </div>
-  );
-}
-
-function BeeBopMark() {
-  return (
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden>
-      <circle cx="6" cy="9" r="3" fill="#f59e0b" />
-      <circle cx="14" cy="6" r="3" fill="#f59e0b" />
-      <circle cx="10" cy="15" r="3" fill="#fbbf24" />
-    </svg>
   );
 }

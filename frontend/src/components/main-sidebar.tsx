@@ -115,7 +115,7 @@ export function MainSidebar({ onNewChat, mobileOpen = false, onMobileClose }: Ma
               onClick={handleNavigate}
               className="text-lg font-bold text-brand"
             >
-              BeeBop
+              Beebop
             </Link>
           )}
           <button

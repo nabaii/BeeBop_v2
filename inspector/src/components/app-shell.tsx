@@ -19,7 +19,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen flex-col bg-slate-50">
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-2 text-sm">
         <Link href="/" className="font-semibold text-brand">
-          BeeBop · Inspector
+          Beebop · Inspector
         </Link>
         <SyncIndicator />
       </header>

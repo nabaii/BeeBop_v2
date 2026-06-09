@@ -120,7 +120,7 @@ export function OfferModal({ listing, onClose, onSubmitted }: Props) {
             The landlord has 48 hours to accept, counter, or reject.
             {listing.category !== 'short_let' && (
               <>
-                {' '}A BeeBop trusted agent will arrange a property visit before signing.
+                {' '}A Beebop trusted agent will arrange a property visit before signing.
               </>
             )}
           </p>

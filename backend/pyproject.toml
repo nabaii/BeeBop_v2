@@ -1,7 +1,7 @@
 [project]
 name = "beebop-backend"
 version = "0.1.0"
-description = "BeeBop FastAPI backend — conversational property marketplace"
+description = "Beebop FastAPI backend — conversational property marketplace"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115.0",

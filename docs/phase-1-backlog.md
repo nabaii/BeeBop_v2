@@ -34,7 +34,7 @@
 
 **Goal:** Logged-in seekers can browse all four categories with working filters. Listing pages accessible to unauthenticated visitors (valuation report gated).
 
-- Main page layout — sidebar (New Chat, category links), centred Ask BeeBop input, featured listings carousel
+- Main page layout — sidebar (New Chat, category links), centred Ask Beebop input, featured listings carousel
 - Four category browse pages — shared filters + category-specific filters; verification tier defaults pre-checked
 - Map view toggle — Abuja pin map, verification-tier colour coding, click-to-preview card overlay
 - Listing page core sections — gallery (room-grouped, inspector walkthrough separate), description, amenities (confirmed indicators after Sprint 7), approximate map pin

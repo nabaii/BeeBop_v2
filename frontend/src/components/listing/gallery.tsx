@@ -42,7 +42,7 @@ export function ListingGallery({ listing }: { listing: PublicListingDetail }) {
       {walkthroughPhotos.length > 0 && (
         <section className="space-y-3">
           <header>
-            <h3 className="text-sm font-semibold text-slate-900">BeeBop Verified Walkthrough</h3>
+            <h3 className="text-sm font-semibold text-slate-900">Beebop Verified Walkthrough</h3>
             <p className="text-xs text-slate-500">
               Taken during an independent on-site inspection.
             </p>

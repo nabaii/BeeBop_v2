@@ -87,6 +87,17 @@ export interface PublicAreaScore {
   last_assessed_at: string | null;
 }
 
+export interface PublicUnitType {
+  id: string;
+  name: string;
+  kind: string;
+  price: number;
+  beds_per_room: number;
+  total_units: number;
+  beds_total: number;
+  beds_available: number;
+}
+
 export interface PublicListingDetail {
   id: string;
   category: ListingCategory;
@@ -113,6 +124,8 @@ export interface PublicListingDetail {
   is_bookmarked: boolean;
   rating: number | null;
   review_count: number;
+  // Off-campus only: per-unit pricing + bed availability. Empty otherwise.
+  unit_types: PublicUnitType[];
 }
 
 function toQueryString(filters: Record<string, unknown>): string {

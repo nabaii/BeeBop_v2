@@ -117,13 +117,24 @@ def _sort(stmt, sort: str):  # type: ignore[no-untyped-def]
 
 def _summarise(listing: Listing) -> PublicListingSummary:
     cover = next((p for p in listing.photos if p.is_cover), None) or next(iter(listing.photos), None)
+    # Off-campus listings price per unit type, not on Listing.price. Surface the
+    # cheapest unit as the card's "from" price. Callers that can return
+    # off-campus rows (off-campus search, featured) eager-load `unit_types`;
+    # the category guard keeps other searches from touching the relationship.
+    if listing.category == ListingCategory.OFF_CAMPUS:
+        unit_prices = [
+            float(u.price) for u in listing.unit_types if u.price is not None and float(u.price) > 0
+        ]
+        price = min(unit_prices) if unit_prices else None
+    else:
+        price = float(listing.price) if listing.price is not None else None
     return PublicListingSummary(
         id=str(listing.id),
         category=listing.category,
         status=listing.status,
         title=listing.title or "Untitled",
         subtitle=listing.subtitle,
-        price=float(listing.price) if listing.price is not None else None,
+        price=price,
         district=listing.district,
         gps_lat=listing.gps_lat,
         gps_lng=listing.gps_lng,
@@ -158,6 +169,8 @@ async def search_off_campus(
     filters: OffCampusFilters, *, db: AsyncSession
 ) -> SearchResponse:
     stmt = _base_visibility_stmt().where(Listing.category == ListingCategory.OFF_CAMPUS)
+    # _summarise derives the card price from unit types for off-campus.
+    stmt = stmt.options(selectinload(Listing.unit_types))
     stmt = _apply_shared(stmt, filters)
 
     # Institution and gender are explicit filters when supplied. Gender

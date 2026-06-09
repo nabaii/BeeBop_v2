@@ -6,7 +6,7 @@ Run:
     python -m scripts.seed_student_listings --owner-email landlord-super@beebop.store
 
 Creates 8 off-campus student accommodation listings sourced from the
-BeeBop Listings Pipeline "Targeting" sheet (LEAD-001 through LEAD-008).
+Beebop Listings Pipeline "Targeting" sheet (LEAD-001 through LEAD-008).
 Each listing is owned by ``landlord-super@beebop.store`` and goes straight
 to LIVE_UNVERIFIED so it appears in seeker search immediately.
 
@@ -814,7 +814,7 @@ async def _ensure_owner(db, email: str) -> User:
     user = User(
         email=email,
         role=UserRole.LANDLORD,
-        first_name="BeeBop",
+        first_name="Beebop",
         last_name="Landlord",
         phone="+2348000000000",
         account_type=AccountType.INDIVIDUAL,

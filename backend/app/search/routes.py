@@ -19,12 +19,14 @@ from app.database import get_db
 from app.models._enums import Gender, ListingCategory, ListingStatus
 from app.models.bookmark import Bookmark
 from app.models.listing import Listing
+from app.models.student_accommodation import UnitType
 from app.models.user import User
 from app.search import service as search_service
 from app.search.schemas import (
     OffCampusFilters,
     PublicAreaScore,
     PublicListingDetail,
+    PublicUnitType,
     RentFilters,
     SalesFilters,
     SearchResponse,
@@ -201,7 +203,11 @@ async def public_listing_detail(
     stmt = (
         select(Listing)
         .where(Listing.id == listing_id)
-        .options(selectinload(Listing.photos), selectinload(Listing.documents))
+        .options(
+            selectinload(Listing.photos),
+            selectinload(Listing.documents),
+            selectinload(Listing.unit_types).selectinload(UnitType.rooms),
+        )
     )
     listing = (await db.execute(stmt)).scalar_one_or_none()
     if listing is None or listing.status not in _PUBLIC_STATUSES:
@@ -263,6 +269,20 @@ async def public_listing_detail(
         ),
         valuation_report=valuation,
         is_bookmarked=is_bookmarked,
+        unit_types=[
+            PublicUnitType(
+                id=str(u.id),
+                name=u.name,
+                kind=str(u.kind),
+                price=float(u.price),
+                beds_per_room=u.beds_per_room,
+                total_units=u.total_units,
+                beds_total=sum(r.beds_total for r in u.rooms),
+                beds_available=sum(r.beds_available for r in u.rooms),
+            )
+            # Cheapest first so the "From ₦X" headline matches the top of the list.
+            for u in sorted(listing.unit_types, key=lambda u: float(u.price))
+        ],
     )
 
 
@@ -281,7 +301,10 @@ async def featured_listings(
                 )
             )
         )
-        .options(selectinload(Listing.photos))
+        # Featured mixes categories; off-campus rows need their unit types
+        # loaded so _summarise can derive a "from" price (it accesses
+        # listing.unit_types for that category).
+        .options(selectinload(Listing.photos), selectinload(Listing.unit_types))
         .order_by(Listing.created_at.desc())
         .limit(limit)
     )

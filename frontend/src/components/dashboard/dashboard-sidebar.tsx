@@ -61,7 +61,7 @@ export function DashboardSidebar() {
     <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
       <div className="border-b border-slate-200 p-4">
         <Link href="/" className="text-lg font-bold text-brand">
-          BeeBop
+          Beebop
         </Link>
         <div className="mt-1 truncate text-xs text-slate-500">{user.email}</div>
       </div>
@@ -106,7 +106,7 @@ export function DashboardSidebar() {
           </Link>
         )}
         <Link href="/" className="block text-center text-xs text-slate-500 hover:text-brand">
-          Back to BeeBop
+          Back to Beebop
         </Link>
         <Button
           variant="secondary"

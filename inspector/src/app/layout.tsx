@@ -6,8 +6,8 @@ import { SessionHydrator } from '@/components/session-hydrator';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BeeBop Inspector',
-  description: 'Field inspection portal — BeeBop property verification.',
+  title: 'Beebop Inspector',
+  description: 'Field inspection portal — Beebop property verification.',
   manifest: '/manifest.json',
 };
 

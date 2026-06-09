@@ -22,7 +22,7 @@ from app.models.user import User
 
 
 async def main() -> int:
-    parser = argparse.ArgumentParser(description="Seed a BeeBop admin user.")
+    parser = argparse.ArgumentParser(description="Seed a Beebop admin user.")
     parser.add_argument("--email", required=True)
     parser.add_argument("--first", required=True)
     parser.add_argument("--last", required=True)

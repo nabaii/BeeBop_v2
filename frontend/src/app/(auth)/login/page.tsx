@@ -89,7 +89,7 @@ export default function LoginPage() {
       <h1 className="mb-6 text-xl font-semibold text-slate-900">Sign in</h1>
       <LoginForm onAuthenticated={handleAuthenticated} />
       <p className="mt-6 text-center text-sm text-slate-500">
-        New to BeeBop?{' '}
+        New to Beebop?{' '}
         <Link href="/register" className="font-medium text-brand hover:underline">
           Create an account
         </Link>

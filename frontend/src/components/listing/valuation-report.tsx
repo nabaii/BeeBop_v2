@@ -35,7 +35,7 @@ export function ValuationReportPanel({ report }: Props) {
           <div className="h-3 w-5/6 rounded bg-slate-200" />
         </div>
         <div className="relative mt-4">
-          <h3 className="text-sm font-semibold text-slate-900">BeeBop Valuation Report</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Beebop Valuation Report</h3>
           <p className="mt-1 text-xs text-slate-600">
             Area infrastructure scores and an independent inspector note. Sign in to view.
           </p>
@@ -53,7 +53,7 @@ export function ValuationReportPanel({ report }: Props) {
   if (!report) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6">
-        <h3 className="text-sm font-semibold text-slate-900">BeeBop Valuation Report</h3>
+        <h3 className="text-sm font-semibold text-slate-900">Beebop Valuation Report</h3>
         <p className="mt-2 text-sm text-slate-500">
           Not yet available for this listing. Reports are generated when a listing earns its physical-inspection badge.
         </p>
@@ -65,7 +65,7 @@ export function ValuationReportPanel({ report }: Props) {
     <div className="rounded-xl border border-slate-200 bg-white p-6">
       <header className="flex items-start justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">BeeBop Valuation Report</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Beebop Valuation Report</h3>
           {report.report_date && (
             <p className="mt-1 text-xs text-slate-500">Issued {report.report_date}</p>
           )}

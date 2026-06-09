@@ -46,7 +46,7 @@ def test_read_and_clear_stored_report_round_trip() -> None:
     listing = SimpleNamespace(
         type_data={
             "_valuation_report": report.model_dump(),
-            "_valuation_report_text": "BeeBop Valuation Report",
+            "_valuation_report_text": "Beebop Valuation Report",
         }
     )
 
@@ -54,7 +54,7 @@ def test_read_and_clear_stored_report_round_trip() -> None:
 
     assert isinstance(stored, CachedValuationReport)
     assert stored.report.report_date == "2026-04-25"
-    assert stored.formatted_text == "BeeBop Valuation Report"
+    assert stored.formatted_text == "Beebop Valuation Report"
 
     clear_stored_report(listing)
     assert listing.type_data == {}

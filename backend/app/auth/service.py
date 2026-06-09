@@ -39,7 +39,7 @@ DEV_USERS: dict[UserRole, dict[str, str | bool | list[str]]] = {
     },
     UserRole.LANDLORD: {
         "email": "landlord-super@beebop.ng",
-        "first_name": "BeeBop",
+        "first_name": "Beebop",
         "last_name": "Landlord",
         "needs_account_type": True,
     },

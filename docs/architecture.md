@@ -1,4 +1,4 @@
-# BeeBop Architecture — Reference
+# Beebop Architecture — Reference
 
 A single-page architecture reference for new contributors. Full detail in the
 Product Brief and Development Plan.
@@ -68,7 +68,7 @@ Inspectors and trusted agents cannot approve their own work. Role separation enf
 ## Transaction flows
 
 - **Rent / student / sales** — offer → (visit if required) → acceptance → agreement PDF generated → OTP-signed by both parties → Paystack facilitation fee charged / invoice generated → listing status flipped.
-- **Short-let** — instant booking or request → Paystack payment captured on confirmation → group chat thread auto-created (seeker + host + BeeBop moderator) → access details released on check-in day → host payout after check-in confirmation.
+- **Short-let** — instant booking or request → Paystack payment captured on confirmation → group chat thread auto-created (seeker + host + Beebop moderator) → access details released on check-in day → host payout after check-in confirmation.
 
 Fee calculation detail: dev plan §4. Every tier boundary has unit tests.
 

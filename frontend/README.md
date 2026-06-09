@@ -1,4 +1,4 @@
-# BeeBop Frontend
+# Beebop Frontend
 
 Next.js App Router — seeker, landlord, student, and short-let host interfaces,
 plus internal admin and trusted-agent portals.

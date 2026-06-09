@@ -1,4 +1,4 @@
-# BeeBop Inspector PWA
+# Beebop Inspector PWA
 
 Offline-first progressive web app used by inspectors during field visits.
 

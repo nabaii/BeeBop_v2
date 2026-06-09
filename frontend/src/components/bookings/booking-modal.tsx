@@ -124,7 +124,7 @@ export function BookingModal({ listing, onClose, onCreated }: Props) {
               {quote.weekend_uplift > 0 && (
                 <Row label="Weekend uplift" value={quote.weekend_uplift} />
               )}
-              <Row label="BeeBop service fee" value={quote.seeker_fee} />
+              <Row label="Beebop service fee" value={quote.seeker_fee} />
               <div className="mt-2 flex justify-between border-t border-slate-200 pt-2 text-base font-semibold text-slate-900">
                 <span>Total</span>
                 <span>₦{Math.round(quote.grand_total).toLocaleString('en-NG')}</span>

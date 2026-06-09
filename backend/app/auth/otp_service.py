@@ -130,10 +130,10 @@ class OtpService:
     async def _deliver(self, *, channel: Channel, identifier: str, code: str) -> None:
         if channel == "email":
             email = get_email_client()
-            subject = "Your BeeBop verification code"
-            text = f"Your BeeBop verification code is {code}. It expires in 5 minutes."
+            subject = "Your Beebop verification code"
+            text = f"Your Beebop verification code is {code}. It expires in 5 minutes."
             html = (
-                f'<p>Your BeeBop verification code is <strong style="font-size:22px">'
+                f'<p>Your Beebop verification code is <strong style="font-size:22px">'
                 f"{code}</strong>.</p><p>It expires in 5 minutes. If you did not "
                 f"request this, you can ignore this email.</p>"
             )

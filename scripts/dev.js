@@ -116,7 +116,7 @@ function resolvePython() {
 
   throw new Error(
     [
-      'No Python interpreter with BeeBop backend dependencies was found.',
+      'No Python interpreter with Beebop backend dependencies was found.',
       'Install the backend once with:',
       ...installHint,
     ].join('\n'),
@@ -295,7 +295,7 @@ async function cleanupPreviousRun() {
     return;
   }
 
-  console.log('[dev] Cleaning up BeeBop processes from the previous run...');
+  console.log('[dev] Cleaning up Beebop processes from the previous run...');
   await Promise.all(activePids.map((pid) => terminatePid(pid)));
   clearState();
 }
@@ -454,7 +454,7 @@ async function cleanupRepoListeners(backendPort, frontendPort) {
     }
 
     console.log(
-      `[dev] Reclaiming port ${candidate.port} from a previous BeeBop process (${formatPortOwner(owner)}).`,
+      `[dev] Reclaiming port ${candidate.port} from a previous Beebop process (${formatPortOwner(owner)}).`,
     );
     await terminatePid(owner.pid);
   }
@@ -564,7 +564,7 @@ async function shutdown(exitCode = 0) {
   }
 
   shuttingDown = true;
-  console.log('[dev] Shutting down BeeBop services...');
+  console.log('[dev] Shutting down Beebop services...');
   await Promise.all([...managedChildren].map((child) => terminateChild(child)));
   clearState();
   process.exit(exitCode);
@@ -643,7 +643,7 @@ async function main() {
     ],
   });
 
-  console.log('[dev] BeeBop is starting. Press Ctrl+C to stop everything.');
+  console.log('[dev] Beebop is starting. Press Ctrl+C to stop everything.');
 }
 
 process.on('SIGINT', () => {

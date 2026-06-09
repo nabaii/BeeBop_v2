@@ -1,11 +1,11 @@
-"""Seed the BeeBop-managed landlord account.
+"""Seed the Beebop-managed landlord account.
 
 Run once per environment:
 
     python -m scripts.seed_beebop_landlord
 
 Idempotent - running again upgrades the same email to a landlord account and
-refreshes the BeeBop-owned profile fields.
+refreshes the Beebop-owned profile fields.
 """
 
 from __future__ import annotations
@@ -21,12 +21,12 @@ from app.models._enums import AccountType, UserRole
 from app.models.user import User
 
 DEFAULT_EMAIL = "landlord-super@beebop.ng"
-DEFAULT_FIRST_NAME = "BeeBop"
+DEFAULT_FIRST_NAME = "Beebop"
 DEFAULT_LAST_NAME = "Landlord"
 
 
 async def main() -> int:
-    parser = argparse.ArgumentParser(description="Seed the BeeBop landlord user.")
+    parser = argparse.ArgumentParser(description="Seed the Beebop landlord user.")
     parser.add_argument("--email", default=DEFAULT_EMAIL)
     parser.add_argument("--first", default=DEFAULT_FIRST_NAME)
     parser.add_argument("--last", default=DEFAULT_LAST_NAME)
@@ -54,7 +54,7 @@ async def main() -> int:
         existing.is_suspended = False
 
         await db.commit()
-        print(f"{action} BeeBop landlord {email}.")
+        print(f"{action} Beebop landlord {email}.")
     return 0
 
 

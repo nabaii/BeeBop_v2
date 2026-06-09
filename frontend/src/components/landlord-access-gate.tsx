@@ -52,7 +52,7 @@ export function LandlordAccessGate({ children, next, intent = 'dashboard' }: Pro
       <AccessPanel
         icon={PlusCircle}
         title="Sign in to list a property"
-        body="Use one BeeBop account for finding homes and managing your own listings."
+        body="Use one Beebop account for finding homes and managing your own listings."
       >
         <Link href="/login">
           <Button>Sign in</Button>
@@ -79,7 +79,7 @@ export function LandlordAccessGate({ children, next, intent = 'dashboard' }: Pro
 
   if (user.role === 'seeker') {
     const title =
-      intent === 'create' ? 'Start listing on BeeBop' : 'Open your landlord portal';
+      intent === 'create' ? 'Start listing on Beebop' : 'Open your landlord portal';
     const body =
       intent === 'create'
         ? 'Switch this signed-in account to landlord mode, finish setup, and create your listing.'
@@ -90,7 +90,7 @@ export function LandlordAccessGate({ children, next, intent = 'dashboard' }: Pro
           {busy ? 'Starting...' : intent === 'create' ? 'Start and create listing' : 'Start landlord setup'}
         </Button>
         <Link href="/">
-          <Button variant="secondary">Back to BeeBop</Button>
+          <Button variant="secondary">Back to Beebop</Button>
         </Link>
       </AccessPanel>
     );
@@ -100,10 +100,10 @@ export function LandlordAccessGate({ children, next, intent = 'dashboard' }: Pro
     <AccessPanel
       icon={Home}
       title="Use the right portal"
-      body="This account role has a separate BeeBop workspace."
+      body="This account role has a separate Beebop workspace."
     >
       <Link href="/">
-        <Button variant="secondary">Back to BeeBop</Button>
+        <Button variant="secondary">Back to Beebop</Button>
       </Link>
     </AccessPanel>
   );

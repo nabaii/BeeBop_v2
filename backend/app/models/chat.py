@@ -1,7 +1,7 @@
 """Short-let in-booking chat — threads scoped to a single Booking.
 
 A thread is created automatically on booking confirmation with three
-participants: seeker, host, and the BeeBop moderator service account.
+participants: seeker, host, and the Beebop moderator service account.
 """
 
 import uuid
@@ -54,7 +54,7 @@ class ChatMessage(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     # On-platform action shortcut markers — "extend_booking", "report_issue", etc.
     action_shortcut: Mapped[str | None] = mapped_column(String(64))
 
-    # System messages from the moderator carry the BeeBop label in-UI.
+    # System messages from the moderator carry the Beebop label in-UI.
     is_moderator_message: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     thread: Mapped[ChatThread] = relationship(back_populates="messages")

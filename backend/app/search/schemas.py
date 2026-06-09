@@ -93,6 +93,20 @@ class SearchResponse(BaseModel):
     results: list[PublicListingSummary]
 
 
+class PublicUnitType(BaseModel):
+    """A student-accommodation unit type as shown to seekers — per-unit price
+    and aggregated bed availability across that unit's rooms."""
+
+    id: str
+    name: str
+    kind: str
+    price: float
+    beds_per_room: int
+    total_units: int
+    beds_total: int
+    beds_available: int
+
+
 class PublicListingDetail(BaseModel):
     id: str
     category: ListingCategory
@@ -107,6 +121,9 @@ class PublicListingDetail(BaseModel):
     amenities: dict
     type_data: dict
     photos: list[dict]
+    # Off-campus only: per-unit pricing and bed availability. Empty for other
+    # categories, which price on `price` above.
+    unit_types: list[PublicUnitType] = Field(default_factory=list)
     area_score: "PublicAreaScore | None" = None
     # Valuation report lives in a separate object, gated at the API level
     # below. Clients that do not send a bearer token get `valuation_report=None`.

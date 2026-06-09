@@ -11,6 +11,7 @@ partially-filled drafts can be persisted on every field-change. Validation of
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -19,6 +20,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 from app.models._enums import ListingCategory, ListingStatus
 from app.models._mixins import TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from app.models.student_accommodation import UnitType
 
 
 class Listing(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -89,6 +93,16 @@ class Listing(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         cascade="all, delete-orphan",
         order_by="ListingDocument.created_at",
     )
+    # Student-accommodation unit types. Read-only here (the inventory is managed
+    # through app.listings.student_inventory); exposed so search/detail can
+    # eager-load per-unit pricing and bed availability. Off-campus listings
+    # price per unit type, not on Listing.price.
+    unit_types: Mapped[list["UnitType"]] = relationship(
+        "UnitType",
+        primaryjoin="Listing.id == UnitType.listing_id",
+        viewonly=True,
+        order_by="UnitType.created_at",
+    )
 
 
 class ListingPhoto(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -102,7 +116,7 @@ class ListingPhoto(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     is_cover: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     display_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     # Inspector walkthrough photos are stored separately with this flag set,
-    # rendered as "BeeBop Verified Walkthrough" on the listing page.
+    # rendered as "Beebop Verified Walkthrough" on the listing page.
     is_inspector_walkthrough: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     listing: Mapped[Listing] = relationship(back_populates="photos")

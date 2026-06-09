@@ -252,7 +252,7 @@ async def _ensure_owner(db, email: str) -> User:
         if owner.account_type is None:
             owner.account_type = AccountType.INDIVIDUAL
         if not owner.first_name:
-            owner.first_name = "BeeBop"
+            owner.first_name = "Beebop"
         if not owner.last_name:
             owner.last_name = "Landlord"
         return owner
@@ -260,7 +260,7 @@ async def _ensure_owner(db, email: str) -> User:
     owner = User(
         email=email,
         role=UserRole.LANDLORD,
-        first_name="BeeBop",
+        first_name="Beebop",
         last_name="Landlord",
         phone="+2348000000000",
         account_type=AccountType.INDIVIDUAL,

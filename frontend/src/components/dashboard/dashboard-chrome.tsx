@@ -79,7 +79,7 @@ export function DashboardChrome({ children }: { children: ReactNode }) {
             >
               <Menu className="h-6 w-6" />
             </button>
-            <span className="text-lg font-bold text-brand">BeeBop</span>
+            <span className="text-lg font-bold text-brand">Beebop</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-semibold text-sm">

@@ -266,7 +266,7 @@ async def confirm_assignment(
             "listing_id": str(listing.id),
             "listing_title": listing.title or "the property",
             "scheduled_at": payload.scheduled_at.isoformat(),
-            "agent_first_name": agent.first_name or "your BeeBop agent",
+            "agent_first_name": agent.first_name or "your Beebop agent",
         },
         db=db,
     )

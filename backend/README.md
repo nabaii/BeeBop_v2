@@ -1,4 +1,4 @@
-# BeeBop Backend
+# Beebop Backend
 
 FastAPI application — all platform services.
 

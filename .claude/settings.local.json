@@ -88,7 +88,23 @@
       "Bash(.venv/Scripts/python.exe -c \"import aiosqlite, sqlalchemy; print\\('aiosqlite OK', sqlalchemy.__version__\\)\")",
       "Bash(.venv/Scripts/python.exe -m pip install aiosqlite -q)",
       "Bash(.venv/Scripts/python.exe -c \"import aiosqlite; print\\('aiosqlite installed'\\)\")",
-      "Bash(.venv/Scripts/python.exe -)"
+      "Bash(.venv/Scripts/python.exe -)",
+      "Bash(.venv/Scripts/python.exe -c \"import app.search.routes, app.search.service, app.search.schemas, app.models.listing; print\\('backend imports OK'\\)\")",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Bash(.venv/Scripts/python.exe -m ruff check app/search/routes.py app/search/service.py app/search/schemas.py app/models/listing.py)",
+      "Bash(.venv/Scripts/python.exe -m ruff check app/models/listing.py)",
+      "Bash(.venv/Scripts/python.exe -m pytest -q)",
+      "Bash(cd \"/c/Users/enaic/OneDrive/Desktop/miyata/BEEBOP/beebop\" *)",
+      "Read(//c/Users/enaic/OneDrive/Desktop/miyata/BEEBOP/beebop/**)",
+      "Bash(cd \"/c/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2\" && echo \"=== corrupted path refs \\(should be NONE\\) ===\" && grep -rn \"BeeBop-v2\\\\|Beebop_v2\" --include=*.ts --include=*.tsx --include=*.py --include=*.json --include=*.md --include=*.toml . 2>/dev/null | grep -v node_modules | head; echo \"\\(end\\)\"; echo \"=== remaining 'BeeBop' in our repo \\(expect only database_schema.md paths\\) ===\" && grep -rln \"BeeBop\" . 2>/dev/null | grep -v node_modules | grep -v \"/.next/\" | grep -v \"/.venv/\")",
+      "Read(//c/c/Users/enaic/OneDrive/Desktop/miyata/**)",
+      "Bash(.venv/Scripts/python.exe -c \"import app.main; print\\('import OK'\\)\")",
+      "PowerShell(git -C \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\" status --short)",
+      "PowerShell(git -C \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\" branch --show-current)",
+      "PowerShell(git -C \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\" remote -v)",
+      "PowerShell(\"---BRANCH---\")",
+      "PowerShell(\"---REMOTE---\")",
+      "Bash(git ls-remote *)"
     ]
   }
 }

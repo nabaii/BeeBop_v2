@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Ask BeeBop input — Sprint 3 visual shell only. The real conversational
+ * Ask Beebop input — Sprint 3 visual shell only. The real conversational
  * pipeline (Claude + session context, five-stage parameter extraction)
  * lands in Sprint 13. For now the input routes to the Rent browse page
  * with the query injected as `?q=...` so the demo still feels end-to-end.
@@ -39,7 +39,7 @@ export function ChatInputStub() {
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="Ask BeeBop — e.g. a 2-bed in Wuse 2 under 4m"
+          placeholder="Ask Beebop — e.g. a 2-bed in Wuse 2 under 4m"
           className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none"
         />
         <button

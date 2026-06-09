@@ -1,7 +1,7 @@
 {
-  "name": "BeeBop Inspector",
-  "short_name": "BeeBop Inspector",
-  "description": "Field inspection portal for BeeBop property verification.",
+  "name": "Beebop Inspector",
+  "short_name": "Beebop Inspector",
+  "description": "Field inspection portal for Beebop property verification.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -17,7 +17,7 @@ export default function NotificationsPage() {
       </Link>
       <header>
         <h1 className="text-xl font-semibold text-slate-900">Notifications</h1>
-        <p className="text-sm text-slate-500">Activity from BeeBop and landlords you&apos;re engaged with.</p>
+        <p className="text-sm text-slate-500">Activity from Beebop and landlords you&apos;re engaged with.</p>
       </header>
       <NotificationsInbox />
     </div>

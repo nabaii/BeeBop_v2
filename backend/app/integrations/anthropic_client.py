@@ -106,7 +106,7 @@ class StubValuationClient:
         report_date: str,
         area_scores_last_updated: str | None,
     ) -> GeneratedValuationDraft:
-        note = (inspector_note or "").strip() or "Property assessed on-site by BeeBop."
+        note = (inspector_note or "").strip() or "Property assessed on-site by Beebop."
         score_lines = [
             f"- {key.replace('_', ' ').title()}: {value}/5"
             for key, value in area_scores.items()
@@ -115,7 +115,7 @@ class StubValuationClient:
         stamp = area_scores_last_updated or "Not yet recorded"
         formatted = "\n".join(
             [
-                "BeeBop Valuation Report",
+                "Beebop Valuation Report",
                 f"Report date: {report_date}",
                 f"Area scores last updated: {stamp}",
                 "",

@@ -1,6 +1,6 @@
 """OpenAI GPT-4o client for the conversational search layer.
 
-Per project preference (see project memory: BeeBop LLM primary is OpenAI
+Per project preference (see project memory: Beebop LLM primary is OpenAI
 GPT-4o), the conversational pipeline uses GPT-4o as the primary engine.
 The Sprint-7 valuation-report generator continues to use Claude — those
 paths are independent.
@@ -77,7 +77,7 @@ class OpenAIClient:
             response_format = {
                 "type": "json_schema",
                 "json_schema": {
-                    "name": json_schema.get("title", "BeeBopResponse"),
+                    "name": json_schema.get("title", "BeebopResponse"),
                     "schema": json_schema,
                     "strict": True,
                 },

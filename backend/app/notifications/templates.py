@@ -44,7 +44,7 @@ def _badge_issued_email(p: dict) -> EmailContent:
     title = p.get("listing_title", "your listing")
     badge = p.get("badge_type", "document")
     return EmailContent(
-        subject=f"BeeBop: {badge} verification issued for {title}",
+        subject=f"Beebop: {badge} verification issued for {title}",
         html=(
             f"<p>Good news — the {badge} badge has been issued for "
             f"<strong>{title}</strong>.</p><p>Seekers can now see this badge "
@@ -68,9 +68,9 @@ def _listing_queried_email(p: dict) -> EmailContent:
     title = p.get("listing_title", "your listing")
     note = p.get("note", "")
     return EmailContent(
-        subject=f"BeeBop: action required on {title}",
+        subject=f"Beebop: action required on {title}",
         html=(
-            f"<p>The BeeBop team needs a small change to <strong>{title}</strong> "
+            f"<p>The Beebop team needs a small change to <strong>{title}</strong> "
             f"before approving the document badge.</p><p><em>{note}</em></p>"
             f"<p>Open the listing in your dashboard to make the change and "
             f"resubmit.</p>"
@@ -86,7 +86,7 @@ def _listing_rejected_email(p: dict) -> EmailContent:
     title = p.get("listing_title", "your listing")
     note = p.get("note", "")
     return EmailContent(
-        subject=f"BeeBop: {title} could not be verified",
+        subject=f"Beebop: {title} could not be verified",
         html=(
             f"<p>We weren't able to verify <strong>{title}</strong>.</p>"
             f"<p><em>{note}</em></p><p>If you believe this was in error, please "
@@ -118,12 +118,12 @@ def _offer_accepted_email(p: dict) -> EmailContent:
     amount = p.get("offer_amount")
     visit = p.get("visit_required")
     visit_line = (
-        "<p>A BeeBop trusted agent will contact the seeker shortly to schedule a property visit.</p>"
+        "<p>A Beebop trusted agent will contact the seeker shortly to schedule a property visit.</p>"
         if visit
         else "<p>You can proceed straight to agreement signing.</p>"
     )
     return EmailContent(
-        subject=f"BeeBop: offer accepted on {title}",
+        subject=f"Beebop: offer accepted on {title}",
         html=(
             f"<p>The offer on <strong>{title}</strong> has been accepted at "
             f"<strong>₦{int(amount):,}</strong>.</p>{visit_line}"
@@ -169,14 +169,14 @@ def _offer_expiring_email(p: dict) -> EmailContent:
     title = p.get("listing_title", "the listing")
     hours_remaining = int(p.get("hours_remaining", 0))
     return EmailContent(
-        subject=f"BeeBop: {hours_remaining} hours left on the offer for {title}",
+        subject=f"Beebop: {hours_remaining} hours left on the offer for {title}",
         html=(
             f"<p>The offer on <strong>{title}</strong> expires in "
             f"<strong>{hours_remaining} hours</strong>. Respond from your dashboard.</p>"
         ),
         text=(
             f"Offer on {title} expires in {hours_remaining} hours. "
-            f"Respond from your BeeBop dashboard."
+            f"Respond from your Beebop dashboard."
         ),
     )
 
@@ -184,7 +184,7 @@ def _offer_expiring_email(p: dict) -> EmailContent:
 def _offer_expired_email(p: dict) -> EmailContent:
     title = p.get("listing_title", "the listing")
     return EmailContent(
-        subject=f"BeeBop: the offer on {title} has expired",
+        subject=f"Beebop: the offer on {title} has expired",
         html=(
             f"<p>The 48-hour response window on the offer for <strong>{title}</strong> "
             f"has elapsed and the offer has expired. The listing is open to other seekers again.</p>"
@@ -216,9 +216,9 @@ def _visit_assigned_whatsapp(p: dict) -> WhatsAppContent:
 def _visit_confirmed_email(p: dict) -> EmailContent:
     title = p.get("listing_title", "the property")
     when = p.get("scheduled_at", "")
-    agent = p.get("agent_first_name", "your BeeBop agent")
+    agent = p.get("agent_first_name", "your Beebop agent")
     return EmailContent(
-        subject=f"BeeBop: visit confirmed for {title}",
+        subject=f"Beebop: visit confirmed for {title}",
         html=(
             f"<p>{agent} will meet you at <strong>{title}</strong> on "
             f"<strong>{when}</strong>.</p><p>Please arrive on time.</p>"
@@ -242,7 +242,7 @@ def _visit_cancelled_email(p: dict) -> EmailContent:
     reason = p.get("reason", "")
     cancelled_by = p.get("cancelled_by", "the other party")
     return EmailContent(
-        subject=f"BeeBop: visit cancelled for {title}",
+        subject=f"Beebop: visit cancelled for {title}",
         html=(
             f"<p>The visit for <strong>{title}</strong> has been cancelled by "
             f"{cancelled_by}.</p><p><em>{reason}</em></p>"
@@ -261,7 +261,7 @@ def _visit_cancelled_whatsapp(p: dict) -> WhatsAppContent:
 def _visit_report_approved_email(p: dict) -> EmailContent:
     title = p.get("listing_title", "the property")
     return EmailContent(
-        subject=f"BeeBop: visit report approved — {title}",
+        subject=f"Beebop: visit report approved — {title}",
         html=(
             f"<p>The post-visit report for <strong>{title}</strong> has been approved. "
             f"You can now finalise your offer from your dashboard.</p>"
@@ -279,7 +279,7 @@ def _agreement_ready_email(p: dict) -> EmailContent:
     title = p.get("listing_title", "the property")
     kind = "tenancy agreement" if p.get("agreement_type") == "tenancy" else "sale memorandum"
     return EmailContent(
-        subject=f"BeeBop: your {kind} is ready to sign",
+        subject=f"Beebop: your {kind} is ready to sign",
         html=(
             f"<p>The {kind} for <strong>{title}</strong> has been generated. "
             f"Open your dashboard to review and sign with an OTP.</p>"
@@ -298,7 +298,7 @@ def _agreement_ready_whatsapp(p: dict) -> WhatsAppContent:
 def _agreement_signed_email(p: dict) -> EmailContent:
     title = p.get("listing_title", "the property")
     return EmailContent(
-        subject=f"BeeBop: agreement signed for {title}",
+        subject=f"Beebop: agreement signed for {title}",
         html=(
             f"<p>The agreement for <strong>{title}</strong> has been fully signed and "
             f"facilitation fees confirmed. The signed PDF is available in your dashboard.</p>"
@@ -314,7 +314,7 @@ def _sales_invoice_email(p: dict) -> EmailContent:
     due = p.get("due_at", "")
     invoice_url = p.get("invoice_url", "")
     return EmailContent(
-        subject="BeeBop: your sales facilitation invoice",
+        subject="Beebop: your sales facilitation invoice",
         html=(
             f"<p>Your sales facilitation invoice of "
             f"<strong>₦{int(float(amount or 0)):,}</strong> is due by <strong>{due}</strong>.</p>"
@@ -337,7 +337,7 @@ def _booking_requested_email(p: dict) -> EmailContent:
     amount = p.get("amount") or 0
     deadline = p.get("decision_deadline", "")
     return EmailContent(
-        subject=f"BeeBop: new booking request — {title}",
+        subject=f"Beebop: new booking request — {title}",
         html=(
             f"<p>You have a new booking request on <strong>{title}</strong> for "
             f"<strong>{nights} night(s)</strong>, total ₦{int(float(amount)):,}.</p>"
@@ -362,7 +362,7 @@ def _booking_confirmed_email(p: dict) -> EmailContent:
     cin = p.get("check_in", "")
     cout = p.get("check_out", "")
     return EmailContent(
-        subject=f"BeeBop: booking confirmed — {title}",
+        subject=f"Beebop: booking confirmed — {title}",
         html=(
             f"<p>Your stay at <strong>{title}</strong> is confirmed: "
             f"<strong>{cin} → {cout}</strong>.</p>"
@@ -387,7 +387,7 @@ def _booking_declined_email(p: dict) -> EmailContent:
     title = p.get("listing_title", "the property")
     reason = p.get("reason", "")
     return EmailContent(
-        subject=f"BeeBop: booking request declined — {title}",
+        subject=f"Beebop: booking request declined — {title}",
         html=(
             f"<p>The host declined your booking request for <strong>{title}</strong>.</p>"
             f"<p><em>{reason}</em></p>"
@@ -400,7 +400,7 @@ def _booking_cancelled_email(p: dict) -> EmailContent:
     title = p.get("listing_title", "the property")
     reason = p.get("reason", "")
     return EmailContent(
-        subject=f"BeeBop: booking cancelled — {title}",
+        subject=f"Beebop: booking cancelled — {title}",
         html=(
             f"<p>The booking for <strong>{title}</strong> has been cancelled.</p>"
             f"<p><em>{reason}</em></p>"
@@ -413,7 +413,7 @@ def _access_details_email(p: dict) -> EmailContent:
     title = p.get("listing_title", "your stay")
     details = p.get("access_details", "")
     return EmailContent(
-        subject=f"BeeBop: access details for {title}",
+        subject=f"Beebop: access details for {title}",
         html=(
             f"<p>Welcome — here are the access details for <strong>{title}</strong>.</p>"
             f'<pre style="background:#f8fafc;padding:12px;border-radius:8px;'
@@ -434,7 +434,7 @@ def _host_payout_email(p: dict) -> EmailContent:
     amount = p.get("amount") or 0
     title = p.get("listing_title", "your short-let")
     return EmailContent(
-        subject=f"BeeBop: payout for {title}",
+        subject=f"Beebop: payout for {title}",
         html=(
             f"<p>Payout of <strong>₦{int(float(amount)):,}</strong> for "
             f"<strong>{title}</strong> has been initiated to your registered bank account.</p>"
@@ -447,7 +447,7 @@ def _renewal_prompt_email(p: dict) -> EmailContent:
     title = p.get("listing_title", "your tenancy")
     days = p.get("days_remaining", 30)
     return EmailContent(
-        subject=f"BeeBop: {title} renewal — {days} days remaining",
+        subject=f"Beebop: {title} renewal — {days} days remaining",
         html=(
             f"<p>The tenancy on <strong>{title}</strong> ends in <strong>{days} days</strong>. "
             f"Renew from your dashboard — the simplified flow charges a 10,000 Naira renewal fee.</p>"
@@ -461,7 +461,7 @@ def _renewal_prompt_email(p: dict) -> EmailContent:
 def _landlord_nin_verified_email(p: dict) -> EmailContent:
     name = p.get("first_name") or "there"
     return EmailContent(
-        subject="BeeBop: your identity has been verified",
+        subject="Beebop: your identity has been verified",
         html=(
             f"<p>Hi {name},</p><p>Your NIN has been verified. You can now "
             f"submit listings for review from your landlord dashboard.</p>"
@@ -477,7 +477,7 @@ def _landlord_nin_rejected_email(p: dict) -> EmailContent:
     name = p.get("first_name") or "there"
     note = p.get("note") or "Please re-upload a clearer photo of your ID."
     return EmailContent(
-        subject="BeeBop: identity verification needs another look",
+        subject="Beebop: identity verification needs another look",
         html=(
             f"<p>Hi {name},</p><p>We could not verify the ID image you "
             f"uploaded.</p><p><em>{note}</em></p><p>Re-upload a clearer image "

@@ -108,22 +108,28 @@ export default function ListingDetailPage({
                   {priceCaption(listing.category)}
                 </p>
                 <p className="mt-2 text-2xl font-bold leading-none text-slate-950">
-                  {formatPrice(listing.price)}
+                  {listing.category === 'off_campus'
+                    ? formatPrice(unitFromPrice(listing))
+                    : formatPrice(listing.price)}
                 </p>
               </div>
             </section>
 
             <SpecTiles listing={listing} />
 
-            <section className="rounded-[24px] bg-white p-6 shadow-[0_14px_38px_rgba(15,23,42,0.08)]">
-              <p className="text-sm text-stone-600">{priceCaption(listing.category)}</p>
-              <p className="mt-3 text-3xl font-bold leading-none text-slate-950">
-                {formatPrice(listing.price)}
-              </p>
-              <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.08em] text-stone-600">
-                Secure transaction support available in BeeBop
-              </p>
-            </section>
+            {listing.category === 'off_campus' ? (
+              <UnitTypes listing={listing} />
+            ) : (
+              <section className="rounded-[24px] bg-white p-6 shadow-[0_14px_38px_rgba(15,23,42,0.08)]">
+                <p className="text-sm text-stone-600">{priceCaption(listing.category)}</p>
+                <p className="mt-3 text-3xl font-bold leading-none text-slate-950">
+                  {formatPrice(listing.price)}
+                </p>
+                <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.08em] text-stone-600">
+                  Secure transaction support available in Beebop
+                </p>
+              </section>
+            )}
 
             <section>
               <h2 className="text-2xl font-bold text-slate-950">About this Property</h2>
@@ -179,8 +185,8 @@ function ListingHeader({ listing }: { listing: PublicListingDetail }) {
         >
           <ArrowLeft className="h-5 w-5" aria-hidden />
         </Link>
-        <BeeBopMark />
-        <span className="text-lg font-bold text-brand-700">BeeBop</span>
+        <BeebopMark />
+        <span className="text-lg font-bold text-brand-700">Beebop</span>
       </div>
       <div className="flex items-center gap-2">
         <BookmarkButton
@@ -242,6 +248,67 @@ function SpecTiles({ listing }: { listing: PublicListingDetail }) {
   );
 }
 
+function UnitTypes({ listing }: { listing: PublicListingDetail }) {
+  const units = [...listing.unit_types].sort((a, b) => a.price - b.price);
+  if (units.length === 0) {
+    return (
+      <section className="rounded-[24px] bg-white p-6 shadow-[0_14px_38px_rgba(15,23,42,0.08)]">
+        <p className="text-sm text-stone-600">No units listed yet</p>
+        <p className="mt-2 text-sm leading-6 text-stone-500">
+          The landlord hasn’t added room options for this property yet. Check back soon.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-[24px] bg-white p-6 shadow-[0_14px_38px_rgba(15,23,42,0.08)]">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-2xl font-bold text-slate-950">Available units</h2>
+        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-stone-600">
+          {units.length} option{units.length > 1 ? 's' : ''}
+        </p>
+      </div>
+      <ul className="mt-5 space-y-3">
+        {units.map((u) => {
+          const soldOut = u.beds_available <= 0;
+          return (
+            <li
+              key={u.id}
+              className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 px-5 py-4"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold text-slate-950">{u.name}</p>
+                <p className="mt-0.5 text-xs font-medium capitalize text-stone-600">
+                  {u.kind.replaceAll('_', ' ')} · {u.beds_per_room} bed(s)/room
+                </p>
+                <p className="mt-1 text-xs font-semibold">
+                  {soldOut ? (
+                    <span className="text-red-600">Fully booked</span>
+                  ) : (
+                    <span className="text-emerald-700">
+                      {u.beds_available} bed{u.beds_available > 1 ? 's' : ''} available
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-lg font-bold leading-none text-slate-950">{formatPrice(u.price)}</p>
+                <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-stone-500">
+                  per unit
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.08em] text-stone-600">
+        Secure transaction support available in Beebop
+      </p>
+    </section>
+  );
+}
+
 function ApproximateLocation({ listing }: { listing: PublicListingDetail }) {
   const hasPin = listing.gps_lat != null && listing.gps_lng != null;
 
@@ -265,7 +332,7 @@ function ApproximateLocation({ listing }: { listing: PublicListingDetail }) {
   );
 }
 
-function BeeBopMark() {
+function BeebopMark() {
   return (
     <svg width="24" height="24" viewBox="0 0 26 26" fill="none" aria-hidden>
       <circle cx="6" cy="9" r="3" fill="#f59e0b" />
@@ -282,6 +349,13 @@ function cleanTitle(title: string): string {
 function formatPrice(value: number | null): string {
   if (value == null) return 'Price on request';
   return `\u20a6${Number(value).toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
+}
+
+/** Cheapest unit price for an off-campus listing \u2014 drives the "Starting rate"
+ * headline now that student listings price per unit rather than on the listing. */
+function unitFromPrice(listing: PublicListingDetail): number | null {
+  const prices = listing.unit_types.map((u) => u.price).filter((p) => p > 0);
+  return prices.length ? Math.min(...prices) : null;
 }
 
 function categoryLabel(category: PublicListingDetail['category']): string {

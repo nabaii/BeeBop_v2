@@ -102,7 +102,7 @@ export default function ProfilePage() {
 
       <ComingSoonCard
         title="Recent queries"
-        hint="Your most recent BeeBop search will appear here."
+        hint="Your most recent Beebop search will appear here."
       />
 
       <ComingSoonCard

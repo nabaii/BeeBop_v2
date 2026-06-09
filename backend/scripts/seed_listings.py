@@ -419,7 +419,7 @@ def _off_campus_listings() -> list[dict]:
     """Each listing also returns its unit-type inventory under `_inventory`."""
     return [
         {
-            "title": f"{SEED_PREFIX} BeeBop Lodge — University of Abuja, Giri",
+            "title": f"{SEED_PREFIX} Beebop Lodge — University of Abuja, Giri",
             "subtitle": "Walk-in hostel, 7 minutes to UniAbuja main gate",
             "description": (
                 "Mixed hostel built specifically for University of Abuja "
@@ -595,7 +595,7 @@ async def _ensure_owner(db, email: str) -> User:
     user = User(
         email=email,
         role=UserRole.LANDLORD,
-        first_name="BeeBop",
+        first_name="Beebop",
         last_name="Landlord",
         phone="+2348000000000",
         account_type=AccountType.INDIVIDUAL,
@@ -652,7 +652,7 @@ def _photo_specs_for_listing(payload: dict, asset_base_url: str) -> list[dict[st
         return LAND_PHOTOS
     if "Off-plan 4-bedroom terrace" in title:
         return _local_photos(base_url=asset_base_url, folder="Listing_3", limit=5, offset=10)
-    if "BeeBop Lodge" in title:
+    if "Beebop Lodge" in title:
         return _local_photos(base_url=asset_base_url, folder="Listing_1", limit=6, offset=6)
     if "Jabi Student Lodge" in title:
         return _local_photos(base_url=asset_base_url, folder="Listing_2", limit=6, offset=6)
@@ -674,7 +674,7 @@ def _add_listing_photos(listing: Listing, payload: dict, asset_base_url: str) ->
 
 
 async def main() -> int:
-    parser = argparse.ArgumentParser(description="Seed dummy BeeBop listings.")
+    parser = argparse.ArgumentParser(description="Seed dummy Beebop listings.")
     parser.add_argument("--owner-email", default=DEFAULT_OWNER_EMAIL,
                         help=f"Owner email (default: {DEFAULT_OWNER_EMAIL}).")
     parser.add_argument(

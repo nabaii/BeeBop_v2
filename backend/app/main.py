@@ -69,7 +69,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="BeeBop API",
+    title="Beebop API",
     version="0.1.0",
     description="Conversational property marketplace — Nigeria.",
     lifespan=lifespan,

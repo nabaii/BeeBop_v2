@@ -1,4 +1,4 @@
-# BeeBop
+# Beebop
 
 Conversational property marketplace for Nigeria. Initial rollout: Abuja.
 
@@ -90,7 +90,7 @@ SECRET_KEY=<long random value>
 DATABASE_URL=<Render/Neon Postgres URL>
 REDIS_URL=<Redis URL>
 RESEND_API_KEY=<Resend API key>
-RESEND_FROM_EMAIL="BeeBop <noreply@beebop.store>"
+RESEND_FROM_EMAIL="Beebop <noreply@beebop.store>"
 ADMIN_BOOTSTRAP_EMAIL=<first admin email>
 ADMIN_BOOTSTRAP_FIRST_NAME=<first admin first name>
 ADMIN_BOOTSTRAP_LAST_NAME=<first admin last name>
@@ -99,7 +99,7 @@ ADMIN_BOOTSTRAP_PASSWORD=<temporary first admin password>
 
 `RESEND_FROM_EMAIL` must be an address on the domain verified in Resend. If the
 verified sending domain is `contact.beebop.store`, use an address like
-`BeeBop <noreply@contact.beebop.store>`.
+`Beebop <noreply@contact.beebop.store>`.
 
 The frontend is built separately, so it also needs:
 

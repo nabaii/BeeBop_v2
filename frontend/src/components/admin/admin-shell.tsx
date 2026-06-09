@@ -71,7 +71,7 @@ const ADMIN_SECTIONS: readonly NavItem<AdminRoute>[] = [
 ] as const;
 
 const WEBSITE_LINKS: readonly NavItem<WebsiteRoute>[] = [
-  { href: '/', label: 'BeeBop home', icon: Home, exact: true },
+  { href: '/', label: 'Beebop home', icon: Home, exact: true },
   { href: '/browse', label: 'Browse listings', icon: Search, exact: true },
   { href: '/browse/off-campus', label: 'Off-campus', icon: GraduationCap },
   { href: '/browse/short-let', label: 'Short-let', icon: Waves },
@@ -121,7 +121,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
               <Menu className="h-5 w-5" aria-hidden />
             </button>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-900">BeeBop Admin</p>
+              <p className="truncate text-sm font-semibold text-slate-900">Beebop Admin</p>
               <p className="truncate text-xs text-slate-500">{user?.email}</p>
             </div>
           </div>
@@ -164,7 +164,7 @@ function AdminNavigation({
     >
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
         <Link href="/" onClick={onNavigate} className="text-lg font-bold text-brand">
-          BeeBop
+          Beebop
         </Link>
         <button
           type="button"

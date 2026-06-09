@@ -1,6 +1,6 @@
 """Paystack client — facilitation charges, sales invoices, host payouts.
 
-Paystack works in kobo (1 NGN = 100 kobo). All money values internal to BeeBop
+Paystack works in kobo (1 NGN = 100 kobo). All money values internal to Beebop
 are Naira (Decimal/float); we convert at the boundary.
 
 The dev stub returns deterministic, locally-unique references so the rest of

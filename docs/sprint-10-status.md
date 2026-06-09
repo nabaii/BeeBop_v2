@@ -26,7 +26,7 @@ Weeks 23–25. Development Plan v3.0 §8.5.
 ### Backend
 - `app/integrations/paystack.py` — Live `LivePaystackClient` (initialise_payment, create_invoice, verify) + `StubPaystackClient` for dev. `make_reference()` helper for client-side reference generation.
 - `app/models/agreement.py` — added `rendered_data`, `sales_invoice_reference`, `sales_invoice_due_at`, `landlord_fee_total`, `seeker_fee_total`, `seller_fee_total`, `landlord_payment_reference`, `seeker_payment_reference`, `renewed_into_id`, `renewal_prompted_at`.
-- `app/agreements/pdf.py` — ReportLab renderer producing A4 PDFs with header, parties, commercial terms, conditions, BeeBop facilitation clause, signature lines.
+- `app/agreements/pdf.py` — ReportLab renderer producing A4 PDFs with header, parties, commercial terms, conditions, Beebop facilitation clause, signature lines.
 - `app/agreements/schemas.py`, `app/agreements/service.py`, `app/agreements/routes.py` — full agreement lifecycle (generation, signing, payments, download).
 - `app/agreements/renewal.py` — Celery Beat sweeper.
 - `app/payments/routes.py` — Paystack webhook with HMAC-SHA512 signature verification (loose for dev environment).

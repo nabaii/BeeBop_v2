@@ -156,13 +156,17 @@ export function ListingBaseForm({ listing, onSaved }: Props) {
             onChange={updateLocation}
           />
         </Labelled>
-        <Labelled label={priceLabel} hint="Naira.">
-          <Input
-            inputMode="numeric"
-            value={draft.price}
-            onChange={(e) => updateField('price', e.target.value.replace(/[^0-9]/g, ''))}
-          />
-        </Labelled>
+        {/* Off-campus listings price per unit type in the Room Inventory
+            section, not on the listing itself — so no base price here. */}
+        {listing.category !== 'off_campus' && (
+          <Labelled label={priceLabel} hint="Naira.">
+            <Input
+              inputMode="numeric"
+              value={draft.price}
+              onChange={(e) => updateField('price', e.target.value.replace(/[^0-9]/g, ''))}
+            />
+          </Labelled>
+        )}
       </div>
     </section>
   );
