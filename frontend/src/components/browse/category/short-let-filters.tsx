@@ -80,7 +80,7 @@ export function ShortLetFilterFields({
               className={
                 'rounded-full px-2 py-1 text-xs ' +
                 ((value.min_rating ?? 0) === v
-                  ? 'bg-brand text-white'
+                  ? 'bg-brand text-slate-900'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200')
               }
             >

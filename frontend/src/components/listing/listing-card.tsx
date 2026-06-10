@@ -6,6 +6,7 @@
  *   • Unverified state is visually distinct from verified tiers.
  */
 
+import { Bath, BedDouble } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
 
@@ -22,6 +23,8 @@ export interface ListingCardData {
   cover_photo?: PhotoView | null;
   rating?: number | null;        // short-let / rent / student
   review_count?: number | null;
+  bedroom_count?: number | null; // real specs from type_data; null = omit
+  bathroom_count?: number | null;
   href?: string;                 // defaults to /listings/[id]
 }
 
@@ -72,6 +75,22 @@ export function ListingCard({ data }: { data: ListingCardData }) {
             <div className="text-[11px] text-slate-500">{priceUnit(data.category)}</div>
           </div>
         </div>
+        {(data.bedroom_count != null || data.bathroom_count != null) && (
+          <div className="mt-2 flex items-center gap-3 text-xs text-slate-600">
+            {data.bedroom_count != null && (
+              <span className="inline-flex items-center gap-1">
+                <BedDouble className="h-3.5 w-3.5" aria-hidden />
+                {data.bedroom_count} bed{data.bedroom_count === 1 ? '' : 's'}
+              </span>
+            )}
+            {data.bathroom_count != null && (
+              <span className="inline-flex items-center gap-1">
+                <Bath className="h-3.5 w-3.5" aria-hidden />
+                {data.bathroom_count} bath{data.bathroom_count === 1 ? '' : 's'}
+              </span>
+            )}
+          </div>
+        )}
         {data.category !== 'sales' && typeof data.rating === 'number' && (
           <div className="mt-2 flex items-center gap-1 text-xs text-slate-600">
             <Star />
@@ -99,7 +118,7 @@ function verificationTier(status: ListingStatus): VerificationTier {
 function VerificationBadge({ tier }: { tier: VerificationTier }) {
   const label =
     tier === 'fully_verified'
-      ? 'Fully Verified'
+      ? 'AGIS Verified'
       : tier === 'doc_verified'
         ? 'Doc Verified'
         : 'Unverified';
@@ -107,9 +126,9 @@ function VerificationBadge({ tier }: { tier: VerificationTier }) {
     <span
       className={cn(
         'rounded-full px-2 py-0.5 text-[11px] font-medium',
-        tier === 'fully_verified' && 'bg-verified-teal text-white',
-        tier === 'doc_verified' && 'bg-verified-blue text-white',
-        tier === 'unverified' && 'bg-verified-grey text-white',
+        tier === 'fully_verified' && 'bg-verification-fully text-white',
+        tier === 'doc_verified' && 'bg-verification-doc text-white',
+        tier === 'unverified' && 'bg-verification-unverified text-white',
       )}
     >
       {label}

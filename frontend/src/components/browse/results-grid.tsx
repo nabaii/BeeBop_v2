@@ -6,6 +6,7 @@
 
 import { BookmarkButton } from '@/components/browse/bookmark-button';
 import { ListingCard } from '@/components/listing/listing-card';
+import { ListingCardSkeleton } from '@/components/ui/skeleton';
 import type { PublicListingSummary, SearchResponse } from '@/lib/search';
 
 interface Props {
@@ -16,7 +17,17 @@ interface Props {
 }
 
 export function ResultsGrid({ data, loading, onPageChange, emptyHint }: Props) {
-  if (loading && !data) return <p className="py-16 text-center text-sm text-slate-500">Loading…</p>;
+  if (loading && !data) {
+    return (
+      <ul className="grid grid-cols-1 gap-4" aria-busy="true">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <li key={i}>
+            <ListingCardSkeleton />
+          </li>
+        ))}
+      </ul>
+    );
+  }
   if (!data) return null;
 
   const totalPages = Math.max(1, Math.ceil(data.total / data.page_size));
@@ -91,5 +102,7 @@ function toCardData(r: PublicListingSummary) {
       : null,
     rating: r.rating,
     review_count: r.review_count,
+    bedroom_count: r.bedroom_count,
+    bathroom_count: r.bathroom_count,
   };
 }

@@ -1065,6 +1065,18 @@ async def _rating_map(
     }
 
 
+def _as_float(value: object) -> float | None:
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_int(value: object) -> int | None:
+    number = _as_float(value)
+    return int(number) if number is not None else None
+
+
 def _result_summary(
     *,
     listing: Listing,
@@ -1074,6 +1086,7 @@ def _result_summary(
     cover = next((photo for photo in listing.photos if photo.is_cover), None)
     avg_rating = rating[0] if rating is not None else None
     review_count = rating[1] if rating is not None else 0
+    type_data = listing.type_data or {}
 
     signals = _rank_signals(
         listing=listing,
@@ -1091,6 +1104,8 @@ def _result_summary(
         cover_url=cover.url if cover is not None else None,
         rating=avg_rating,
         review_count=review_count,
+        bedroom_count=_as_int(type_data.get("bedroom_count")),
+        bathroom_count=_as_float(type_data.get("bathroom_count")),
         rank_score=signals["score"],
         rank_signals=signals,
     )

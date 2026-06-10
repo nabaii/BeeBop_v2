@@ -44,7 +44,7 @@ export function ChatInputStub() {
         />
         <button
           type="submit"
-          className="rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-xl bg-brand px-4 py-2 text-sm font-medium text-slate-900 disabled:opacity-60"
           disabled={!value.trim()}
         >
           Ask

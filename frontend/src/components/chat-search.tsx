@@ -8,10 +8,10 @@ import {
   Bath,
   BedDouble,
   Briefcase,
-  Car,
   ChevronRight,
   Clock,
   Home,
+  ImageOff,
   Loader2,
   MapPin,
   MoreHorizontal,
@@ -149,29 +149,34 @@ export function ChatSearchPanel() {
                 type="submit"
                 disabled={loading || !value.trim()}
                 aria-label="Send message"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-slate-900 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ArrowRight className="h-5 w-5" aria-hidden />
               </button>
             </div>
           </form>
 
-          <ul className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
-            {SUGGESTIONS.map(({ text, icon: Icon }) => (
-              <li key={text}>
-                <button
-                  type="button"
-                  onClick={() => void submit(text)}
-                  className="flex h-full w-full items-start gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left text-xs text-slate-700 transition hover:border-brand/40 hover:bg-brand-50"
-                >
-                  <Icon className="h-4 w-4 shrink-0 text-brand" aria-hidden />
-                  <span>{text}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-
           <FeaturedCarousel />
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-slate-500">
+              Need ideas? Try asking for one of these:
+            </p>
+            <ul className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+              {SUGGESTIONS.map(({ text, icon: Icon }) => (
+                <li key={text}>
+                  <button
+                    type="button"
+                    onClick={() => void submit(text)}
+                    className="flex h-full w-full items-start gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left text-xs text-slate-700 transition hover:border-brand/40 hover:bg-brand-50"
+                  >
+                    <Icon className="h-4 w-4 shrink-0 text-brand" aria-hidden />
+                    <span>{text}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
 
           {error && (
             <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -519,7 +524,7 @@ function RefineSearchForm({
           type="submit"
           disabled={loading || !value.trim()}
           aria-label="Send message"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#d1a200] text-white shadow-[0_8px_20px_rgba(161,123,0,0.32)] transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#d1a200] text-slate-900 shadow-[0_8px_20px_rgba(161,123,0,0.32)] transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -543,11 +548,7 @@ function MiniResultCard({
       className="flex w-[min(258px,76vw)] shrink-0 snap-center overflow-hidden rounded-[22px] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.12)] ring-1 ring-slate-100"
     >
       <div className="relative h-[92px] w-[92px] shrink-0 bg-slate-100">
-        <img
-          src={coverUrl(result)}
-          alt={result.title}
-          className="h-full w-full object-cover"
-        />
+        <CoverImage result={result} />
         <VerificationBadge status={result.status} compact />
       </div>
       <div className="min-w-0 flex-1 px-3 py-2.5">
@@ -573,16 +574,14 @@ function ExpandedListingCard({
   result: ResultListingSummary;
   parameters: ExtractedParameters | null;
 }) {
-  const specs = propertySpecs(result, parameters);
+  const bedrooms =
+    result.bedroom_count ?? parameters?.bedroom_count ?? extractBedroomCount(result.title);
+  const bathrooms = result.bathroom_count ?? null;
 
   return (
     <article className="overflow-hidden rounded-[14px] bg-white shadow-[0_14px_38px_rgba(15,23,42,0.12)] ring-1 ring-slate-100">
       <div className="relative aspect-[16/11] bg-slate-100">
-        <img
-          src={coverUrl(result)}
-          alt={result.title}
-          className="h-full w-full object-cover"
-        />
+        <CoverImage result={result} />
         <VerificationBadge status={result.status} />
         <BookmarkButton
           listingId={result.id}
@@ -596,20 +595,22 @@ function ExpandedListingCard({
         <h2 className="mt-4 line-clamp-2 text-xl font-bold leading-6 text-slate-950">
           {cleanTitle(result.title)}
         </h2>
-        <div className="mt-3 flex items-center gap-3 text-xs font-medium text-slate-600">
-          <span className="inline-flex items-center gap-1">
-            <BedDouble className="h-4 w-4" aria-hidden />
-            {specs.bedrooms}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Bath className="h-4 w-4" aria-hidden />
-            {specs.bathrooms}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Car className="h-4 w-4" aria-hidden />
-            {specs.parking}
-          </span>
-        </div>
+        {(bedrooms != null || bathrooms != null) && (
+          <div className="mt-3 flex items-center gap-3 text-xs font-medium text-slate-600">
+            {bedrooms != null && (
+              <span className="inline-flex items-center gap-1">
+                <BedDouble className="h-4 w-4" aria-hidden />
+                {bedrooms} bed{bedrooms === 1 ? '' : 's'}
+              </span>
+            )}
+            {bathrooms != null && (
+              <span className="inline-flex items-center gap-1">
+                <Bath className="h-4 w-4" aria-hidden />
+                {bathrooms} bath{bathrooms === 1 ? '' : 's'}
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="mt-4 flex items-end justify-between border-t border-slate-100 pt-4">
           <div>
@@ -652,7 +653,7 @@ function VerificationBadge({
       className={cn(
         'absolute left-4 top-4 inline-flex items-center gap-1 rounded-full font-bold uppercase tracking-wide text-white shadow-sm',
         compact ? 'left-2 top-2 px-1.5 py-0.5 text-[8px]' : 'px-3 py-1.5 text-[11px]',
-        fullyVerified && 'bg-[#d5ad3c]',
+        fullyVerified && 'bg-verification-fully',
         docVerified && 'bg-verification-doc',
         !fullyVerified && !docVerified && 'bg-verification-unverified',
       )}
@@ -734,15 +735,33 @@ function toCardData(result: ResultListingSummary) {
     cover_photo: coverPhoto,
     rating: result.rating,
     review_count: result.review_count,
+    bedroom_count: result.bedroom_count,
+    bathroom_count: result.bathroom_count,
     href: `/listings/${result.id}`,
   };
 }
 
-const FALLBACK_COVER_URL =
-  'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=900&q=80';
-
-function coverUrl(result: ResultListingSummary): string {
-  return result.cover_url ?? FALLBACK_COVER_URL;
+/**
+ * Renders the real cover photo when present, or an unmistakably generic
+ * placeholder when the listing has none — we never substitute stock imagery
+ * that could read as a photo of this specific unit.
+ */
+function CoverImage({ result }: { result: ResultListingSummary }) {
+  if (!result.cover_url) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-slate-100 text-slate-400">
+        <ImageOff className="h-6 w-6" aria-hidden />
+        <span className="text-[11px] font-medium">No photo yet</span>
+      </div>
+    );
+  }
+  return (
+    <img
+      src={result.cover_url}
+      alt={cleanTitle(result.title)}
+      className="h-full w-full object-cover"
+    />
+  );
 }
 
 function cleanTitle(title: string): string {
@@ -780,21 +799,6 @@ function priceLabel(category: ListingCategory): string {
     default:
       return 'Asking Price';
   }
-}
-
-function propertySpecs(
-  result: ResultListingSummary,
-  parameters: ExtractedParameters | null,
-): { bedrooms: string; bathrooms: string; parking: string } {
-  const bedroomCount = parameters?.bedroom_count ?? extractBedroomCount(result.title);
-  const bedrooms = bedroomCount ?? 4;
-  const bathrooms = bedrooms >= 4 ? '4.5' : String(Math.max(1, bedrooms));
-  const parking = bedrooms >= 3 ? '2' : '1';
-  return {
-    bedrooms: String(bedrooms),
-    bathrooms,
-    parking,
-  };
 }
 
 function extractBedroomCount(title: string): number | null {

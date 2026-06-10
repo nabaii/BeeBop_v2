@@ -21,9 +21,9 @@ interface Props {
 }
 
 const VERIFICATION_TIERS: { value: VerificationTier; label: string; dot: string }[] = [
-  { value: 'fully_verified', label: 'Fully Verified', dot: 'bg-verified-teal' },
-  { value: 'doc_verified', label: 'Doc Verified', dot: 'bg-verified-blue' },
-  { value: 'unverified', label: 'Unverified', dot: 'bg-verified-grey' },
+  { value: 'fully_verified', label: 'AGIS Verified', dot: 'bg-verification-fully' },
+  { value: 'doc_verified', label: 'Doc Verified', dot: 'bg-verification-doc' },
+  { value: 'unverified', label: 'Unverified', dot: 'bg-verification-unverified' },
 ];
 
 export function FilterPanel({ value, onChange, children, className }: Props) {

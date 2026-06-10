@@ -188,7 +188,7 @@ function FallbackList({ data, onSelect }: Props) {
 function Legend() {
   return (
     <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
-      <Pill color="#0d9488" label="Fully Verified" />
+      <Pill color="#0d9488" label="AGIS Verified" />
       <Pill color="#2563eb" label="Doc Verified" />
       <Pill color="#94a3b8" label="Unverified" />
     </div>

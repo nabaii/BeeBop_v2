@@ -83,6 +83,10 @@ class PublicListingSummary(BaseModel):
     cover_url: str | None = None
     rating: float | None = None
     review_count: int = 0
+    # Surfaced from type_data so cards show real specs instead of guesses.
+    # Null when the listing does not record them (e.g. off-campus per-unit).
+    bedroom_count: int | None = None
+    bathroom_count: float | None = None
 
 
 class SearchResponse(BaseModel):

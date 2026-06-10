@@ -74,7 +74,7 @@ export default function ListingDetailPage({
 
   const short = listing.description.length > 400 && !expanded;
   const description = short
-    ? `${listing.description.slice(0, 400)}...`
+    ? `${listing.description.slice(0, 400).replace(/\s+\S*$/, '')}…`
     : listing.description;
 
   return (
@@ -310,8 +310,6 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
 }
 
 function ApproximateLocation({ listing }: { listing: PublicListingDetail }) {
-  const hasPin = listing.gps_lat != null && listing.gps_lng != null;
-
   return (
     <section className="rounded-[24px] border border-slate-200 bg-slate-50 p-6">
       <h2 className="text-2xl font-bold text-slate-950">Approximate location</h2>
@@ -322,9 +320,7 @@ function ApproximateLocation({ listing }: { listing: PublicListingDetail }) {
         <div className="flex h-full items-center justify-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 font-semibold text-slate-800 shadow-sm">
             <MapPin className="h-4 w-4 text-brand-600" aria-hidden />
-            {hasPin
-              ? `${listing.gps_lat!.toFixed(4)}, ${listing.gps_lng!.toFixed(4)}`
-              : listing.district ?? 'Abuja'}
+            {listing.district ?? 'Abuja'}
           </span>
         </div>
       </div>

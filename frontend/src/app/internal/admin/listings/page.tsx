@@ -204,7 +204,7 @@ function FilterBlock<T extends string>({
               onClick={() => onToggle(opt)}
               className={
                 'rounded-full px-3 py-1 text-xs ' +
-                (active ? 'bg-brand text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200')
+                (active ? 'bg-brand text-slate-900' : 'bg-slate-100 text-slate-700 hover:bg-slate-200')
               }
             >
               {opt.replaceAll('_', ' ')}

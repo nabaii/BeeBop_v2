@@ -60,7 +60,7 @@ export function NotificationsInbox() {
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-slate-900">Notifications</h2>
           {unread > 0 && (
-            <span className="rounded-full bg-brand px-2 py-0.5 text-[11px] font-medium text-white">
+            <span className="rounded-full bg-brand px-2 py-0.5 text-[11px] font-medium text-slate-900">
               {unread} unread
             </span>
           )}

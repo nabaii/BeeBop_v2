@@ -128,7 +128,7 @@ export function CategoryBrowse<F extends SharedFilters>({
                 onClick={() => setView('grid')}
                 className={
                   'inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 sm:rounded-none sm:py-1.5 ' +
-                  (view === 'grid' ? 'bg-brand text-white' : 'text-slate-700 hover:bg-slate-50')
+                  (view === 'grid' ? 'bg-brand text-slate-900' : 'text-slate-700 hover:bg-slate-50')
                 }
               >
                 <LayoutGrid className="h-4 w-4" aria-hidden />
@@ -139,7 +139,7 @@ export function CategoryBrowse<F extends SharedFilters>({
                 onClick={() => setView('map')}
                 className={
                   'inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 sm:rounded-none sm:py-1.5 ' +
-                  (view === 'map' ? 'bg-brand text-white' : 'text-slate-700 hover:bg-slate-50')
+                  (view === 'map' ? 'bg-brand text-slate-900' : 'text-slate-700 hover:bg-slate-50')
                 }
               >
                 <Map className="h-4 w-4" aria-hidden />
@@ -198,7 +198,7 @@ export function CategoryBrowse<F extends SharedFilters>({
               <button
                 type="button"
                 onClick={() => setFilterOpen(false)}
-                className="mt-5 flex min-h-11 w-full items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white"
+                className="mt-5 flex min-h-11 w-full items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-slate-900"
               >
                 View results
               </button>

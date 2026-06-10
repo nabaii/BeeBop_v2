@@ -197,7 +197,7 @@ function StatusBadge({
         : thread.status === 'expired'
           ? 'bg-slate-200 text-slate-700'
           : yourTurn
-            ? 'bg-brand text-white'
+            ? 'bg-brand text-slate-900'
             : 'bg-amber-100 text-amber-800';
 
   let text: string;

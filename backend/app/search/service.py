@@ -30,6 +30,18 @@ _HIDDEN_STATUSES = (
 )
 
 
+def _as_float(value: object) -> float | None:
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_int(value: object) -> int | None:
+    number = _as_float(value)
+    return int(number) if number is not None else None
+
+
 def _base_visibility_stmt():  # type: ignore[no-untyped-def]
     return (
         select(Listing)
@@ -128,6 +140,7 @@ def _summarise(listing: Listing) -> PublicListingSummary:
         price = min(unit_prices) if unit_prices else None
     else:
         price = float(listing.price) if listing.price is not None else None
+    type_data = listing.type_data or {}
     return PublicListingSummary(
         id=str(listing.id),
         category=listing.category,
@@ -141,6 +154,8 @@ def _summarise(listing: Listing) -> PublicListingSummary:
         cover_url=cover.url if cover else None,
         rating=None,        # populated from Review aggregations in Sprint 4
         review_count=0,
+        bedroom_count=_as_int(type_data.get("bedroom_count")),
+        bathroom_count=_as_float(type_data.get("bathroom_count")),
     )
 
 

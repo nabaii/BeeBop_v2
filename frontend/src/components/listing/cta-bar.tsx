@@ -38,7 +38,7 @@ export function CtaBar({ listing }: Props) {
   const loggedOutCta = (
     <Link
       href={`/login?return_to=${encodeURIComponent(pathname ?? '/')}`}
-      className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white sm:w-auto"
+      className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-slate-900 sm:w-auto"
     >
       Sign in to continue
     </Link>
@@ -138,18 +138,26 @@ function ShortLetCta({
     <>
       <div className="w-full space-y-2 text-sm sm:w-auto">
         <div className="grid grid-cols-2 gap-2">
-          <Input
-            type="date"
-            value={checkIn}
-            onChange={(e) => setCheckIn(e.target.value)}
-            className="w-full"
-          />
-          <Input
-            type="date"
-            value={checkOut}
-            onChange={(e) => setCheckOut(e.target.value)}
-            className="w-full"
-          />
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-slate-500">Check-in</span>
+            <Input
+              type="date"
+              aria-label="Check-in date"
+              value={checkIn}
+              onChange={(e) => setCheckIn(e.target.value)}
+              className="w-full"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-slate-500">Check-out</span>
+            <Input
+              type="date"
+              aria-label="Check-out date"
+              value={checkOut}
+              onChange={(e) => setCheckOut(e.target.value)}
+              className="w-full"
+            />
+          </label>
         </div>
         <div className="text-xs text-slate-500">
           {quote ? (

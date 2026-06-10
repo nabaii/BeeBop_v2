@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { ListingCard } from '@/components/listing/listing-card';
+import { ListingCardSkeleton } from '@/components/ui/skeleton';
 import { getFeaturedListings, type PublicListingSummary } from '@/lib/search';
 
 export function FeaturedCarousel({ showBrowseLink = true }: { showBrowseLink?: boolean }) {
@@ -24,7 +25,20 @@ export function FeaturedCarousel({ showBrowseLink = true }: { showBrowseLink?: b
     };
   }, []);
 
-  if (items === null) return null;
+  if (items === null) {
+    return (
+      <section className="space-y-3">
+        <h2 className="text-base font-semibold text-slate-900">Properties in Abuja</h2>
+        <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2" aria-busy="true">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="w-64 shrink-0">
+              <ListingCardSkeleton />
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
   if (items.length === 0) return null;
 
   return (
@@ -59,6 +73,8 @@ export function FeaturedCarousel({ showBrowseLink = true }: { showBrowseLink?: b
                   : null,
                 rating: r.rating,
                 review_count: r.review_count,
+                bedroom_count: r.bedroom_count,
+                bathroom_count: r.bathroom_count,
               }}
             />
           </div>

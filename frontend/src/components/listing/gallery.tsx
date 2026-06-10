@@ -5,14 +5,11 @@
  * as a separately labelled section below the main gallery.
  */
 
-import { BadgeCheck, CheckCircle2 } from 'lucide-react';
+import { BadgeCheck, CheckCircle2, ImageOff } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { cn } from '@/lib/cn';
 import type { PublicListingDetail } from '@/lib/search';
-
-const FALLBACK_COVER_URL =
-  'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=900&q=80';
 
 export function ListingGallery({ listing }: { listing: PublicListingDetail }) {
   const { listingPhotos, walkthroughPhotos } = useMemo(() => {
@@ -21,23 +18,13 @@ export function ListingGallery({ listing }: { listing: PublicListingDetail }) {
     return { listingPhotos, walkthroughPhotos };
   }, [listing]);
 
-  const visiblePhotos =
-    listingPhotos.length > 0
-      ? listingPhotos
-      : [
-          {
-            id: 'fallback-cover',
-            url: FALLBACK_COVER_URL,
-            room_label: 'Listing cover',
-            is_cover: true,
-            display_order: 0,
-            is_inspector_walkthrough: false,
-          },
-        ];
-
   return (
     <div className="space-y-5">
-      <HeroGrid photos={visiblePhotos} listing={listing} />
+      {listingPhotos.length > 0 ? (
+        <HeroGrid photos={listingPhotos} listing={listing} />
+      ) : (
+        <NoPhotoHero listing={listing} />
+      )}
       {listingPhotos.length > 4 && <FullScrollRow photos={listingPhotos} />}
       {walkthroughPhotos.length > 0 && (
         <section className="space-y-3">
@@ -156,6 +143,21 @@ function FullScrollRow({ photos }: { photos: PublicListingDetail['photos'] }) {
   );
 }
 
+function NoPhotoHero({ listing }: { listing: PublicListingDetail }) {
+  return (
+    <div className="relative aspect-[4/3] overflow-hidden rounded-[16px] bg-slate-100 shadow-sm min-[380px]:aspect-square">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-slate-400">
+        <ImageOff className="h-8 w-8" aria-hidden />
+        <span className="text-xs font-medium">No photos yet</span>
+      </div>
+      <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+        <StatusBadge status={listing.status} />
+        {isVisited(listing.status) && <VisitedBadge />}
+      </div>
+    </div>
+  );
+}
+
 function StatusBadge({ status }: { status: PublicListingDetail['status'] }) {
   const fullyVerified = ['fully_verified', 'let_agreed', 'sale_agreed'].includes(status);
   const docVerified = status === 'doc_verified';
@@ -165,7 +167,7 @@ function StatusBadge({ status }: { status: PublicListingDetail['status'] }) {
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm',
-        fullyVerified && 'bg-[#d5ad3c]',
+        fullyVerified && 'bg-verification-fully',
         docVerified && 'bg-verification-doc',
         !fullyVerified && !docVerified && 'bg-verification-unverified',
       )}

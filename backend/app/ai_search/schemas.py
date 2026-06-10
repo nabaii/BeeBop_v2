@@ -92,6 +92,8 @@ class ResultListingSummary(BaseModel):
     cover_url: str | None = None
     rating: float | None = None
     review_count: int = 0
+    bedroom_count: int | None = None
+    bathroom_count: float | None = None
     rank_score: float
     rank_signals: dict[str, object]
 

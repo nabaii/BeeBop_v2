@@ -38,6 +38,8 @@ export interface ResultListingSummary {
   cover_url: string | null;
   rating: number | null;
   review_count: number;
+  bedroom_count?: number | null;
+  bathroom_count?: number | null;
   rank_score: number;
   rank_signals: Record<string, unknown>;
 }

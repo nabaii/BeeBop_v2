@@ -51,7 +51,7 @@ export function SalesFilterFields({
                 }
                 className={
                   'rounded-full px-3 py-1 text-xs ' +
-                  (active ? 'bg-brand text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200')
+                  (active ? 'bg-brand text-slate-900' : 'bg-slate-100 text-slate-700 hover:bg-slate-200')
                 }
               >
                 {n === 5 ? '5+' : n}
@@ -109,7 +109,7 @@ function PillSet({
               onClick={() => toggle(v)}
               className={
                 'rounded-full px-3 py-1 text-xs ' +
-                (active ? 'bg-brand text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200')
+                (active ? 'bg-brand text-slate-900' : 'bg-slate-100 text-slate-700 hover:bg-slate-200')
               }
             >
               {text}

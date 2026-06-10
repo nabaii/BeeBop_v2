@@ -182,7 +182,7 @@ function ProfileHeader({
           </div>
           <button
             type="button"
-            className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white shadow"
+            className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-brand text-slate-900 shadow"
             aria-label="Edit avatar"
           >
             <Pencil className="h-3 w-3" aria-hidden />
@@ -198,7 +198,7 @@ function ProfileHeader({
         </div>
         <button
           type="button"
-          className="w-full shrink-0 rounded-full bg-brand px-3 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-brand-600 min-[380px]:w-auto"
+          className="w-full shrink-0 rounded-full bg-brand px-3 py-2 text-[11px] font-semibold text-slate-900 shadow-sm transition hover:bg-brand-600 min-[380px]:w-auto"
         >
           Edit profile
         </button>

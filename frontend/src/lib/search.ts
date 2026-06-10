@@ -65,6 +65,8 @@ export interface PublicListingSummary {
   cover_url: string | null;
   rating: number | null;
   review_count: number;
+  bedroom_count?: number | null;
+  bathroom_count?: number | null;
 }
 
 export interface SearchResponse {

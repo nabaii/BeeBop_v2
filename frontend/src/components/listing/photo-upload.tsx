@@ -157,7 +157,7 @@ export function PhotoUpload({ listing, onSaved }: Props) {
             <div className="relative aspect-square">
               <img src={p.url} alt={p.room_label ?? 'Listing photo'} className="h-full w-full object-cover" />
               {p.is_cover ? (
-                <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-slate-900 shadow-sm">
                   <Star className="h-3 w-3 fill-current" /> Cover
                 </span>
               ) : (

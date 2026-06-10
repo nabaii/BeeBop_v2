@@ -41,7 +41,7 @@ export function ValuationReportPanel({ report }: Props) {
           </p>
           <Link
             href={`/login?return_to=${encodeURIComponent(pathname ?? '/')}`}
-            className="mt-3 inline-flex items-center rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white"
+            className="mt-3 inline-flex items-center rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-slate-900"
           >
             Sign in to view report
           </Link>
