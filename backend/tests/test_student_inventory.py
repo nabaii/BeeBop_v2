@@ -135,3 +135,32 @@ async def test_gender_tag_locked_on_occupancy(db: AsyncSession) -> None:
             payload=RoomUpdatePayload(gender_tag=Gender.MALE),
             db=db,
         )
+
+
+@pytest.mark.skip(reason="Requires Postgres-enum schema — enabled in the integration suite.")
+async def test_room_amenities_persisted_and_updated(db: AsyncSession) -> None:
+    owner, listing, ut_id = await _seed_listing(db, kind=UnitKind.SELF_CONTAIN)
+    room = await student_inventory.add_room(
+        user=owner,
+        listing_id=listing.id,
+        unit_type_id=ut_id,
+        payload=RoomPayload(
+            name="Room A",
+            gender_tag=Gender.ANY,
+            beds_total=1,
+            amenities=["Private Bathroom", "TV"]
+        ),
+        db=db,
+    )
+    assert room.amenities == ["Private Bathroom", "TV"]
+
+    # Test update
+    room = await student_inventory.update_room(
+        user=owner,
+        listing_id=listing.id,
+        unit_type_id=ut_id,
+        room_id=room.id,
+        payload=RoomUpdatePayload(amenities=["Private Bathroom", "TV", "Desk"]),
+        db=db,
+    )
+    assert room.amenities == ["Private Bathroom", "TV", "Desk"]

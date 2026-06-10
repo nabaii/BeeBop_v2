@@ -116,6 +116,7 @@ async def add_room(
         gender_tag=tag,
         beds_total=payload.beds_total,
         beds_available=payload.beds_total,
+        amenities=[a.strip() for a in payload.amenities if a.strip()],
     )
     db.add(room)
     await db.flush()
@@ -140,6 +141,8 @@ async def update_room(
 
     if payload.name is not None:
         room.name = payload.name.strip()
+    if payload.amenities is not None:
+        room.amenities = [a.strip() for a in payload.amenities if a.strip()]
     if payload.gender_tag is not None and payload.gender_tag != room.gender_tag:
         if is_occupied:
             raise ConflictError(

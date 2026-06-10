@@ -26,6 +26,7 @@ from app.search.schemas import (
     OffCampusFilters,
     PublicAreaScore,
     PublicListingDetail,
+    PublicRoom,
     PublicUnitType,
     RentFilters,
     SalesFilters,
@@ -279,6 +280,17 @@ async def public_listing_detail(
                 total_units=u.total_units,
                 beds_total=sum(r.beds_total for r in u.rooms),
                 beds_available=sum(r.beds_available for r in u.rooms),
+                rooms=[
+                    PublicRoom(
+                        id=str(r.id),
+                        name=r.name,
+                        gender_tag=r.gender_tag,
+                        beds_total=r.beds_total,
+                        beds_available=r.beds_available,
+                        amenities=r.amenities or [],
+                    )
+                    for r in u.rooms
+                ]
             )
             # Cheapest first so the "From ₦X" headline matches the top of the list.
             for u in sorted(listing.unit_types, key=lambda u: float(u.price))

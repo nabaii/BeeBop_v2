@@ -20,6 +20,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import type { Route } from 'next';
 import { use, useEffect, useState } from 'react';
 
 import { BookmarkButton } from '@/components/browse/bookmark-button';
@@ -275,29 +276,84 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
           return (
             <li
               key={u.id}
-              className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 px-5 py-4"
+              className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 px-5 py-4"
             >
-              <div className="min-w-0">
-                <p className="truncate text-base font-semibold text-slate-950">{u.name}</p>
-                <p className="mt-0.5 text-xs font-medium capitalize text-stone-600">
-                  {u.kind.replaceAll('_', ' ')} · {u.beds_per_room} bed(s)/room
-                </p>
-                <p className="mt-1 text-xs font-semibold">
-                  {soldOut ? (
-                    <span className="text-red-600">Fully booked</span>
-                  ) : (
-                    <span className="text-emerald-700">
-                      {u.beds_available} bed{u.beds_available > 1 ? 's' : ''} available
-                    </span>
-                  )}
-                </p>
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="truncate text-base font-semibold text-slate-950">{u.name}</p>
+                  <p className="mt-0.5 text-xs font-medium capitalize text-stone-600">
+                    {u.kind.replaceAll('_', ' ')} · {u.beds_per_room} bed(s)/room
+                  </p>
+                  <p className="mt-1 text-xs font-semibold">
+                    {soldOut ? (
+                      <span className="text-red-600">Fully booked</span>
+                    ) : (
+                      <span className="text-emerald-700">
+                        {u.beds_available} bed{u.beds_available > 1 ? 's' : ''} available
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-lg font-bold leading-none text-slate-950">{formatPrice(u.price)}</p>
+                  <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-stone-500">
+                    per unit
+                  </p>
+                </div>
               </div>
-              <div className="shrink-0 text-right">
-                <p className="text-lg font-bold leading-none text-slate-950">{formatPrice(u.price)}</p>
-                <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-stone-500">
-                  per unit
-                </p>
-              </div>
+
+              {u.rooms && u.rooms.length > 0 && (
+                <div className="mt-2 border-t border-slate-200/60 pt-3 space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
+                    Room Units & Amenities
+                  </p>
+                  <ul className="space-y-2">
+                    {u.rooms.map((r) => (
+                      <li key={r.id}>
+                        <Link
+                          href={`/listings/${listing.id}/rooms/${r.id}` as Route}
+                          className="block rounded-lg bg-white/70 border border-slate-100 p-2.5 text-xs flex flex-col gap-1.5 shadow-sm hover:border-brand/40 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                              {r.name}
+                              <span className={`inline-block rounded-full px-1.5 py-0.2 text-[8px] font-bold uppercase ${
+                                r.gender_tag === 'female' 
+                                  ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                                  : r.gender_tag === 'male'
+                                    ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                              }`}>
+                                {r.gender_tag}
+                              </span>
+                            </span>
+                            <span className="font-medium text-slate-500 font-semibold text-slate-600">
+                              {r.beds_available} / {r.beds_total} beds available
+                            </span>
+                          </div>
+                          {r.amenities && r.amenities.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {r.amenities.map((amenity, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-block rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-600 border border-stone-200/50"
+                                >
+                                  {amenity}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 italic">No specific room amenities listed</p>
+                          )}
+                          <div className="mt-1 text-right text-[10px] font-bold text-brand-600 flex items-center justify-end gap-1">
+                            View Room details →
+                          </div>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </li>
           );
         })}

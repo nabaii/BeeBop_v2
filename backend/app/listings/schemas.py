@@ -89,6 +89,7 @@ class RoomView(BaseModel):
     gender_tag: Gender
     beds_total: int
     beds_available: int
+    amenities: list[str] = Field(default_factory=list)
 
 
 class UnitTypeView(BaseModel):
@@ -208,6 +209,7 @@ class RoomPayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     gender_tag: Literal[Gender.FEMALE, Gender.MALE, Gender.ANY]
     beds_total: int = Field(..., ge=1, le=8)
+    amenities: list[str] = Field(default_factory=list)
 
 
 class RoomUpdatePayload(BaseModel):
@@ -215,6 +217,7 @@ class RoomUpdatePayload(BaseModel):
     gender_tag: Literal[Gender.FEMALE, Gender.MALE, Gender.ANY] | None = None
     beds_total: int | None = Field(default=None, ge=1, le=8)
     beds_available: int | None = Field(default=None, ge=0, le=8)
+    amenities: list[str] | None = None
 
 
 # -----------------------------------------------------------------------------

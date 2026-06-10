@@ -89,6 +89,15 @@ export interface PublicAreaScore {
   last_assessed_at: string | null;
 }
 
+export interface PublicRoom {
+  id: string;
+  name: string;
+  gender_tag: 'female' | 'male' | 'any';
+  beds_total: number;
+  beds_available: number;
+  amenities: string[];
+}
+
 export interface PublicUnitType {
   id: string;
   name: string;
@@ -98,6 +107,7 @@ export interface PublicUnitType {
   total_units: number;
   beds_total: number;
   beds_available: number;
+  rooms: PublicRoom[];
 }
 
 export interface PublicListingDetail {

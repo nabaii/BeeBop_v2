@@ -316,6 +316,7 @@ def _unit_view(ut) -> UnitTypeView:  # type: ignore[no-untyped-def]
                 "gender_tag": r.gender_tag,
                 "beds_total": r.beds_total,
                 "beds_available": r.beds_available,
+                "amenities": r.amenities or [],
             }
             for r in getattr(ut, "rooms", []) or []
         ],
@@ -377,6 +378,7 @@ async def add_room(
         "gender_tag": room.gender_tag,
         "beds_total": room.beds_total,
         "beds_available": room.beds_available,
+        "amenities": room.amenities,
     }
 
 
@@ -406,6 +408,7 @@ async def update_room(
         "gender_tag": room.gender_tag,
         "beds_total": room.beds_total,
         "beds_available": room.beds_available,
+        "amenities": room.amenities,
     }
 
 

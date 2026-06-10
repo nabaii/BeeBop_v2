@@ -205,6 +205,7 @@ function UnitTypeCard({
 }) {
   const [roomName, setRoomName] = useState('');
   const [gender, setGender] = useState<'female' | 'male'>('female');
+  const [roomAmenities, setRoomAmenities] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -215,12 +216,18 @@ function UnitTypeCard({
     setBusy(true);
     setError(null);
     try {
+      const amenitiesList = roomAmenities
+        .split(',')
+        .map((a) => a.trim())
+        .filter(Boolean);
       await addRoom(listingId, unit.id, {
         name: roomName.trim(),
         gender_tag: isSelfContain ? 'any' : gender,
         beds_total: unit.beds_per_room,
+        amenities: amenitiesList,
       });
       setRoomName('');
+      setRoomAmenities('');
       await onChange();
     } catch {
       setError('Could not add room.');
@@ -252,25 +259,38 @@ function UnitTypeCard({
       
       <div className="mt-4 bg-white rounded-xl border border-slate-200 p-3.5 space-y-3">
         <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">Add Room Instance</div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Input
-            placeholder="Room name (e.g. Block A Room 1)"
-            value={roomName}
-            onChange={(e) => setRoomName(e.target.value)}
-          />
-          {!isSelfContain && (
-            <select
-              value={gender}
-              onChange={(e) => setGender(e.target.value as 'female' | 'male')}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 cursor-pointer"
-            >
-              <option value="female">Female</option>
-              <option value="male">Male</option>
-            </select>
-          )}
-          <Button onClick={() => void addOne()} disabled={busy || !roomName.trim()} className="w-full">
-            {busy ? 'Adding…' : 'Add room'}
-          </Button>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Input
+              placeholder="Room name (e.g. Block A Room 1)"
+              value={roomName}
+              onChange={(e) => setRoomName(e.target.value)}
+            />
+            {!isSelfContain ? (
+              <select
+                value={gender}
+                onChange={(e) => setGender(e.target.value as 'female' | 'male')}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 cursor-pointer"
+              >
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+              </select>
+            ) : (
+              <div className="text-xs text-slate-400 self-center pl-1 italic">Self-contain unit (Gender: Any)</div>
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="sm:col-span-2">
+              <Input
+                placeholder="Amenities (e.g. Private Bathroom, TV, AC)"
+                value={roomAmenities}
+                onChange={(e) => setRoomAmenities(e.target.value)}
+              />
+            </div>
+            <Button onClick={() => void addOne()} disabled={busy || !roomName.trim()} className="w-full">
+              {busy ? 'Adding…' : 'Add room'}
+            </Button>
+          </div>
         </div>
         {error && <p className="mt-2 text-sm font-semibold text-red-600">{error}</p>}
       </div>
@@ -280,22 +300,36 @@ function UnitTypeCard({
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Room Instances</div>
           <ul className="divide-y divide-slate-100 rounded-xl border border-slate-100 bg-white overflow-hidden text-xs">
             {unit.rooms.map((r) => (
-              <li key={r.id} className="flex items-center justify-between p-3 text-slate-700 hover:bg-slate-50 transition-colors">
-                <span className="font-semibold text-slate-900">
-                  {r.name}
-                  <span className={`ml-2 inline-block rounded-full px-1.5 py-0.2 text-[9px] font-bold uppercase ${
-                    r.gender_tag === 'female' 
-                      ? 'bg-rose-50 text-rose-600 border border-rose-100'
-                      : r.gender_tag === 'male'
-                        ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                        : 'bg-slate-100 text-slate-600 border border-slate-200'
-                  }`}>
-                    {r.gender_tag}
+              <li key={r.id} className="flex flex-col p-3 text-slate-700 hover:bg-slate-50 transition-colors gap-2">
+                <div className="flex items-center justify-between w-full">
+                  <span className="font-semibold text-slate-900 flex items-center gap-2">
+                    {r.name}
+                    <span className={`inline-block rounded-full px-1.5 py-0.2 text-[9px] font-bold uppercase ${
+                      r.gender_tag === 'female' 
+                        ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                        : r.gender_tag === 'male'
+                          ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200'
+                    }`}>
+                      {r.gender_tag}
+                    </span>
                   </span>
-                </span>
-                <span className="font-bold text-slate-500">
-                  {r.beds_available} of {r.beds_total} available
-                </span>
+                  <span className="font-bold text-slate-500">
+                    {r.beds_available} of {r.beds_total} available
+                  </span>
+                </div>
+                {r.amenities && r.amenities.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {r.amenities.map((amenity, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-block rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-600 border border-stone-200/60"
+                      >
+                        {amenity}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </li>
             ))}
           </ul>

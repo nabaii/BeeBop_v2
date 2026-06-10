@@ -97,6 +97,15 @@ class SearchResponse(BaseModel):
     results: list[PublicListingSummary]
 
 
+class PublicRoom(BaseModel):
+    id: str
+    name: str
+    gender_tag: Gender
+    beds_total: int
+    beds_available: int
+    amenities: list[str] = Field(default_factory=list)
+
+
 class PublicUnitType(BaseModel):
     """A student-accommodation unit type as shown to seekers — per-unit price
     and aggregated bed availability across that unit's rooms."""
@@ -109,6 +118,7 @@ class PublicUnitType(BaseModel):
     total_units: int
     beds_total: int
     beds_available: int
+    rooms: list[PublicRoom] = Field(default_factory=list)
 
 
 class PublicListingDetail(BaseModel):
