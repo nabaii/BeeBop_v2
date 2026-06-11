@@ -278,16 +278,16 @@ async def public_listing_detail(
                 price=float(u.price),
                 beds_per_room=u.beds_per_room,
                 total_units=u.total_units,
+                gender_tag=u.gender_tag,
+                amenities=u.amenities or [],
                 beds_total=sum(r.beds_total for r in u.rooms),
                 beds_available=sum(r.beds_available for r in u.rooms),
                 rooms=[
                     PublicRoom(
                         id=str(r.id),
                         name=r.name,
-                        gender_tag=r.gender_tag,
                         beds_total=r.beds_total,
                         beds_available=r.beds_available,
-                        amenities=r.amenities or [],
                     )
                     for r in u.rooms
                 ]

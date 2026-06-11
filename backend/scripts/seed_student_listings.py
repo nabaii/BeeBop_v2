@@ -942,20 +942,25 @@ async def main() -> int:
 
             # Create unit types and rooms
             for ut_payload in inventory:
+                rooms = ut_payload["rooms"]
+                # Gender + amenities now live on the unit type. Derive the
+                # unit's gender from its first room; rooms inherit it.
+                unit_gender = rooms[0]["gender_tag"] if rooms else Gender.ANY
                 ut = UnitType(
                     listing_id=listing.id,
                     name=ut_payload["name"],
                     kind=ut_payload["kind"],
                     beds_per_room=ut_payload["beds_per_room"],
                     total_units=ut_payload["total_units"],
+                    gender_tag=unit_gender,
+                    amenities=ut_payload.get("amenities", []),
                 )
                 db.add(ut)
                 await db.flush()
-                for room_payload in ut_payload["rooms"]:
+                for room_payload in rooms:
                     db.add(Room(
                         unit_type_id=ut.id,
                         name=room_payload["name"],
-                        gender_tag=room_payload["gender_tag"],
                         beds_total=room_payload["beds_total"],
                         beds_available=room_payload["beds_available"],
                     ))

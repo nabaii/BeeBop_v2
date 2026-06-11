@@ -86,10 +86,8 @@ class ListingDocumentView(BaseModel):
 class RoomView(BaseModel):
     id: str
     name: str
-    gender_tag: Gender
     beds_total: int
     beds_available: int
-    amenities: list[str] = Field(default_factory=list)
 
 
 class UnitTypeView(BaseModel):
@@ -99,6 +97,8 @@ class UnitTypeView(BaseModel):
     beds_per_room: int
     total_units: int
     price: float
+    gender_tag: Gender
+    amenities: list[str] = Field(default_factory=list)
     rooms: list[RoomView] = Field(default_factory=list)
 
 
@@ -203,21 +203,21 @@ class UnitTypePayload(BaseModel):
     beds_per_room: int = Field(..., ge=1, le=8)
     total_units: int = Field(..., ge=1, le=500)
     price: float = Field(..., ge=0)
+    # Sex served by this unit type. Self-contain units are normalised to ANY
+    # server-side; shared units require female or male.
+    gender_tag: Literal[Gender.FEMALE, Gender.MALE, Gender.ANY] = Gender.ANY
+    amenities: list[str] = Field(default_factory=list)
 
 
 class RoomPayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
-    gender_tag: Literal[Gender.FEMALE, Gender.MALE, Gender.ANY]
     beds_total: int = Field(..., ge=1, le=8)
-    amenities: list[str] = Field(default_factory=list)
 
 
 class RoomUpdatePayload(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
-    gender_tag: Literal[Gender.FEMALE, Gender.MALE, Gender.ANY] | None = None
     beds_total: int | None = Field(default=None, ge=1, le=8)
     beds_available: int | None = Field(default=None, ge=0, le=8)
-    amenities: list[str] | None = None
 
 
 # -----------------------------------------------------------------------------

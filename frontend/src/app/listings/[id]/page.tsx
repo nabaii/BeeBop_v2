@@ -12,6 +12,7 @@ import {
   BedDouble,
   Building2,
   Car,
+  ChevronRight,
   MapPin,
   Share2,
   Sparkles,
@@ -274,13 +275,17 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
         {units.map((u) => {
           const soldOut = u.beds_available <= 0;
           return (
-            <li
-              key={u.id}
-              className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 px-5 py-4"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="truncate text-base font-semibold text-slate-950">{u.name}</p>
+            <li key={u.id}>
+              <Link
+                href={`/listings/${listing.id}/units/${u.id}` as Route}
+                aria-label={`View ${u.name} details`}
+                className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 px-5 py-4 transition hover:border-brand/40 hover:bg-white hover:shadow-sm"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-base font-semibold text-slate-950">{u.name}</p>
+                    <UnitGenderBadge gender={u.gender_tag} />
+                  </div>
                   <p className="mt-0.5 text-xs font-medium capitalize text-stone-600">
                     {u.kind.replaceAll('_', ' ')} · {u.beds_per_room} bed(s)/room
                   </p>
@@ -293,6 +298,23 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
                       </span>
                     )}
                   </p>
+                  {u.amenities.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {u.amenities.slice(0, 3).map((a) => (
+                        <span
+                          key={a}
+                          className="inline-block rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-stone-600 ring-1 ring-slate-200"
+                        >
+                          {a}
+                        </span>
+                      ))}
+                      {u.amenities.length > 3 && (
+                        <span className="inline-block rounded-md bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700 ring-1 ring-brand-100">
+                          +{u.amenities.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-lg font-bold leading-none text-slate-950">{formatPrice(u.price)}</p>
@@ -300,60 +322,8 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
                     per unit
                   </p>
                 </div>
-              </div>
-
-              {u.rooms && u.rooms.length > 0 && (
-                <div className="mt-2 border-t border-slate-200/60 pt-3 space-y-2">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-                    Room Units & Amenities
-                  </p>
-                  <ul className="space-y-2">
-                    {u.rooms.map((r) => (
-                      <li key={r.id}>
-                        <Link
-                          href={`/listings/${listing.id}/rooms/${r.id}` as Route}
-                          className="block rounded-lg bg-white/70 border border-slate-100 p-2.5 text-xs flex flex-col gap-1.5 shadow-sm hover:border-brand/40 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-                              {r.name}
-                              <span className={`inline-block rounded-full px-1.5 py-0.2 text-[8px] font-bold uppercase ${
-                                r.gender_tag === 'female' 
-                                  ? 'bg-rose-50 text-rose-600 border border-rose-100'
-                                  : r.gender_tag === 'male'
-                                    ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                                    : 'bg-slate-100 text-slate-600 border border-slate-200'
-                              }`}>
-                                {r.gender_tag}
-                              </span>
-                            </span>
-                            <span className="font-medium text-slate-500 font-semibold text-slate-600">
-                              {r.beds_available} / {r.beds_total} beds available
-                            </span>
-                          </div>
-                          {r.amenities && r.amenities.length > 0 ? (
-                            <div className="flex flex-wrap gap-1 mt-0.5">
-                              {r.amenities.map((amenity, idx) => (
-                                <span
-                                  key={idx}
-                                  className="inline-block rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-600 border border-stone-200/50"
-                                >
-                                  {amenity}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-[10px] text-slate-400 italic">No specific room amenities listed</p>
-                          )}
-                          <div className="mt-1 text-right text-[10px] font-bold text-brand-600 flex items-center justify-end gap-1">
-                            View Room details →
-                          </div>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
+              </Link>
             </li>
           );
         })}
@@ -362,6 +332,19 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
         Secure transaction support available in Beebop
       </p>
     </section>
+  );
+}
+
+function UnitGenderBadge({ gender }: { gender: 'female' | 'male' | 'any' }) {
+  if (gender === 'any') return null;
+  return (
+    <span
+      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+        gender === 'female' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'
+      }`}
+    >
+      {gender}
+    </span>
   );
 }
 

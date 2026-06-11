@@ -141,7 +141,7 @@ export default function StudentPMSPage({
                     <div className="text-sm font-semibold text-slate-900">{u.name}</div>
                     <div className="text-xs text-slate-500">
                       {u.kind.replaceAll('_', ' ')} · {u.beds_per_room} bed(s) per room ·{' '}
-                      {u.total_units} units · ₦{u.price.toLocaleString()}
+                      {u.total_units} units · {u.gender_tag} · ₦{u.price.toLocaleString()}
                     </div>
                   </div>
                 </header>
@@ -210,11 +210,6 @@ function RoomCard({
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate font-medium text-slate-900">{room.name}</div>
-          <div className="text-xs text-slate-500">
-            {room.gender_tag === 'any'
-              ? 'self-contain'
-              : `${room.gender_tag} · gender locked when occupied`}
-          </div>
         </div>
         <span className={'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ' + status.color}>
           {status.label}
@@ -270,17 +265,21 @@ function tallyBeds(units: UnitTypeView[]): BedTally {
     any_available: 0,
   };
   for (const u of units) {
+    let total = 0;
+    let available = 0;
     for (const r of u.rooms) {
-      if (r.gender_tag === 'female') {
-        t.female_total += r.beds_total;
-        t.female_available += r.beds_available;
-      } else if (r.gender_tag === 'male') {
-        t.male_total += r.beds_total;
-        t.male_available += r.beds_available;
-      } else {
-        t.any_total += r.beds_total;
-        t.any_available += r.beds_available;
-      }
+      total += r.beds_total;
+      available += r.beds_available;
+    }
+    if (u.gender_tag === 'female') {
+      t.female_total += total;
+      t.female_available += available;
+    } else if (u.gender_tag === 'male') {
+      t.male_total += total;
+      t.male_available += available;
+    } else {
+      t.any_total += total;
+      t.any_available += available;
     }
   }
   return t;

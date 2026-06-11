@@ -100,15 +100,14 @@ class SearchResponse(BaseModel):
 class PublicRoom(BaseModel):
     id: str
     name: str
-    gender_tag: Gender
     beds_total: int
     beds_available: int
-    amenities: list[str] = Field(default_factory=list)
 
 
 class PublicUnitType(BaseModel):
-    """A student-accommodation unit type as shown to seekers — per-unit price
-    and aggregated bed availability across that unit's rooms."""
+    """A student-accommodation unit type as shown to seekers — per-unit price,
+    the sex it serves, its amenities, and aggregated bed availability across
+    that unit's rooms."""
 
     id: str
     name: str
@@ -116,6 +115,8 @@ class PublicUnitType(BaseModel):
     price: float
     beds_per_room: int
     total_units: int
+    gender_tag: Gender
+    amenities: list[str] = Field(default_factory=list)
     beds_total: int
     beds_available: int
     rooms: list[PublicRoom] = Field(default_factory=list)

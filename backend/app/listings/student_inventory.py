@@ -1,9 +1,9 @@
 """Student accommodation inventory service — unit types and rooms.
 
-Gender tag rule per product brief §8.3:
+Gender and amenities live on the unit type (set at creation):
   * Self-contain units carry no gender tag in the UI (stored as Gender.ANY).
-  * Shared-room tags (female/male) are locked once a bed in the room is
-    occupied. Trying to change a tag on an occupied room raises ConflictError.
+  * Shared unit types require a gender (female or male).
+Rooms are physical instances that only track bed counts.
 """
 
 from __future__ import annotations
@@ -64,6 +64,14 @@ async def add_unit_type(
     db: AsyncSession,
 ) -> UnitType:
     await _load_listing(db, listing_id, user)
+    # Self-contain unit types are always Gender.ANY regardless of payload — we
+    # normalise at write time so bad client data can't leak a shared tag.
+    tag = Gender.ANY if payload.kind == UnitKind.SELF_CONTAIN else payload.gender_tag
+    if payload.kind != UnitKind.SELF_CONTAIN and tag == Gender.ANY:
+        raise ValidationError(
+            "Shared unit types require a gender (female or male).",
+            code="gender_tag_required",
+        )
     ut = UnitType(
         listing_id=listing_id,
         name=payload.name.strip(),
@@ -71,6 +79,8 @@ async def add_unit_type(
         beds_per_room=payload.beds_per_room,
         total_units=payload.total_units,
         price=payload.price,
+        gender_tag=tag,
+        amenities=[a.strip() for a in payload.amenities if a.strip()],
         # Initialise the relationship as a loaded, empty collection. Without
         # this, serialising the unit after the route commits would trigger a
         # lazy SELECT on `rooms` for the freshly-persisted object — which
@@ -96,14 +106,6 @@ async def add_room(
     if ut is None or ut.listing_id != listing_id:
         raise NotFoundError("Unit type not found on this listing.", code="unit_type_not_found")
 
-    # Self-contain rooms are always Gender.ANY regardless of payload — we
-    # normalise at write time so bad client data can't leak a shared-room tag.
-    tag = Gender.ANY if ut.kind == UnitKind.SELF_CONTAIN else payload.gender_tag
-    if ut.kind != UnitKind.SELF_CONTAIN and tag == Gender.ANY:
-        raise ValidationError(
-            "Shared rooms require a gender tag (female or male).",
-            code="gender_tag_required",
-        )
     if payload.beds_total != ut.beds_per_room:
         raise ValidationError(
             "Bed count must match the unit type's beds_per_room.",
@@ -113,10 +115,8 @@ async def add_room(
     room = Room(
         unit_type_id=unit_type_id,
         name=payload.name.strip(),
-        gender_tag=tag,
         beds_total=payload.beds_total,
         beds_available=payload.beds_total,
-        amenities=[a.strip() for a in payload.amenities if a.strip()],
     )
     db.add(room)
     await db.flush()
@@ -141,15 +141,6 @@ async def update_room(
 
     if payload.name is not None:
         room.name = payload.name.strip()
-    if payload.amenities is not None:
-        room.amenities = [a.strip() for a in payload.amenities if a.strip()]
-    if payload.gender_tag is not None and payload.gender_tag != room.gender_tag:
-        if is_occupied:
-            raise ConflictError(
-                "Gender tag is locked while any bed in this room is occupied.",
-                code="gender_tag_locked",
-            )
-        room.gender_tag = payload.gender_tag
     if payload.beds_total is not None:
         if is_occupied and payload.beds_total < (room.beds_total - room.beds_available):
             raise ConflictError(

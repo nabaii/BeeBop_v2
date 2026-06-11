@@ -92,10 +92,8 @@ export interface PublicAreaScore {
 export interface PublicRoom {
   id: string;
   name: string;
-  gender_tag: 'female' | 'male' | 'any';
   beds_total: number;
   beds_available: number;
-  amenities: string[];
 }
 
 export interface PublicUnitType {
@@ -105,6 +103,8 @@ export interface PublicUnitType {
   price: number;
   beds_per_room: number;
   total_units: number;
+  gender_tag: 'female' | 'male' | 'any';
+  amenities: string[];
   beds_total: number;
   beds_available: number;
   rooms: PublicRoom[];

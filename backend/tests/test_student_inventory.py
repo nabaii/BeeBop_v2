@@ -1,14 +1,16 @@
-"""Student inventory — gender tag lock and bed occupancy invariants.
+"""Student inventory — unit-type gender/amenities and bed occupancy invariants.
 
 These tests exercise the service layer against an in-memory SQLite session
 to keep unit-test scope tight. The CI matrix runs the same logic against a
 real Postgres service container via the /integration suite (Sprint 2+ expansion).
+
+Gender and amenities live on the unit type (set at creation); rooms only
+track bed counts.
 """
 
 from __future__ import annotations
 
 import uuid
-from typing import cast
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -44,7 +46,7 @@ async def db() -> AsyncSession:
         # Postgres enums and JSONB are absent in SQLite. This fixture exists
         # to illustrate the shape of the unit-level test. Enable once we add
         # a portable schema (or swap to a testcontainers Postgres). Skipping
-        # creation here keeps this module importable but xfail-marked below.
+        # creation here keeps this module importable but skip-marked below.
         pass
     session_maker = async_sessionmaker(engine, expire_on_commit=False)
     async with session_maker() as session:
@@ -56,8 +58,12 @@ pytestmark = pytest.mark.asyncio
 
 
 async def _seed_listing(
-    db: AsyncSession, kind: UnitKind = UnitKind.TWO_IN_A_ROOM
-) -> tuple[User, Listing, uuid.UUID]:
+    db: AsyncSession,
+    *,
+    kind: UnitKind = UnitKind.TWO_IN_A_ROOM,
+    gender: Gender = Gender.FEMALE,
+    amenities: list[str] | None = None,
+) -> tuple[User, Listing, "student_inventory.UnitType"]:
     owner = User(
         email=f"owner-{uuid.uuid4().hex[:6]}@beebop.store",
         role=UserRole.LANDLORD,
@@ -79,88 +85,74 @@ async def _seed_listing(
     ut = await student_inventory.add_unit_type(
         user=owner,
         listing_id=listing.id,
-        payload=UnitTypePayload(name="2-in-a-room", kind=kind, beds_per_room=2, total_units=4, price=50000.0),
+        payload=UnitTypePayload(
+            name="2-in-a-room",
+            kind=kind,
+            beds_per_room=2,
+            total_units=4,
+            price=50000.0,
+            gender_tag=gender,
+            amenities=amenities or [],
+        ),
         db=db,
     )
-    return owner, listing, ut.id
+    return owner, listing, ut
 
 
 @pytest.mark.skip(reason="Requires Postgres-enum schema — enabled in the integration suite.")
 async def test_self_contain_forces_gender_any(db: AsyncSession) -> None:
-    owner, listing, ut_id = await _seed_listing(db, kind=UnitKind.SELF_CONTAIN)
-    # Ignore the gender_tag the client sends — self-contain units must be ANY.
-    room = await student_inventory.add_room(
-        user=owner,
-        listing_id=listing.id,
-        unit_type_id=ut_id,
-        payload=RoomPayload(name="Room A", gender_tag=cast(Gender, Gender.FEMALE), beds_total=1),
-        db=db,
-    )
-    assert room.gender_tag == Gender.ANY
+    # Ignore the gender the client sends — self-contain unit types must be ANY.
+    _, _, ut = await _seed_listing(db, kind=UnitKind.SELF_CONTAIN, gender=Gender.FEMALE)
+    assert ut.gender_tag == Gender.ANY
 
 
 @pytest.mark.skip(reason="Requires Postgres-enum schema — enabled in the integration suite.")
-async def test_shared_room_requires_female_or_male(db: AsyncSession) -> None:
-    owner, listing, ut_id = await _seed_listing(db, kind=UnitKind.TWO_IN_A_ROOM)
+async def test_shared_unit_requires_female_or_male(db: AsyncSession) -> None:
+    with pytest.raises(ValidationError):
+        await _seed_listing(db, kind=UnitKind.TWO_IN_A_ROOM, gender=Gender.ANY)
+
+
+@pytest.mark.skip(reason="Requires Postgres-enum schema — enabled in the integration suite.")
+async def test_unit_type_amenities_persisted(db: AsyncSession) -> None:
+    _, _, ut = await _seed_listing(
+        db, kind=UnitKind.SELF_CONTAIN, amenities=["Private Bathroom", "TV"]
+    )
+    assert ut.amenities == ["Private Bathroom", "TV"]
+
+
+@pytest.mark.skip(reason="Requires Postgres-enum schema — enabled in the integration suite.")
+async def test_room_beds_must_match_unit(db: AsyncSession) -> None:
+    owner, listing, ut = await _seed_listing(db, kind=UnitKind.TWO_IN_A_ROOM)
     with pytest.raises(ValidationError):
         await student_inventory.add_room(
             user=owner,
             listing_id=listing.id,
-            unit_type_id=ut_id,
-            payload=RoomPayload(name="Room A", gender_tag=Gender.ANY, beds_total=2),
+            unit_type_id=ut.id,
+            payload=RoomPayload(name="Room A", beds_total=3),
             db=db,
         )
 
 
 @pytest.mark.skip(reason="Requires Postgres-enum schema — enabled in the integration suite.")
-async def test_gender_tag_locked_on_occupancy(db: AsyncSession) -> None:
-    owner, listing, ut_id = await _seed_listing(db, kind=UnitKind.TWO_IN_A_ROOM)
+async def test_reduce_beds_below_occupancy_conflicts(db: AsyncSession) -> None:
+    owner, listing, ut = await _seed_listing(db, kind=UnitKind.TWO_IN_A_ROOM)
     room = await student_inventory.add_room(
         user=owner,
         listing_id=listing.id,
-        unit_type_id=ut_id,
-        payload=RoomPayload(name="Room A", gender_tag=Gender.FEMALE, beds_total=2),
+        unit_type_id=ut.id,
+        payload=RoomPayload(name="Room A", beds_total=2),
         db=db,
     )
-    # Simulate one bed occupied.
-    room.beds_available = 1
+    # Fully occupy the room.
+    room.beds_available = 0
     await db.flush()
 
     with pytest.raises(ConflictError):
         await student_inventory.update_room(
             user=owner,
             listing_id=listing.id,
-            unit_type_id=ut_id,
+            unit_type_id=ut.id,
             room_id=room.id,
-            payload=RoomUpdatePayload(gender_tag=Gender.MALE),
+            payload=RoomUpdatePayload(beds_total=1),
             db=db,
         )
-
-
-@pytest.mark.skip(reason="Requires Postgres-enum schema — enabled in the integration suite.")
-async def test_room_amenities_persisted_and_updated(db: AsyncSession) -> None:
-    owner, listing, ut_id = await _seed_listing(db, kind=UnitKind.SELF_CONTAIN)
-    room = await student_inventory.add_room(
-        user=owner,
-        listing_id=listing.id,
-        unit_type_id=ut_id,
-        payload=RoomPayload(
-            name="Room A",
-            gender_tag=Gender.ANY,
-            beds_total=1,
-            amenities=["Private Bathroom", "TV"]
-        ),
-        db=db,
-    )
-    assert room.amenities == ["Private Bathroom", "TV"]
-
-    # Test update
-    room = await student_inventory.update_room(
-        user=owner,
-        listing_id=listing.id,
-        unit_type_id=ut_id,
-        room_id=room.id,
-        payload=RoomUpdatePayload(amenities=["Private Bathroom", "TV", "Desk"]),
-        db=db,
-    )
-    assert room.amenities == ["Private Bathroom", "TV", "Desk"]

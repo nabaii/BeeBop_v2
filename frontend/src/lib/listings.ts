@@ -37,10 +37,8 @@ export interface DocumentView {
 export interface RoomView {
   id: string;
   name: string;
-  gender_tag: 'female' | 'male' | 'any';
   beds_total: number;
   beds_available: number;
-  amenities: string[];
 }
 
 export interface UnitTypeView {
@@ -50,6 +48,8 @@ export interface UnitTypeView {
   beds_per_room: number;
   total_units: number;
   price: number;
+  gender_tag: 'female' | 'male' | 'any';
+  amenities: string[];
   rooms: RoomView[];
 }
 
@@ -238,7 +238,15 @@ export async function listUnitTypes(listingId: string): Promise<UnitTypeView[]> 
 
 export async function addUnitType(
   listingId: string,
-  args: { name: string; kind: UnitTypeView['kind']; beds_per_room: number; total_units: number; price: number },
+  args: {
+    name: string;
+    kind: UnitTypeView['kind'];
+    beds_per_room: number;
+    total_units: number;
+    price: number;
+    gender_tag: 'female' | 'male' | 'any';
+    amenities?: string[];
+  },
 ): Promise<UnitTypeView> {
   return api.post(`/listings/${listingId}/unit-types`, args, { auth: true });
 }
@@ -250,7 +258,7 @@ export async function deleteUnitType(listingId: string, unitTypeId: string): Pro
 export async function addRoom(
   listingId: string,
   unitTypeId: string,
-  args: { name: string; gender_tag: 'female' | 'male' | 'any'; beds_total: number; amenities?: string[] },
+  args: { name: string; beds_total: number },
 ): Promise<RoomView> {
   return api.post(`/listings/${listingId}/unit-types/${unitTypeId}/rooms`, args, { auth: true });
 }
@@ -261,10 +269,8 @@ export async function updateRoom(
   roomId: string,
   args: {
     name?: string;
-    gender_tag?: 'female' | 'male' | 'any';
     beds_total?: number;
     beds_available?: number;
-    amenities?: string[];
   },
 ): Promise<RoomView> {
   return api.patch(

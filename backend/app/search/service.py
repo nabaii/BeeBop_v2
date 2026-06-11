@@ -198,12 +198,11 @@ async def search_off_campus(
             )
         )
     if filters.gender and filters.gender in (Gender.FEMALE, Gender.MALE):
-        # A listing matches if any room is Gender.ANY (self-contain — no tag)
-        # or matches the seeker's gender.
+        # A listing matches if any unit type is Gender.ANY (self-contain — no
+        # tag) or matches the seeker's gender.
         subq = (
             select(UnitType.listing_id)
-            .join(Room, Room.unit_type_id == UnitType.id)
-            .where(Room.gender_tag.in_((filters.gender, Gender.ANY)))
+            .where(UnitType.gender_tag.in_((filters.gender, Gender.ANY)))
         ).subquery()
         stmt = stmt.where(Listing.id.in_(select(subq.c.listing_id)))
 

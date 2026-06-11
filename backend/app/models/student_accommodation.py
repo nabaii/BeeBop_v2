@@ -1,8 +1,9 @@
 """Student accommodation inventory — unit types and room-level beds.
 
-Gender tagging lives at room level per product brief §8.3. Self-contain units
-carry no gender tag (Gender.ANY). The tag is enforced at database level with
-a check constraint: once a bed is occupied the room's gender tag is locked.
+Gender tagging and amenities live at the unit-type level: seekers browse
+availability and price per unit type, and a unit type serves one sex with a
+fixed amenity set. Self-contain units carry no gender tag (Gender.ANY).
+Rooms are physical instances that only track bed counts.
 """
 
 import uuid
@@ -27,6 +28,15 @@ class UnitType(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     beds_per_room: Mapped[int] = mapped_column(Integer, nullable=False)
     total_units: Mapped[int] = mapped_column(Integer, nullable=False)
     price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, server_default="0.0")
+    # Gender served by this unit type. Self-contain units use ANY (no tag).
+    gender_tag: Mapped[Gender] = mapped_column(
+        Enum(Gender, name="gender", values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        server_default=Gender.ANY.value,
+    )
+    amenities: Mapped[list[str]] = mapped_column(
+        JSONB, default=list, server_default="[]", nullable=False
+    )
 
     rooms: Mapped[list["Room"]] = relationship(
         back_populates="unit_type", cascade="all, delete-orphan"
@@ -43,15 +53,10 @@ class Room(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    # Gender tag is silently applied to seeker search. Self-contain rooms use ANY.
-    gender_tag: Mapped[Gender] = mapped_column(Enum(Gender, name="gender", values_callable=lambda x: [e.value for e in x]), nullable=False)
     beds_total: Mapped[int] = mapped_column(Integer, nullable=False)
     beds_available: Mapped[int] = mapped_column(Integer, nullable=False)
     bed_status_summary: Mapped[BedStatus] = mapped_column(
         Enum(BedStatus, name="bed_status", values_callable=lambda x: [e.value for e in x]), default=BedStatus.AVAILABLE, nullable=False
-    )
-    amenities: Mapped[list[str]] = mapped_column(
-        JSONB, default=list, server_default="[]", nullable=False
     )
 
     unit_type: Mapped[UnitType] = relationship(back_populates="rooms")
@@ -61,6 +66,4 @@ class Room(Base, UUIDPrimaryKeyMixin, TimestampMixin):
             "beds_available >= 0 AND beds_available <= beds_total",
             name="ck_room_beds_available_range",
         ),
-        # Gender-tag lock on occupancy is enforced application-side in
-        # Sprint 2 with a trigger migration — declared here for documentation.
     )
