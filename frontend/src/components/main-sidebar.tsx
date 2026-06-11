@@ -9,7 +9,6 @@ import {
   PanelLeftOpen,
   Plus,
   Waves,
-  X,
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -35,11 +34,9 @@ const CATEGORIES: ReadonlyArray<{
 
 interface MainSidebarProps {
   onNewChat?: () => void;
-  mobileOpen?: boolean;
-  onMobileClose?: () => void;
 }
 
-export function MainSidebar({ onNewChat, mobileOpen = false, onMobileClose }: MainSidebarProps) {
+export function MainSidebar({ onNewChat }: MainSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -53,24 +50,17 @@ export function MainSidebar({ onNewChat, mobileOpen = false, onMobileClose }: Ma
   const landlordActionLabel = hasLandlordAccess ? 'Landlord dashboard' : 'List a property';
   const LandlordActionIcon = hasLandlordAccess ? LayoutDashboard : Building2;
 
-  function handleNavigate() {
-    onMobileClose?.();
-  }
-
   function handleCategoryNavigate() {
     clearSearchSession();
-    handleNavigate();
   }
 
   async function handleLandlordAction() {
     setLandlordError(null);
     if (!user) {
-      handleNavigate();
       router.push('/register?role=landlord');
       return;
     }
     if (hasLandlordAccess) {
-      handleNavigate();
       router.push('/dashboard/landlord');
       return;
     }
@@ -79,7 +69,6 @@ export function MainSidebar({ onNewChat, mobileOpen = false, onMobileClose }: Ma
     setLandlordBusy(true);
     try {
       const updated = await becomeLandlord();
-      handleNavigate();
       router.push(updated.onboarding_complete ? '/dashboard/landlord' : '/onboarding/landlord');
     } catch (err) {
       setLandlordError(
@@ -92,40 +81,18 @@ export function MainSidebar({ onNewChat, mobileOpen = false, onMobileClose }: Ma
 
   return (
     <>
-      {mobileOpen && (
-        <button
-          type="button"
-          aria-label="Close menu"
-          onClick={onMobileClose}
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-        />
-      )}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-[min(82vw,280px)] shrink-0 flex-col border-r border-slate-200 bg-white transition-transform',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full',
-          'lg:static lg:translate-x-0',
+          'hidden shrink-0 flex-col border-r border-slate-200 bg-white lg:flex',
           collapsed ? 'lg:w-[56px]' : 'lg:w-[240px]',
         )}
       >
         <div className="flex items-center justify-between p-3">
           {!collapsed && (
-            <Link
-              href="/"
-              onClick={handleNavigate}
-              className="text-lg font-bold text-brand"
-            >
+            <Link href="/" className="text-lg font-bold text-brand">
               Beebop
             </Link>
           )}
-          <button
-            type="button"
-            onClick={onMobileClose}
-            className="rounded p-1.5 text-slate-500 hover:bg-slate-100 lg:hidden"
-            aria-label="Close menu"
-          >
-            <X className="h-5 w-5" aria-hidden />
-          </button>
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
@@ -142,10 +109,7 @@ export function MainSidebar({ onNewChat, mobileOpen = false, onMobileClose }: Ma
         <div className="px-2">
           <button
             type="button"
-            onClick={() => {
-              onNewChat?.();
-              handleNavigate();
-            }}
+            onClick={() => onNewChat?.()}
             className={cn(
               'flex w-full items-center gap-2 rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50',
               collapsed && 'lg:justify-center',

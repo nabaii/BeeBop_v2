@@ -132,8 +132,8 @@ export default function ProfilePage() {
         <RowLink
           href="/dashboard/landlord"
           icon={Building2}
-          label={hasLandlordAccess ? 'Manage listings' : 'List a property'}
-          hint={hasLandlordAccess ? 'Dashboard / Uploads / Analytics' : 'Start landlord setup'}
+          label={hasLandlordAccess ? 'Landlord dashboard' : 'Become a landlord'}
+          hint={hasLandlordAccess ? 'Listings · Uploads · Analytics' : 'List your property on Beebop'}
         />
         <RowLink
           href="/listings/new"

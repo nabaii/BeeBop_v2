@@ -6,12 +6,10 @@ import {
   Building2,
   GraduationCap,
   House,
-  Menu,
   type LucideIcon,
   Waves,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
 
 import { BottomNav } from '@/components/bottom-nav';
 import { FeaturedCarousel } from '@/components/featured-carousel';
@@ -94,23 +92,14 @@ const CATEGORIES: ExploreCategory[] = [
 ];
 
 export default function BrowseHubPage() {
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const clearSearchSession = useSearch((state) => state.clearSession);
 
   return (
     <div className="flex min-h-[100dvh] bg-slate-100">
-      <MainSidebar mobileOpen={drawerOpen} onMobileClose={() => setDrawerOpen(false)} />
+      <MainSidebar />
       <div className="mx-auto flex h-[100dvh] w-full max-w-[480px] flex-col bg-slate-50 shadow-xl">
         <main className="min-h-0 flex-1 overflow-y-auto p-4 pb-6 sm:p-6">
           <header className="mb-6 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 lg:hidden"
-              aria-label="Open menu"
-            >
-              <Menu className="h-5 w-5" aria-hidden />
-            </button>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-700">
                 Explore
