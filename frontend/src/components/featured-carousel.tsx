@@ -75,6 +75,7 @@ export function FeaturedCarousel({ showBrowseLink = true }: { showBrowseLink?: b
                 review_count: r.review_count,
                 bedroom_count: r.bedroom_count,
                 bathroom_count: r.bathroom_count,
+                price_period: r.price_period,
               }}
             />
           </div>

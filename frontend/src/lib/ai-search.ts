@@ -34,6 +34,7 @@ export interface ResultListingSummary {
   category: ListingCategory;
   status: string;
   price: number | null;
+  price_period?: string | null;
   district: string | null;
   cover_url: string | null;
   rating: number | null;

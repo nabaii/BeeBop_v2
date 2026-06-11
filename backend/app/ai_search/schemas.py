@@ -88,6 +88,7 @@ class ResultListingSummary(BaseModel):
     category: ListingCategory
     status: str
     price: float | None = None
+    price_period: str | None = None
     district: str | None = None
     cover_url: str | None = None
     rating: float | None = None

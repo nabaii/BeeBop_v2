@@ -97,6 +97,7 @@ class UnitTypeView(BaseModel):
     beds_per_room: int
     total_units: int
     price: float
+    price_period: str
     gender_tag: Gender
     amenities: list[str] = Field(default_factory=list)
     rooms: list[RoomView] = Field(default_factory=list)
@@ -203,6 +204,8 @@ class UnitTypePayload(BaseModel):
     beds_per_room: int = Field(..., ge=1, le=8)
     total_units: int = Field(..., ge=1, le=500)
     price: float = Field(..., ge=0)
+    # Billing period the price covers — shown next to every off-campus price.
+    price_period: Literal["year", "session"] = "year"
     # Sex served by this unit type. Self-contain units are normalised to ANY
     # server-side; shared units require female or male.
     gender_tag: Literal[Gender.FEMALE, Gender.MALE, Gender.ANY] = Gender.ANY

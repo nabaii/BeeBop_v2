@@ -31,6 +31,7 @@ import { CtaBar } from '@/components/listing/cta-bar';
 import { ListingGallery } from '@/components/listing/gallery';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { ApiError } from '@/lib/api';
+import { pricePeriodLabel } from '@/lib/listings';
 import { getPublicListing, type PublicListingDetail } from '@/lib/search';
 
 export default function ListingDetailPage({
@@ -111,9 +112,13 @@ export default function ListingDetailPage({
                   {priceCaption(listing.category)}
                 </p>
                 <p className="mt-2 text-2xl font-bold leading-none text-slate-950">
-                  {listing.category === 'off_campus'
-                    ? formatPrice(unitFromPrice(listing))
-                    : formatPrice(listing.price)}
+                  {formatPrice(listing.price)}
+                  {listing.category === 'off_campus' && listing.price_period && (
+                    <span className="ml-1 text-sm font-medium text-stone-600">
+                      {' / '}
+                      {pricePeriodLabel(listing.price_period)}
+                    </span>
+                  )}
                 </p>
               </div>
             </section>
@@ -320,7 +325,7 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
                 <div className="shrink-0 text-right">
                   <p className="text-lg font-bold leading-none text-slate-950">{formatPrice(u.price)}</p>
                   <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-stone-500">
-                    per unit
+                    per {pricePeriodLabel(u.price_period)}
                   </p>
                 </div>
                 <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
@@ -385,13 +390,6 @@ function cleanTitle(title: string): string {
 function formatPrice(value: number | null): string {
   if (value == null) return 'Price on request';
   return `\u20a6${Number(value).toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
-}
-
-/** Cheapest unit price for an off-campus listing \u2014 drives the "Starting rate"
- * headline now that student listings price per unit rather than on the listing. */
-function unitFromPrice(listing: PublicListingDetail): number | null {
-  const prices = listing.unit_types.map((u) => u.price).filter((p) => p > 0);
-  return prices.length ? Math.min(...prices) : null;
 }
 
 function categoryLabel(category: PublicListingDetail['category']): string {

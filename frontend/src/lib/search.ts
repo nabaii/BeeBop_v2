@@ -65,6 +65,7 @@ export interface PublicListingSummary {
   cover_url: string | null;
   rating: number | null;
   review_count: number;
+  price_period?: string | null;
   bedroom_count?: number | null;
   bathroom_count?: number | null;
 }
@@ -101,6 +102,7 @@ export interface PublicUnitType {
   name: string;
   kind: string;
   price: number;
+  price_period: string;
   beds_per_room: number;
   total_units: number;
   gender_tag: 'female' | 'male' | 'any';
@@ -121,6 +123,7 @@ export interface PublicListingDetail {
   gps_lat: number | null;
   gps_lng: number | null;
   price: number | null;
+  price_period?: string | null;
   amenities: Record<string, Record<string, { present?: boolean; confirmed?: boolean }> | null>;
   type_data: Record<string, unknown>;
   photos: Array<{

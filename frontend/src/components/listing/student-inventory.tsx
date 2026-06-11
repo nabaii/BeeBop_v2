@@ -34,6 +34,7 @@ export function StudentInventory({ listingId }: Props) {
   const [bedsPerRoom, setBedsPerRoom] = useState('1');
   const [totalUnits, setTotalUnits] = useState('1');
   const [price, setPrice] = useState('');
+  const [pricePeriod, setPricePeriod] = useState<'year' | 'session'>('year');
   const [gender, setGender] = useState<'female' | 'male'>('female');
   const [amenities, setAmenities] = useState('');
   const [adding, setAdding] = useState(false);
@@ -80,11 +81,13 @@ export function StudentInventory({ listingId }: Props) {
         beds_per_room: Number(bedsPerRoom),
         total_units: Number(totalUnits),
         price: Number(price),
+        price_period: pricePeriod,
         gender_tag: isSelfContain ? 'any' : gender,
         amenities: amenitiesList,
       });
       setName('');
       setPrice('');
+      setPricePeriod('year');
       setKind('single_room');
       setBedsPerRoom('1');
       setTotalUnits('1');
@@ -164,7 +167,7 @@ export function StudentInventory({ listingId }: Props) {
               required
             />
           </div>
-          <div className="flex flex-col gap-1.5 sm:col-span-2">
+          <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-slate-500 ml-1">Price (₦)</label>
             <Input
               inputMode="numeric"
@@ -173,6 +176,17 @@ export function StudentInventory({ listingId }: Props) {
               onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ''))}
               required
             />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-slate-500 ml-1">Price per</label>
+            <select
+              value={pricePeriod}
+              onChange={(e) => setPricePeriod(e.target.value as 'year' | 'session')}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 cursor-pointer"
+            >
+              <option value="year">Per year</option>
+              <option value="session">Per session</option>
+            </select>
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-slate-500 ml-1">Sex</label>

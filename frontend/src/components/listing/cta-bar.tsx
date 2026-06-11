@@ -21,6 +21,7 @@ import { BookingModal } from '@/components/bookings/booking-modal';
 import { OfferModal } from '@/components/offers/offer-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { pricePeriodLabel } from '@/lib/listings';
 import type { PublicListingDetail } from '@/lib/search';
 import { useSession } from '@/stores/session';
 
@@ -194,6 +195,9 @@ function OffCampusCta({
         <span className="font-semibold text-slate-900">
           {formatPrice(listing.price)}
         </span>
+        {listing.price_period && (
+          <span className="text-xs text-slate-500"> / {pricePeriodLabel(listing.price_period)}</span>
+        )}
         <span className="ml-2 text-xs text-slate-500">starting rate</span>
       </div>
       {disabled ? children : <Button onClick={onMakeOffer} className="w-full sm:w-auto">Enquire</Button>}

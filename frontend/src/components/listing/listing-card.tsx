@@ -11,6 +11,7 @@ import type { Route } from 'next';
 import Link from 'next/link';
 
 import { cn } from '@/lib/cn';
+import { pricePeriodLabel } from '@/lib/listings';
 import type { ListingCategory, ListingStatus, PhotoView } from '@/lib/listings';
 
 export interface ListingCardData {
@@ -25,6 +26,7 @@ export interface ListingCardData {
   review_count?: number | null;
   bedroom_count?: number | null; // real specs from type_data; null = omit
   bathroom_count?: number | null;
+  price_period?: string | null;  // off-campus billing period (year/session)
   href?: string;                 // defaults to /listings/[id]
 }
 
@@ -72,7 +74,7 @@ export function ListingCard({ data }: { data: ListingCardData }) {
             <div className="text-sm font-semibold text-slate-900">
               {formatPrice(data.price)}
             </div>
-            <div className="text-[11px] text-slate-500">{priceUnit(data.category)}</div>
+            <div className="text-[11px] text-slate-500">{priceUnit(data)}</div>
           </div>
         </div>
         {(data.bedroom_count != null || data.bathroom_count != null) && (
@@ -144,8 +146,8 @@ function Star() {
   );
 }
 
-function priceUnit(category: ListingCategory): string {
-  switch (category) {
+function priceUnit(data: ListingCardData): string {
+  switch (data.category) {
     case 'rent':
       return 'per year';
     case 'sales':
@@ -153,7 +155,7 @@ function priceUnit(category: ListingCategory): string {
     case 'short_let':
       return 'per night';
     case 'off_campus':
-      return 'starting from';
+      return data.price_period ? `from / ${pricePeriodLabel(data.price_period)}` : 'starting from';
   }
 }
 

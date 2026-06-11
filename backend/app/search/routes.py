@@ -239,6 +239,14 @@ async def public_listing_detail(
                 report_date=report.report_date,
             )
 
+    # One source of truth for the headline price: off-campus uses the cheapest
+    # unit (matching the card and the sticky CTA bar); others use Listing.price.
+    if listing.category == ListingCategory.OFF_CAMPUS:
+        detail_price, detail_period = search_service.off_campus_starting_unit(listing)
+    else:
+        detail_price = float(listing.price) if listing.price is not None else None
+        detail_period = None
+
     return PublicListingDetail(
         id=str(listing.id),
         category=listing.category,
@@ -249,7 +257,8 @@ async def public_listing_detail(
         district=listing.district,
         gps_lat=listing.gps_lat,
         gps_lng=listing.gps_lng,
-        price=float(listing.price) if listing.price is not None else None,
+        price=detail_price,
+        price_period=detail_period,
         amenities=listing.amenities or {},
         type_data=listing.type_data or {},
         photos=[
@@ -276,6 +285,7 @@ async def public_listing_detail(
                 name=u.name,
                 kind=str(u.kind),
                 price=float(u.price),
+                price_period=u.price_period,
                 beds_per_room=u.beds_per_room,
                 total_units=u.total_units,
                 gender_tag=u.gender_tag,

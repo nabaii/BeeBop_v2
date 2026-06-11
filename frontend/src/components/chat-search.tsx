@@ -36,6 +36,7 @@ import {
   type ExtractedParameters,
   type ResultListingSummary,
 } from '@/lib/ai-search';
+import { pricePeriodLabel } from '@/lib/listings';
 import type { ListingCategory, PhotoView } from '@/lib/listings';
 import type { SearchSeedFilters } from '@/stores/search';
 import { useSearch } from '@/stores/search';
@@ -555,7 +556,7 @@ function MiniResultCard({
         <p className="text-lg font-bold leading-none text-slate-900">
           {formatPrice(result.price)}
           <span className="ml-0.5 text-xs font-medium text-stone-600">
-            {priceUnit(result.category)}
+            {priceUnit(result)}
           </span>
         </p>
         <h3 className="mt-2 line-clamp-2 text-sm leading-4 text-stone-700">
@@ -737,6 +738,7 @@ function toCardData(result: ResultListingSummary) {
     review_count: result.review_count,
     bedroom_count: result.bedroom_count,
     bathroom_count: result.bathroom_count,
+    price_period: result.price_period,
     href: `/listings/${result.id}`,
   };
 }
@@ -773,14 +775,14 @@ function formatPrice(value: number | null): string {
   return `\u20a6${value.toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
 }
 
-function priceUnit(category: ListingCategory): string {
-  switch (category) {
+function priceUnit(result: ResultListingSummary): string {
+  switch (result.category) {
     case 'rent':
       return '/yr';
     case 'short_let':
       return '/night';
     case 'off_campus':
-      return '/term';
+      return result.price_period ? `/${pricePeriodLabel(result.price_period)}` : '/term';
     case 'sales':
     default:
       return '';
@@ -794,7 +796,7 @@ function priceLabel(category: ListingCategory): string {
     case 'short_let':
       return 'Nightly Rate';
     case 'off_campus':
-      return 'Term Price';
+      return 'Starting rate';
     case 'sales':
     default:
       return 'Asking Price';

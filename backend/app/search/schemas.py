@@ -83,6 +83,8 @@ class PublicListingSummary(BaseModel):
     cover_url: str | None = None
     rating: float | None = None
     review_count: int = 0
+    # Billing period for the price (off-campus only); e.g. "year" or "session".
+    price_period: str | None = None
     # Surfaced from type_data so cards show real specs instead of guesses.
     # Null when the listing does not record them (e.g. off-campus per-unit).
     bedroom_count: int | None = None
@@ -115,6 +117,7 @@ class PublicUnitType(BaseModel):
     price: float
     beds_per_room: int
     total_units: int
+    price_period: str
     gender_tag: Gender
     amenities: list[str] = Field(default_factory=list)
     beds_total: int
@@ -133,6 +136,8 @@ class PublicListingDetail(BaseModel):
     gps_lat: float | None = None
     gps_lng: float | None = None
     price: float | None = None
+    # Billing period for the (off-campus starting) price; e.g. "year"/"session".
+    price_period: str | None = None
     amenities: dict
     type_data: dict
     photos: list[dict]

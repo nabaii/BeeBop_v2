@@ -127,19 +127,31 @@ def _sort(stmt, sort: str):  # type: ignore[no-untyped-def]
     )
 
 
+def off_campus_starting_unit(listing: Listing) -> tuple[float | None, str | None]:
+    """Single source of truth for an off-campus listing's headline price.
+
+    Off-campus listings price per unit type, not on ``Listing.price``. The
+    cheapest priced unit drives the "starting rate" shown everywhere — card,
+    detail headline, and the sticky CTA bar — so they can never disagree.
+    Returns ``(price, price_period)``.
+    """
+    priced = [u for u in listing.unit_types if u.price is not None and float(u.price) > 0]
+    if not priced:
+        return None, None
+    cheapest = min(priced, key=lambda u: float(u.price))
+    return float(cheapest.price), cheapest.price_period
+
+
 def _summarise(listing: Listing) -> PublicListingSummary:
     cover = next((p for p in listing.photos if p.is_cover), None) or next(iter(listing.photos), None)
-    # Off-campus listings price per unit type, not on Listing.price. Surface the
-    # cheapest unit as the card's "from" price. Callers that can return
-    # off-campus rows (off-campus search, featured) eager-load `unit_types`;
-    # the category guard keeps other searches from touching the relationship.
+    # Callers that can return off-campus rows (off-campus search, featured)
+    # eager-load `unit_types`; the category guard keeps other searches from
+    # touching the relationship.
     if listing.category == ListingCategory.OFF_CAMPUS:
-        unit_prices = [
-            float(u.price) for u in listing.unit_types if u.price is not None and float(u.price) > 0
-        ]
-        price = min(unit_prices) if unit_prices else None
+        price, price_period = off_campus_starting_unit(listing)
     else:
         price = float(listing.price) if listing.price is not None else None
+        price_period = None
     type_data = listing.type_data or {}
     return PublicListingSummary(
         id=str(listing.id),
@@ -148,6 +160,7 @@ def _summarise(listing: Listing) -> PublicListingSummary:
         title=listing.title or "Untitled",
         subtitle=listing.subtitle,
         price=price,
+        price_period=price_period,
         district=listing.district,
         gps_lat=listing.gps_lat,
         gps_lng=listing.gps_lng,

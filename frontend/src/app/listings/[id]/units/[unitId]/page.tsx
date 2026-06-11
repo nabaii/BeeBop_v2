@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 
 import { ApiError } from '@/lib/api';
+import { pricePeriodLabel } from '@/lib/listings';
 import { getPublicListing, type PublicListingDetail, type PublicUnitType } from '@/lib/search';
 
 // How many amenities to show before the seeker expands the full list.
@@ -163,7 +164,7 @@ export default function UnitTypeDetailPage({
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-200">Price</p>
                 <p className="text-3xl font-black">{formatPrice(unit.price)}</p>
               </div>
-              <span className="text-xs font-medium text-brand-200">per unit</span>
+              <span className="text-xs font-medium text-brand-200">per {pricePeriodLabel(unit.price_period)}</span>
             </div>
           </section>
 

@@ -79,6 +79,7 @@ async def add_unit_type(
         beds_per_room=payload.beds_per_room,
         total_units=payload.total_units,
         price=payload.price,
+        price_period=payload.price_period,
         gender_tag=tag,
         amenities=[a.strip() for a in payload.amenities if a.strip()],
         # Initialise the relationship as a loaded, empty collection. Without

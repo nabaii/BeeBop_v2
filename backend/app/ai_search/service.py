@@ -885,7 +885,7 @@ async def _fetch_candidates(
     stmt = (
         select(Listing)
         .where(Listing.id.in_(ids))
-        .options(selectinload(Listing.photos))
+        .options(selectinload(Listing.photos), selectinload(Listing.unit_types))
     )
     rows = (await db.execute(stmt)).scalars().unique().all()
     by_id = {str(listing.id): listing for listing in rows}
@@ -1087,6 +1087,13 @@ def _result_summary(
     avg_rating = rating[0] if rating is not None else None
     review_count = rating[1] if rating is not None else 0
     type_data = listing.type_data or {}
+    # One source of truth: off-campus uses the cheapest unit's price/period,
+    # matching the listing detail and CTA bar. Requires unit_types eager-loaded.
+    if listing.category == ListingCategory.OFF_CAMPUS:
+        price, price_period = public_search.off_campus_starting_unit(listing)
+    else:
+        price = float(listing.price) if listing.price is not None else None
+        price_period = None
 
     signals = _rank_signals(
         listing=listing,
@@ -1099,7 +1106,8 @@ def _result_summary(
         title=listing.title or "Untitled listing",
         category=listing.category,
         status=listing.status.value,
-        price=float(listing.price) if listing.price is not None else None,
+        price=price,
+        price_period=price_period,
         district=listing.district,
         cover_url=cover.url if cover is not None else None,
         rating=avg_rating,
@@ -1257,7 +1265,7 @@ async def _listings_by_ids(*, ids: list[uuid.UUID], db: AsyncSession) -> list[Li
     stmt = (
         select(Listing)
         .where(Listing.id.in_(ids))
-        .options(selectinload(Listing.photos))
+        .options(selectinload(Listing.photos), selectinload(Listing.unit_types))
     )
     rows = (await db.execute(stmt)).scalars().unique().all()
     by_id = {listing.id: listing for listing in rows}

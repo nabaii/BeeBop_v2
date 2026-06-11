@@ -48,9 +48,17 @@ export interface UnitTypeView {
   beds_per_room: number;
   total_units: number;
   price: number;
+  price_period: 'year' | 'session';
   gender_tag: 'female' | 'male' | 'any';
   amenities: string[];
   rooms: RoomView[];
+}
+
+/** Human label for a unit-type billing period, e.g. "year" / "session". */
+export function pricePeriodLabel(period?: string | null): string {
+  if (period === 'session') return 'session';
+  if (period === 'year') return 'year';
+  return '';
 }
 
 export interface ListingView {
@@ -244,6 +252,7 @@ export async function addUnitType(
     beds_per_room: number;
     total_units: number;
     price: number;
+    price_period: 'year' | 'session';
     gender_tag: 'female' | 'male' | 'any';
     amenities?: string[];
   },
