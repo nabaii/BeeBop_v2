@@ -21,7 +21,6 @@ import {
   FileCheck,
   CheckCircle2,
   ArrowLeft,
-  Loader2,
   LayoutGrid,
   Check,
   ChevronRight
@@ -29,6 +28,7 @@ import {
 
 import { RouteGuard } from '@/components/route-guard';
 import { Button } from '@/components/ui/button';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 import { AmenitiesChecklist } from '@/components/listing/amenities-checklist';
 import { DocumentUpload } from '@/components/listing/document-upload';
 import { ListingBaseForm } from '@/components/listing/base-form';
@@ -95,14 +95,7 @@ function EditingShell({ id }: { id: string }) {
 
   if (loadError) return <div className="p-8 text-sm text-red-600 font-medium">{loadError}</div>;
   if (!listing) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="flex items-center gap-3 text-slate-500 font-medium">
-          <Loader2 className="h-5 w-5 animate-spin text-brand" />
-          <span>Loading listing details...</span>
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="Loading listing details…" />;
   }
 
   const isDraft = listing.status === 'draft';

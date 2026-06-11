@@ -25,6 +25,7 @@ import {
 import Link from 'next/link';
 import type { Route } from 'next';
 import { Button } from '@/components/ui/button';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 
 import { ApiError } from '@/lib/api';
 import { getPublicListing, type PublicListingDetail, type PublicUnitType } from '@/lib/search';
@@ -75,14 +76,7 @@ export default function UnitTypeDetailPage({
   }, [id, unitId]);
 
   if (loading) {
-    return (
-      <main className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-2 text-slate-500">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-          <span className="text-sm font-medium">Loading unit details...</span>
-        </div>
-      </main>
-    );
+    return <LoadingScreen message="Loading unit details…" />;
   }
 
   if (error || !listing || !unit) {

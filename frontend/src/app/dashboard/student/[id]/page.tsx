@@ -15,6 +15,7 @@ import { Minus, Plus } from 'lucide-react';
 import { EmptyPanel } from '@/components/dashboard/empty-panel';
 import { StatTile } from '@/components/dashboard/stat-tile';
 import { Button } from '@/components/ui/button';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 import { ApiError } from '@/lib/api';
 import { dashboards, type StudentPMS } from '@/lib/dashboards';
 import { listUnitTypes, updateRoom, type RoomView, type UnitTypeView } from '@/lib/listings';
@@ -89,7 +90,7 @@ export default function StudentPMSPage({
     );
   }
   if (!pms || !units) {
-    return <main className="p-8 text-sm text-slate-500">Loading…</main>;
+    return <LoadingScreen />;
   }
 
   const tally = tallyBeds(units);

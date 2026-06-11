@@ -29,6 +29,7 @@ import { AmenitiesDisplay } from '@/components/listing/amenities-display';
 import { AreaScorePanel } from '@/components/listing/area-score-panel';
 import { CtaBar } from '@/components/listing/cta-bar';
 import { ListingGallery } from '@/components/listing/gallery';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 import { ApiError } from '@/lib/api';
 import { getPublicListing, type PublicListingDetail } from '@/lib/search';
 
@@ -71,7 +72,7 @@ export default function ListingDetailPage({
   }
 
   if (!listing) {
-    return <main className="p-8 text-sm text-slate-500">Loading...</main>;
+    return <LoadingScreen message="Loading listing…" />;
   }
 
   const short = listing.description.length > 400 && !expanded;

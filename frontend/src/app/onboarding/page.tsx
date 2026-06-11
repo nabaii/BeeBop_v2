@@ -8,6 +8,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
+import { LoadingScreen } from '@/components/ui/loading-screen';
 import { useSession } from '@/stores/session';
 
 export default function OnboardingEntry() {
@@ -22,5 +23,5 @@ export default function OnboardingEntry() {
     else router.replace('/');
   }, [hydrated, user, router]);
 
-  return <p className="text-sm text-slate-500">Loading your account…</p>;
+  return <LoadingScreen message="Loading your account…" />;
 }

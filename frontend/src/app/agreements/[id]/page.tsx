@@ -12,6 +12,7 @@ import { use, useEffect, useState } from 'react';
 import { RouteGuard } from '@/components/route-guard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 import { ApiError } from '@/lib/api';
 import { agreements, type AgreementView } from '@/lib/agreements';
 import { useSession } from '@/stores/session';
@@ -48,8 +49,7 @@ function Inner({ id }: { id: string }) {
   }, [id]);
 
   if (error) return <main className="p-6 text-sm text-red-600">{error}</main>;
-  if (!agreement || !user)
-    return <main className="p-6 text-sm text-slate-500">Loading…</main>;
+  if (!agreement || !user) return <LoadingScreen message="Loading agreement…" />;
 
   const myParty: 'landlord' | 'seeker' | null =
     user.id === agreement.landlord_id

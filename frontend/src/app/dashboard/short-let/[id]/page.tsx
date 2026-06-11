@@ -13,6 +13,7 @@ import { BookingsPanel } from '@/components/bookings/bookings-panel';
 import { ShortLetCalendar } from '@/components/dashboard/short-let-calendar';
 import { StatTile } from '@/components/dashboard/stat-tile';
 import { Button } from '@/components/ui/button';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 import { ApiError } from '@/lib/api';
 import { dashboards, type ShortLetDashboardData } from '@/lib/dashboards';
 
@@ -54,7 +55,7 @@ export default function ShortLetDashboardPage({
     );
   }
   if (!data) {
-    return <main className="p-8 text-sm text-slate-500">Loading…</main>;
+    return <LoadingScreen />;
   }
 
   const { pricing } = data;

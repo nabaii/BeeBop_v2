@@ -10,6 +10,7 @@ import { use, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 import { ApiError } from '@/lib/api';
 import {
   agents,
@@ -44,7 +45,7 @@ export default function AgentVisitPage({
   }, [id]);
 
   if (error) return <main className="p-6 text-sm text-red-600">{error}</main>;
-  if (!briefing || !row) return <main className="p-6 text-sm text-slate-500">Loading…</main>;
+  if (!briefing || !row) return <LoadingScreen />;
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
