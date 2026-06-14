@@ -56,7 +56,7 @@ export function BottomNav() {
               <Link
                 href={tab.href}
                 className={cn(
-                  'flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl px-2 text-[10px] font-semibold uppercase leading-none tracking-wide transition-colors',
+                  'flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl px-2 text-caption font-semibold uppercase leading-none tracking-wide transition-colors',
                   active
                     ? 'bg-brand-50 text-brand-700'
                     : 'text-slate-400 hover:text-slate-600',

@@ -208,7 +208,7 @@ function StatusBadge({
   else text = `Awaiting other side · ${remaining}`;
 
   return (
-    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${colour}`}>
+    <span className={`shrink-0 rounded-full px-2 py-0.5 text-caption font-medium ${colour}`}>
       {text}
     </span>
   );

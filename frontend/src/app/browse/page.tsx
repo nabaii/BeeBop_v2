@@ -101,10 +101,10 @@ export default function BrowseHubPage() {
         <main className="min-h-0 flex-1 overflow-y-auto p-4 pb-6 sm:p-6">
           <header className="mb-6 flex items-center gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-700">
+              <p className="text-caption font-semibold uppercase tracking-[0.22em] text-brand-700">
                 Explore
               </p>
-              <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
+              <h1 className="font-display text-section font-semibold text-slate-900">
                 Browse by listing type
               </h1>
             </div>
@@ -160,7 +160,7 @@ export default function BrowseHubPage() {
                         <li
                           key={chip}
                           className={cn(
-                            'rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide shadow-sm',
+                            'rounded-full px-3 py-1 text-caption font-semibold uppercase tracking-wide shadow-sm',
                             category.tones.chip,
                           )}
                         >

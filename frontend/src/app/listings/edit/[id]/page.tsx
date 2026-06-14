@@ -182,7 +182,7 @@ function EditingShell({ id }: { id: string }) {
               Back to dashboard
             </Link>
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center rounded-full bg-brand/20 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-brand border border-brand/30 uppercase">
+              <span className="inline-flex items-center rounded-full bg-brand/20 px-2.5 py-0.5 text-caption font-bold tracking-wide text-brand border border-brand/30 uppercase">
                 {listing.category.replace('_', ' ')}
               </span>
               <StatusPill status={listing.status} />
@@ -248,10 +248,10 @@ function EditingShell({ id }: { id: string }) {
                           }`}>
                             {step.label}
                             {step.complete && (
-                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.2 rounded">Done</span>
+                              <span className="text-caption font-bold text-emerald-600 bg-emerald-50 px-1 py-0.2 rounded">Done</span>
                             )}
                           </div>
-                          <div className="text-[10px] text-slate-400 truncate mt-0.5">{step.desc}</div>
+                          <div className="text-caption text-slate-400 truncate mt-0.5">{step.desc}</div>
                         </div>
                         <ChevronRight className="ml-auto h-4 w-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-all self-center" />
                       </button>
@@ -393,7 +393,7 @@ function StatusPill({ status }: { status: ListingView['status'] }) {
               ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
               : 'bg-slate-500/10 text-slate-200 border-slate-500/20';
   return (
-    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold capitalize tracking-wide ${color}`}>
+    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-caption font-bold capitalize tracking-wide ${color}`}>
       {label}
     </span>
   );

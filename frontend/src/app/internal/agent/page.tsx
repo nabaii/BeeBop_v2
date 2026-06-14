@@ -105,7 +105,7 @@ function StatusPill({ status }: { status: AgentVisitRow['status'] }) {
     colour: 'bg-slate-100 text-slate-700',
   };
   return (
-    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${meta.colour}`}>
+    <span className={`shrink-0 rounded-full px-2 py-0.5 text-caption font-medium ${meta.colour}`}>
       {meta.label}
     </span>
   );

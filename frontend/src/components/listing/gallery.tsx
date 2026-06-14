@@ -166,7 +166,7 @@ function StatusBadge({ status }: { status: PublicListingDetail['status'] }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm',
+        'inline-flex items-center gap-1 rounded-full px-3 py-1 text-caption font-bold uppercase tracking-wide text-white shadow-sm',
         fullyVerified && 'bg-verification-fully',
         docVerified && 'bg-verification-doc',
         !fullyVerified && !docVerified && 'bg-verification-unverified',
@@ -180,7 +180,7 @@ function StatusBadge({ status }: { status: PublicListingDetail['status'] }) {
 
 function VisitedBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-orange-300 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-orange-900 shadow-sm">
+    <span className="inline-flex items-center gap-1 rounded-full bg-orange-300 px-3 py-1 text-caption font-bold uppercase tracking-wide text-orange-900 shadow-sm">
       <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
       Visited
     </span>

@@ -150,7 +150,7 @@ function FallbackList({ data, onSelect }: Props) {
         <div>
           <h3 className="text-sm font-semibold text-slate-900">Map unavailable</h3>
           <p className="text-xs text-slate-500">
-            Set <code className="rounded bg-slate-100 px-1 py-0.5 text-[11px]">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable the pin map. Results below use the same filters.
+            Set <code className="rounded bg-slate-100 px-1 py-0.5 text-caption">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable the pin map. Results below use the same filters.
           </p>
         </div>
         <Legend />

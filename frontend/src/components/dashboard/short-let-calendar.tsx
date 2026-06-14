@@ -58,12 +58,12 @@ export function ShortLetCalendar({
               )}
               title={`${d.date} — ${d.state}`}
             >
-              <span className="text-[10px] uppercase tracking-wide text-slate-500">
+              <span className="text-caption uppercase tracking-wide text-slate-500">
                 {SHORT_DAY[date.getUTCDay()]}
               </span>
               <span className="text-sm font-semibold text-slate-900">{date.getUTCDate()}</span>
               {d.rate != null && (
-                <span className="text-[10px] text-slate-500">
+                <span className="text-caption text-slate-500">
                   ₦{Math.round(d.rate / 1000)}k{d.is_weekend && '*'}
                 </span>
               )}
@@ -71,7 +71,7 @@ export function ShortLetCalendar({
           );
         })}
       </ul>
-      <p className="mt-3 flex items-center gap-3 text-[11px] text-slate-500">
+      <p className="mt-3 flex items-center gap-3 text-caption text-slate-500">
         <span className="inline-flex items-center gap-1">
           <span className="h-2 w-2 rounded bg-emerald-300" /> Available
         </span>

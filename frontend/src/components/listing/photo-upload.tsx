@@ -157,14 +157,14 @@ export function PhotoUpload({ listing, onSaved }: Props) {
             <div className="relative aspect-square">
               <img src={p.url} alt={p.room_label ?? 'Listing photo'} className="h-full w-full object-cover" />
               {p.is_cover ? (
-                <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-slate-900 shadow-sm">
+                <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-caption font-bold text-slate-900 shadow-sm">
                   <Star className="h-3 w-3 fill-current" /> Cover
                 </span>
               ) : (
                 <button
                   type="button"
                   onClick={() => void setCover(p.id)}
-                  className="absolute left-2.5 top-2.5 opacity-0 group-hover:opacity-100 flex items-center gap-1 rounded-full bg-slate-900/80 backdrop-blur-sm px-2 py-0.5 text-[10px] font-bold text-slate-200 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                  className="absolute left-2.5 top-2.5 opacity-0 group-hover:opacity-100 flex items-center gap-1 rounded-full bg-slate-900/80 backdrop-blur-sm px-2 py-0.5 text-caption font-bold text-slate-200 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
                 >
                   <Star className="h-3 w-3" /> Make Cover
                 </button>

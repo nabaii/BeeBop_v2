@@ -377,8 +377,8 @@ function Form({
       }}
     >
       <div>
-        <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
-        <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+        <h1 className="font-display text-section font-semibold text-slate-900">{title}</h1>
+        <p className="mt-1 text-body text-slate-500">{subtitle}</p>
       </div>
       {children}
       {error && <p className="text-sm text-red-600">{error}</p>}

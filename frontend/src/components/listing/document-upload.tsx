@@ -138,7 +138,7 @@ export function DocumentUpload({ listing, onSaved }: Props) {
         <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 bg-slate-50/20 rounded-xl p-6 text-center text-slate-400">
           <Upload className="h-5 w-5 mb-2" />
           <span className="text-xs font-semibold">No documents uploaded yet.</span>
-          <span className="text-[10px]">You can still submit and verify later.</span>
+          <span className="text-caption">You can still submit and verify later.</span>
         </div>
       ) : (
         <ul className="space-y-3">
@@ -153,7 +153,7 @@ export function DocumentUpload({ listing, onSaved }: Props) {
                 </div>
                 <div>
                   <div className="text-xs font-bold text-slate-900 truncate max-w-[200px] sm:max-w-md">{d.filename}</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">
+                  <div className="text-caption text-slate-500 mt-0.5">
                     {humanLabelFor(d.doc_type)} · {d.content_type.split('/')[1]?.toUpperCase()}
                     {d.size_bytes ? ` · ${Math.ceil(d.size_bytes / 1024)} KB` : ''}
                   </div>

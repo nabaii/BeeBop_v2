@@ -447,7 +447,7 @@ function StatCard({
           : 'border-slate-200 bg-white')
       }
     >
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="text-caption font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <div className="mt-1 text-sm font-semibold text-slate-900">{value}</div>
     </div>
   );

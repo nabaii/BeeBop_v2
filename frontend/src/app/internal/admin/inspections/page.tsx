@@ -281,7 +281,7 @@ function ReviewDrawer({
                         </p>
                       </div>
                       {detail.area_score?.last_assessed_at && (
-                        <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-600">
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-caption text-slate-600">
                           {new Date(detail.area_score.last_assessed_at).toLocaleDateString('en-NG')}
                         </span>
                       )}
@@ -350,7 +350,7 @@ function ReviewDrawer({
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="text-caption font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <div className="mt-1 text-sm font-medium text-slate-900">{value}</div>
     </div>
   );
@@ -359,7 +359,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-slate-50 p-3">
-      <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
+      <dt className="text-caption font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
       <dd className="mt-1 text-sm text-slate-900">{value}</dd>
     </div>
   );
@@ -368,7 +368,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 function NoteCard({ title, text }: { title: string; text: string | null | undefined }) {
   return (
     <div className="rounded-lg bg-slate-50 p-3">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{title}</div>
+      <div className="text-caption font-semibold uppercase tracking-wide text-slate-500">{title}</div>
       <p className="mt-1 text-sm text-slate-700">{text?.trim() ? text : 'No note provided.'}</p>
     </div>
   );
@@ -404,7 +404,7 @@ function EvidenceCard({ item }: { item: InspectionReviewDetail['evidence'][numbe
 function ScoreTile({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="rounded-lg bg-slate-50 p-3">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="text-caption font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <div className="mt-1 text-sm font-semibold text-slate-900">
         {value != null ? `${value} / 5` : 'Not scored'}
       </div>

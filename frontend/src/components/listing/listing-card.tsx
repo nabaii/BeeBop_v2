@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/cn';
 import { pricePeriodLabel } from '@/lib/listings';
 import type { ListingCategory, ListingStatus, PhotoView } from '@/lib/listings';
+import { Price } from '@/components/ui/price';
 
 export interface ListingCardData {
   id: string;
@@ -37,9 +38,9 @@ export function ListingCard({ data }: { data: ListingCardData }) {
   return (
     <Link
       href={href as Route}
-      className="group block overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+      className="group block overflow-hidden rounded-xl border border-hairline bg-white transition-colors hover:border-ink-soft/50"
     >
-      <div className="relative aspect-[4/3] bg-slate-100">
+      <div className="relative aspect-[4/3] bg-hairline">
         {data.cover_photo?.url ? (
           <img
             src={data.cover_photo.url}
@@ -47,7 +48,7 @@ export function ListingCard({ data }: { data: ListingCardData }) {
             className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-xs text-slate-400">
+          <div className="flex h-full items-center justify-center text-caption text-ink-soft">
             No photo
           </div>
         )}
@@ -55,7 +56,7 @@ export function ListingCard({ data }: { data: ListingCardData }) {
           <VerificationBadge tier={tier} />
         </div>
         {tier === 'unverified' && (
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/60 to-transparent px-3 py-2 text-xs text-white">
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/60 to-transparent px-3 py-2 text-caption text-white">
             Awaiting verification
           </div>
         )}
@@ -63,22 +64,20 @@ export function ListingCard({ data }: { data: ListingCardData }) {
       <div className="p-3">
         <div className="flex flex-col gap-2 min-[380px]:flex-row min-[380px]:items-start min-[380px]:justify-between">
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-slate-900">
+            <div className="truncate font-display text-title font-semibold text-ink">
               {data.title ?? 'Untitled listing'}
             </div>
             {data.district && (
-              <div className="text-xs text-slate-500">{data.district}</div>
+              <div className="text-caption text-ink-muted">{data.district}</div>
             )}
           </div>
           <div className="shrink-0 text-left min-[380px]:text-right">
-            <div className="text-sm font-semibold text-slate-900">
-              {formatPrice(data.price)}
-            </div>
-            <div className="text-[11px] text-slate-500">{priceUnit(data)}</div>
+            <Price value={data.price} className="block text-body font-semibold text-ink" />
+            <div className="text-caption text-ink-muted">{priceUnit(data)}</div>
           </div>
         </div>
         {(data.bedroom_count != null || data.bathroom_count != null) && (
-          <div className="mt-2 flex items-center gap-3 text-xs text-slate-600">
+          <div className="mt-2 flex items-center gap-3 text-caption text-ink-muted">
             {data.bedroom_count != null && (
               <span className="inline-flex items-center gap-1">
                 <BedDouble className="h-3.5 w-3.5" aria-hidden />
@@ -94,11 +93,11 @@ export function ListingCard({ data }: { data: ListingCardData }) {
           </div>
         )}
         {data.category !== 'sales' && typeof data.rating === 'number' && (
-          <div className="mt-2 flex items-center gap-1 text-xs text-slate-600">
+          <div className="mt-2 flex items-center gap-1 text-caption text-ink-muted">
             <Star />
-            <span className="font-medium text-slate-800">{data.rating.toFixed(1)}</span>
+            <span className="font-medium text-ink">{data.rating.toFixed(1)}</span>
             {typeof data.review_count === 'number' && (
-              <span className="text-slate-500">({data.review_count})</span>
+              <span className="text-ink-muted">({data.review_count})</span>
             )}
           </div>
         )}
@@ -127,7 +126,7 @@ function VerificationBadge({ tier }: { tier: VerificationTier }) {
   return (
     <span
       className={cn(
-        'rounded-full px-2 py-0.5 text-[11px] font-medium',
+        'rounded-full px-2 py-0.5 text-caption font-medium',
         tier === 'fully_verified' && 'bg-verification-fully text-white',
         tier === 'doc_verified' && 'bg-verification-doc text-white',
         tier === 'unverified' && 'bg-verification-unverified text-white',
@@ -157,9 +156,4 @@ function priceUnit(data: ListingCardData): string {
     case 'off_campus':
       return data.price_period ? `from / ${pricePeriodLabel(data.price_period)}` : 'starting from';
   }
-}
-
-function formatPrice(value: number | null): string {
-  if (value == null) return '—';
-  return `₦${value.toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
 }

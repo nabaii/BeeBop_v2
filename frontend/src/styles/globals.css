@@ -3,8 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 15, 23, 42;
-  --background-rgb: 255, 255, 255;
+  /* Warm surface system: Hive Black text on Paper. Flipping these two warms
+     the app's inherited baseline in one stroke — every surface that doesn't
+     override bg/color inherits the warm base. */
+  --foreground-rgb: 35, 26, 15;    /* Hive Black #231A0F */
+  --background-rgb: 252, 250, 246; /* Paper #FCFAF6 */
 }
 
 html {

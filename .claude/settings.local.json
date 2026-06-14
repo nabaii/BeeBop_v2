@@ -104,7 +104,23 @@
       "PowerShell(git -C \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\" remote -v)",
       "PowerShell(\"---BRANCH---\")",
       "PowerShell(\"---REMOTE---\")",
-      "Bash(git ls-remote *)"
+      "Bash(git ls-remote *)",
+      "PowerShell(cd frontend; npx tsc --noEmit 2>&1 | Select-Object -First 30; \"exit: $LASTEXITCODE\")",
+      "PowerShell(cd frontend; npx next lint --file src/components/chat-search.tsx --file src/components/listing/gallery.tsx 2>&1 | Select-Object -First 40; \"exit: $LASTEXITCODE\")",
+      "PowerShell(cd frontend; npx tsc --noEmit 2>&1 | Select-Object -First 20; \"exit: $LASTEXITCODE\")",
+      "PowerShell(cd backend; .\\\\.venv\\\\Scripts\\\\python -m pytest tests/test_search_filters.py tests/test_ai_search.py -q 2>&1 | Select-Object -Last 40; \"exit: $LASTEXITCODE\")",
+      "PowerShell(npx --prefix C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\frontend tsc -p C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\frontend\\\\tsconfig.json --noEmit 2>&1 | Select-Object -First 30; \"exit: $LASTEXITCODE\")",
+      "PowerShell(C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\backend\\\\.venv\\\\Scripts\\\\python -m pytest C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\backend\\\\tests -q 2>&1 | Select-Object -Last 15; \"exit: $LASTEXITCODE\")",
+      "PowerShell($f = \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\frontend\"; & \"$f\\\\node_modules\\\\.bin\\\\next.cmd\" lint --dir src 2>&1 | Select-String -Pattern \"Error|error|warn\" -Context 0,1 | Select-Object -First 40; \"exit: $LASTEXITCODE\")",
+      "PowerShell($f = \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\frontend\"; Push-Location $f; & \"$f\\\\node_modules\\\\.bin\\\\next.cmd\" lint --dir src 2>&1 | Select-Object -Last 50; \"exit: $LASTEXITCODE\"; Pop-Location)",
+      "PowerShell(cd C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2; git push origin production-publish-prep 2>&1 | Select-Object -Last 20; \"exit: $LASTEXITCODE\")",
+      "PowerShell(npx --prefix C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\frontend tsc -p C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\frontend\\\\tsconfig.json --noEmit 2>&1 | Select-Object -First 20; \"exit: $LASTEXITCODE\")",
+      "PowerShell(C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\backend\\\\.venv\\\\Scripts\\\\python -m pytest C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\backend\\\\tests -q 2>&1 | Select-Object -Last 30; \"exit: $LASTEXITCODE\")",
+      "PowerShell($py = \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\backend\\\\.venv\\\\Scripts\\\\python.exe\"; & $py -m pytest C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\backend\\\\tests -q 2>&1 | Select-Object -Last 8; \"pytest exit: $LASTEXITCODE\"; & $py -m py_compile C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\backend\\\\alembic\\\\versions\\\\e5f6a1b2c3d4_move_gender_amenities_to_unit_types.py C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\backend\\\\scripts\\\\seed_listings.py C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\backend\\\\scripts\\\\seed_student_listings.py; \"compile exit: $LASTEXITCODE\")",
+      "PowerShell($py = \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\backend\\\\.venv\\\\Scripts\\\\python.exe\"; Push-Location C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\backend; & $py -m alembic heads 2>&1 | Select-Object -Last 10; \"exit: $LASTEXITCODE\"; Pop-Location)",
+      "PowerShell($f = \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\frontend\"; Push-Location $f; & \"$f\\\\node_modules\\\\.bin\\\\next.cmd\" lint --dir src 2>&1 | Select-String -Pattern \"Error:|never used|/listings|student-inventory|dashboard\" | Select-Object -First 30; \"exit: $LASTEXITCODE\"; Pop-Location)",
+      "PowerShell($f = \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\frontend\"; npx --prefix $f tsc -p \"$f\\\\tsconfig.json\" --noEmit 2>&1 | Select-Object -First 30; \"tsc exit: $LASTEXITCODE\")",
+      "PowerShell($f = \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\frontend\"; Push-Location $f; & \"$f\\\\node_modules\\\\.bin\\\\next.cmd\" lint --dir src 2>&1 | Select-String -Pattern \"Error:|never used|units/|/listings/\\\\[id\\\\]/page\" | Select-Object -First 20; \"exit: $LASTEXITCODE\"; Pop-Location)"
     ]
   }
 }

@@ -122,10 +122,10 @@ export function ChatSearchPanel() {
       <div className="h-full overflow-y-auto px-4 py-5 min-[380px]:py-6">
         <div className="space-y-6">
           <div className="text-center">
-            <h2 className="text-xl font-bold text-slate-900 min-[380px]:text-2xl">
+            <h2 className="font-display text-section font-bold text-ink min-[380px]:text-hero">
               What kind of place are you looking for?
             </h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-body text-ink-muted">
               I&apos;ll find verified options in Abuja for you.
             </p>
           </div>
@@ -136,21 +136,21 @@ export function ChatSearchPanel() {
               void submit(value);
             }}
           >
-            <div className="flex items-center gap-3 rounded-3xl bg-white p-2 shadow-md">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white">
+            <div className="flex items-center gap-3 rounded-3xl border border-hairline bg-white p-2">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-ink">
                 <Briefcase className="h-5 w-5" aria-hidden />
               </div>
               <input
                 value={value}
                 onChange={(event) => setValue(event.target.value)}
                 placeholder="2-bedroom in Wuse under N300k"
-                className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-soft"
               />
               <button
                 type="submit"
                 disabled={loading || !value.trim()}
                 aria-label="Send message"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-slate-900 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-ink transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ArrowRight className="h-5 w-5" aria-hidden />
               </button>
@@ -160,7 +160,7 @@ export function ChatSearchPanel() {
           <FeaturedCarousel />
 
           <div className="space-y-2">
-            <p className="text-xs font-medium text-slate-500">
+            <p className="text-xs font-medium text-ink-muted">
               Need ideas? Try asking for one of these:
             </p>
             <ul className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
@@ -169,7 +169,7 @@ export function ChatSearchPanel() {
                   <button
                     type="button"
                     onClick={() => void submit(text)}
-                    className="flex h-full w-full items-start gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left text-xs text-slate-700 transition hover:border-brand/40 hover:bg-brand-50"
+                    className="flex h-full w-full items-start gap-2 rounded-2xl border border-hairline bg-white px-3 py-2.5 text-left text-xs text-ink transition hover:border-brand/40 hover:bg-nectar"
                   >
                     <Icon className="h-4 w-4 shrink-0 text-brand" aria-hidden />
                     <span>{text}</span>
@@ -211,7 +211,7 @@ export function ChatSearchPanel() {
   }
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden bg-slate-50">
+    <div className="relative flex h-full flex-col overflow-hidden bg-paper">
       <div
         ref={scrollRef}
         className={cn(
@@ -233,7 +233,7 @@ export function ChatSearchPanel() {
                 />
               )}
               {entry.response.used_fallback && process.env.NODE_ENV === 'development' && (
-                <p className="ml-12 text-[11px] font-medium text-amber-700">
+                <p className="ml-12 text-caption font-medium text-amber-700">
                   Dev fallback mode
                 </p>
               )}
@@ -259,7 +259,7 @@ export function ChatSearchPanel() {
           onExpand={() => setExpandedQueryId(latestResultEntry.response.query_id)}
         />
       ) : (
-        <div className="border-t border-slate-100 bg-white px-4 py-3">
+        <div className="border-t border-hairline bg-white px-4 py-3">
           <RefineSearchForm
             value={value}
             onValueChange={setValue}
@@ -276,7 +276,8 @@ export function ChatSearchPanel() {
 function UserBubble({ text }: { text: string }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[86%] rounded-2xl rounded-tr-sm bg-slate-200 px-4 py-3 text-sm text-slate-900">
+      {/* The branded move: Nectar (pale honey) with Hive Black text, no shadow. */}
+      <div className="max-w-[86%] rounded-2xl rounded-tr-sm bg-nectar px-4 py-3 text-body text-ink">
         {text}
       </div>
     </div>
@@ -286,10 +287,11 @@ function UserBubble({ text }: { text: string }) {
 function BotBubble({ text }: { text: string }) {
   return (
     <div className="flex items-start gap-2">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-white">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-ink">
         <Briefcase className="h-4 w-4" aria-hidden />
       </div>
-      <div className="max-w-[86%] rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm text-slate-900 shadow-sm">
+      {/* Warm white with a hairline border instead of a floating drop shadow. */}
+      <div className="max-w-[86%] rounded-2xl rounded-tl-sm border border-hairline bg-white px-4 py-3 text-body text-ink">
         {text}
       </div>
     </div>
@@ -299,10 +301,10 @@ function BotBubble({ text }: { text: string }) {
 function SearchingIndicator() {
   return (
     <li className="flex items-center gap-2">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-nectar text-ink-muted">
         <MoreHorizontal className="h-4 w-4" aria-hidden />
       </div>
-      <span className="text-sm text-slate-500">Beebop is searching...</span>
+      <span className="text-body text-ink-muted">Beebop is searching...</span>
     </li>
   );
 }
@@ -317,16 +319,16 @@ function ResultsPanel({
   canOpenBrowse: boolean;
 }) {
   return (
-    <div className="rounded-2xl bg-white p-3 shadow-sm min-[380px]:ml-10">
+    <div className="rounded-2xl border border-hairline bg-white p-3 min-[380px]:ml-10">
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+        <p className="text-caption font-semibold uppercase tracking-[0.18em] text-ink-soft">
           {results.length} match{results.length === 1 ? '' : 'es'}
         </p>
         {canOpenBrowse && (
           <button
             type="button"
             onClick={onOpenBrowse}
-            className="text-[11px] font-semibold text-brand-600 hover:text-brand-700"
+            className="text-caption font-semibold text-brand-600 hover:text-brand-700"
           >
             See all
           </button>
@@ -361,7 +363,7 @@ function CollapsedResultsWindow({
   const pointerStart = useRef<number | null>(null);
 
   return (
-    <section className="absolute inset-x-0 bottom-0 rounded-t-[32px] bg-white px-4 pb-4 pt-3 shadow-[0_-18px_44px_rgba(15,23,42,0.12)] min-[380px]:px-6">
+    <section className="absolute inset-x-0 bottom-0 rounded-t-[32px] border-t border-hairline bg-white px-4 pb-4 pt-3 shadow-[0_-12px_32px_rgba(35,26,15,0.08)] min-[380px]:px-6">
       <button
         type="button"
         onClick={onExpand}
@@ -374,10 +376,10 @@ function CollapsedResultsWindow({
           }
           pointerStart.current = null;
         }}
-        className="mb-3 flex w-full flex-col items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-stone-600"
+        className="mb-3 flex w-full flex-col items-center gap-2 text-caption font-bold uppercase tracking-[0.14em] text-ink-muted"
         aria-label="Expand results"
       >
-        <span className="h-1.5 w-12 rounded-full bg-slate-200" aria-hidden />
+        <span className="h-1.5 w-12 rounded-full bg-hairline" aria-hidden />
         <span>Swipe up to expand results</span>
       </button>
 
@@ -419,7 +421,7 @@ function ExpandedResultsView({
 }) {
   return (
     <div className="flex h-full flex-col bg-white">
-      <div className="shrink-0 bg-[linear-gradient(180deg,#e5e2dc_0%,#f8fafc_100%)] px-0 pb-7 pt-9">
+      <div className="shrink-0 bg-[linear-gradient(180deg,#F3ECDD_0%,#FCFAF6_100%)] px-0 pb-7 pt-9">
         <SearchQueryPill
           query={entry.query}
           onOpenBrowse={onOpenBrowse}
@@ -469,16 +471,16 @@ function SearchQueryPill({
   canOpenBrowse: boolean;
 }) {
   return (
-    <div className="rounded-t-[28px] border border-white bg-slate-50 px-4 py-5 shadow-[0_-1px_0_rgba(255,255,255,0.9)]">
+    <div className="rounded-t-[28px] border border-hairline bg-white px-4 py-5">
       <div className="flex items-center gap-3">
-        <Search className="h-5 w-5 shrink-0 text-slate-600" aria-hidden />
-        <p className="min-w-0 flex-1 text-sm leading-5 text-stone-700">{query}</p>
+        <Search className="h-5 w-5 shrink-0 text-ink-muted" aria-hidden />
+        <p className="min-w-0 flex-1 text-sm leading-5 text-ink">{query}</p>
         <button
           type="button"
           onClick={onOpenBrowse}
           disabled={!canOpenBrowse}
           aria-label="Open browse filters"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-700 transition hover:bg-slate-200 disabled:opacity-40"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition hover:bg-nectar disabled:opacity-40"
         >
           <SlidersHorizontal className="h-5 w-5" aria-hidden />
         </button>
@@ -507,11 +509,11 @@ function RefineSearchForm({
         void onSubmit(value);
       }}
     >
-      <div className="flex min-h-[58px] items-center gap-3 rounded-full bg-[#dfe2e3] px-4 py-2 shadow-[0_10px_28px_rgba(15,23,42,0.12)]">
+      <div className="flex min-h-[58px] items-center gap-3 rounded-full border border-hairline bg-white px-4 py-2 shadow-[0_8px_24px_rgba(35,26,15,0.06)]">
         <button
           type="button"
           aria-label="Attach preference"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-600 transition hover:bg-white/50"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition hover:bg-nectar"
         >
           <Paperclip className="h-5 w-5" aria-hidden />
         </button>
@@ -519,13 +521,13 @@ function RefineSearchForm({
           value={value}
           onChange={(event) => onValueChange(event.target.value)}
           placeholder={placeholder}
-          className="min-w-0 flex-1 bg-transparent text-sm leading-5 text-stone-700 outline-none placeholder:text-stone-600/80"
+          className="min-w-0 flex-1 bg-transparent text-sm leading-5 text-ink outline-none placeholder:text-ink-soft"
         />
         <button
           type="submit"
           disabled={loading || !value.trim()}
           aria-label="Send message"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#d1a200] text-slate-900 shadow-[0_8px_20px_rgba(161,123,0,0.32)] transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-ink transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -546,20 +548,20 @@ function MiniResultCard({
   return (
     <Link
       href={`/listings/${result.id}` as Route}
-      className="flex w-[min(258px,76vw)] shrink-0 snap-center overflow-hidden rounded-[22px] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.12)] ring-1 ring-slate-100"
+      className="flex w-[min(258px,76vw)] shrink-0 snap-center overflow-hidden rounded-[22px] border border-hairline bg-white"
     >
-      <div className="relative h-[92px] w-[92px] shrink-0 bg-slate-100">
+      <div className="relative h-[92px] w-[92px] shrink-0 bg-hairline">
         <CoverImage result={result} />
         <VerificationBadge status={result.status} compact />
       </div>
       <div className="min-w-0 flex-1 px-3 py-2.5">
-        <p className="text-lg font-bold leading-none text-slate-900">
+        <p className="text-lg font-bold leading-none text-ink">
           {formatPrice(result.price)}
-          <span className="ml-0.5 text-xs font-medium text-stone-600">
+          <span className="ml-0.5 text-xs font-medium text-ink-muted">
             {priceUnit(result)}
           </span>
         </p>
-        <h3 className="mt-2 line-clamp-2 text-sm leading-4 text-stone-700">
+        <h3 className="mt-2 line-clamp-2 text-sm leading-4 text-ink">
           {cleanTitle(result.title)}
         </h3>
         <LocationPill district={result.district} className="mt-2" />
@@ -580,24 +582,24 @@ function ExpandedListingCard({
   const bathrooms = result.bathroom_count ?? null;
 
   return (
-    <article className="overflow-hidden rounded-[14px] bg-white shadow-[0_14px_38px_rgba(15,23,42,0.12)] ring-1 ring-slate-100">
-      <div className="relative aspect-[16/11] bg-slate-100">
+    <article className="overflow-hidden rounded-[14px] border border-hairline bg-white">
+      <div className="relative aspect-[16/11] bg-hairline">
         <CoverImage result={result} />
         <VerificationBadge status={result.status} />
         <BookmarkButton
           listingId={result.id}
           icon="heart"
-          className="absolute right-4 top-4 h-9 w-9 bg-white text-slate-800"
+          className="absolute right-4 top-4 h-9 w-9 bg-white text-ink"
         />
       </div>
 
       <div className="px-5 pb-5 pt-5">
         <LocationPill district={result.district} />
-        <h2 className="mt-4 line-clamp-2 text-xl font-bold leading-6 text-slate-950">
+        <h2 className="mt-4 line-clamp-2 text-xl font-bold leading-6 text-ink">
           {cleanTitle(result.title)}
         </h2>
         {(bedrooms != null || bathrooms != null) && (
-          <div className="mt-3 flex items-center gap-3 text-xs font-medium text-slate-600">
+          <div className="mt-3 flex items-center gap-3 text-xs font-medium text-ink-muted">
             {bedrooms != null && (
               <span className="inline-flex items-center gap-1">
                 <BedDouble className="h-4 w-4" aria-hidden />
@@ -613,17 +615,17 @@ function ExpandedListingCard({
           </div>
         )}
 
-        <div className="mt-4 flex items-end justify-between border-t border-slate-100 pt-4">
+        <div className="mt-4 flex items-end justify-between border-t border-hairline pt-4">
           <div>
-            <p className="text-xs text-stone-500">{priceLabel(result.category)}</p>
-            <p className="mt-1 text-2xl font-bold leading-none text-slate-950">
+            <p className="text-xs text-ink-muted">{priceLabel(result.category)}</p>
+            <p className="mt-1 text-2xl font-bold leading-none text-ink">
               {formatPrice(result.price)}
             </p>
           </div>
           <Link
             href={`/listings/${result.id}` as Route}
             aria-label={`Open ${result.title}`}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-slate-950 transition hover:bg-brand-600"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-ink transition hover:bg-brand-600"
           >
             <ChevronRight className="h-6 w-6" aria-hidden />
           </Link>
@@ -653,7 +655,9 @@ function VerificationBadge({
     <span
       className={cn(
         'absolute left-4 top-4 inline-flex items-center gap-1 rounded-full font-bold uppercase tracking-wide text-white shadow-sm',
-        compact ? 'left-2 top-2 px-1.5 py-0.5 text-[8px]' : 'px-3 py-1.5 text-[11px]',
+        // `compact` is an overlay pin on a small map/thumbnail — intentionally
+        // below the 13px reading floor (spatial constraint, not body text).
+        compact ? 'left-2 top-2 px-1.5 py-0.5 text-[8px]' : 'px-3 py-1.5 text-caption',
         fullyVerified && 'bg-verification-fully',
         docVerified && 'bg-verification-doc',
         !fullyVerified && !docVerified && 'bg-verification-unverified',
@@ -675,7 +679,7 @@ function LocationPill({
   return (
     <span
       className={cn(
-        'inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-3 py-1 text-xs font-medium text-orange-700',
+        'inline-flex max-w-full items-center gap-1 rounded-md bg-nectar px-3 py-1 text-xs font-medium text-brand-700',
         className,
       )}
     >
@@ -751,9 +755,9 @@ function toCardData(result: ResultListingSummary) {
 function CoverImage({ result }: { result: ResultListingSummary }) {
   if (!result.cover_url) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-slate-100 text-slate-400">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-hairline text-ink-soft">
         <ImageOff className="h-6 w-6" aria-hidden />
-        <span className="text-[11px] font-medium">No photo yet</span>
+        <span className="text-caption font-medium">No photo yet</span>
       </div>
     );
   }

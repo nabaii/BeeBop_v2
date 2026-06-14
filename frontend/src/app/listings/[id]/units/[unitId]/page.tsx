@@ -136,7 +136,7 @@ export default function UnitTypeDetailPage({
             <div className="absolute bottom-0 left-0 h-40 w-40 -translate-x-12 translate-y-12 rounded-full bg-white/10 blur-xl" />
 
             <div className="flex flex-wrap gap-2 items-center mb-4">
-              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+              <span className={`rounded-full px-2.5 py-0.5 text-caption font-bold uppercase tracking-wider ${
                 unit.gender_tag === 'female'
                   ? 'bg-rose-500/30 text-rose-100 border border-rose-400/30'
                   : unit.gender_tag === 'male'
@@ -145,7 +145,7 @@ export default function UnitTypeDetailPage({
               }`}>
                 {unit.gender_tag === 'any' ? 'Any occupant' : `${unit.gender_tag} occupant only`}
               </span>
-              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+              <span className={`rounded-full px-2.5 py-0.5 text-caption font-bold uppercase tracking-wider ${
                 soldOut
                   ? 'bg-red-500/30 text-red-100 border border-red-400/30'
                   : 'bg-emerald-500/30 text-emerald-100 border border-emerald-400/30'
@@ -161,7 +161,7 @@ export default function UnitTypeDetailPage({
 
             <div className="mt-8 flex items-baseline justify-between border-t border-white/10 pt-4">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-200">Price</p>
+                <p className="text-caption font-semibold uppercase tracking-wider text-brand-200">Price</p>
                 <p className="text-3xl font-black">{formatPrice(unit.price)}</p>
               </div>
               <span className="text-xs font-medium text-brand-200">per {pricePeriodLabel(unit.price_period)}</span>
@@ -297,7 +297,7 @@ function SpecTile({
   return (
     <div className="rounded-[18px] bg-white px-4 py-5 text-center shadow-[0_4px_20px_rgba(15,23,42,0.04)] border border-slate-100">
       <Icon className="mx-auto h-6 w-6 text-brand-600" />
-      <span className="mt-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span>
+      <span className="mt-2 block text-caption font-bold uppercase tracking-wider text-slate-500">{label}</span>
       <span className={`mt-1 block text-lg font-extrabold text-slate-900 ${capitalize ? 'capitalize' : ''}`}>
         {value}
       </span>

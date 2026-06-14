@@ -212,7 +212,7 @@ function RoomCard({
         <div className="min-w-0">
           <div className="truncate font-medium text-slate-900">{room.name}</div>
         </div>
-        <span className={'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ' + status.color}>
+        <span className={'shrink-0 rounded-full px-2 py-0.5 text-caption font-medium ' + status.color}>
           {status.label}
         </span>
       </div>

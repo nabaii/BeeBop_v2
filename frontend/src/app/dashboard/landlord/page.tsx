@@ -493,7 +493,7 @@ function LandlordDashboardContent() {
                   {overview.listings_by_status.slice(0, 2).map((s) => (
                     <span
                       key={s.status}
-                      className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 capitalize"
+                      className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-caption font-semibold text-slate-600 capitalize"
                     >
                       {s.status.replace('_', ' ')}: {s.count}
                     </span>
@@ -564,6 +564,8 @@ function LandlordDashboardContent() {
                             strokeWidth="1"
                             strokeDasharray="4 4"
                           />
+                          {/* SVG chart axis labels — sub-13px data-viz micro-type,
+                              intentionally off the reading scale (text-[8/9px]). */}
                           <text
                             x="25"
                             y={y + 3}
@@ -675,7 +677,7 @@ function LandlordDashboardContent() {
 
                     {/* Donut inner center summary */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                      <span className="text-caption font-bold text-slate-400 uppercase tracking-wider leading-none">
                         Total Value
                       </span>
                       <span className="mt-1 text-sm font-extrabold text-slate-900 leading-none">
@@ -806,7 +808,7 @@ function LandlordDashboardContent() {
                           </td>
                           <td className="py-3.5 text-center">
                             <span
-                              className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${
+                              className={`inline-block rounded-full px-2.5 py-0.5 text-caption font-bold border ${
                                 stat.category === 'short_let'
                                   ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
                                   : stat.category === 'rent'
@@ -827,7 +829,7 @@ function LandlordDashboardContent() {
                           </td>
                           <td className="py-3.5 text-center">
                             <span
-                              className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold ${
+                              className={`inline-block rounded px-2 py-0.5 text-caption font-bold ${
                                 stat.status === 'let_agreed' || stat.status === 'sale_agreed'
                                   ? 'bg-slate-100 text-slate-800'
                                   : stat.status === 'draft'
@@ -874,7 +876,7 @@ function LandlordDashboardContent() {
                             {stat.title ?? 'Untitled'}
                           </h4>
                           <span
-                            className={`inline-block rounded-full px-2 py-0.5 text-[9px] font-bold border mt-1 ${
+                            className={`inline-block rounded-full px-2 py-0.5 text-caption font-bold border mt-1 ${
                               stat.category === 'short_let'
                                 ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
                                 : stat.category === 'rent'
@@ -888,7 +890,7 @@ function LandlordDashboardContent() {
                           </span>
                         </div>
                         <span
-                          className={`rounded px-1.5 py-0.5 text-[9px] font-bold capitalize ${
+                          className={`rounded px-1.5 py-0.5 text-caption font-bold capitalize ${
                             stat.status === 'let_agreed' || stat.status === 'sale_agreed'
                               ? 'bg-slate-100 text-slate-800'
                               : 'bg-indigo-50 text-indigo-700'
@@ -898,7 +900,7 @@ function LandlordDashboardContent() {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 border-y border-slate-100 py-2.5 text-center text-[10px]">
+                      <div className="grid grid-cols-3 gap-2 border-y border-slate-100 py-2.5 text-center text-caption">
                         <div>
                           <span className="block text-slate-400 font-semibold uppercase">
                             Occupancy
@@ -926,7 +928,7 @@ function LandlordDashboardContent() {
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-slate-400 font-semibold uppercase">
+                        <span className="text-caption text-slate-400 font-semibold uppercase">
                           Total Income
                         </span>
                         <span className="text-sm font-extrabold text-slate-900">
@@ -983,14 +985,14 @@ function LandlordDashboardContent() {
                     </div>
                   )}
                   {/* Category Badge overlay */}
-                  <span className="absolute left-3.5 top-3.5 rounded-full bg-slate-900/80 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+                  <span className="absolute left-3.5 top-3.5 rounded-full bg-slate-900/80 px-3 py-1 text-caption font-bold uppercase tracking-wider text-white backdrop-blur-sm">
                     {l.category.replace('_', ' ')}
                   </span>
                 </div>
 
                 <div className="p-4 space-y-3">
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                    <span className="text-caption font-bold text-slate-400 uppercase tracking-wide">
                       {l.district ?? 'Unknown Location'}
                     </span>
                     <h3 className="text-sm font-bold text-slate-900 leading-snug group-hover:text-brand transition-colors max-w-full truncate">
@@ -1001,13 +1003,13 @@ function LandlordDashboardContent() {
                   <div className="flex items-center justify-between border-t border-slate-100 pt-3">
                     <span className="text-xs font-extrabold text-slate-900">
                       {l.price ? `${formatNaira(l.price)}` : 'Contact for Price'}
-                      {l.category === 'short_let' && <span className="text-[10px] font-normal text-slate-500"> / night</span>}
-                      {l.category === 'rent' && <span className="text-[10px] font-normal text-slate-500"> / year</span>}
+                      {l.category === 'short_let' && <span className="text-caption font-normal text-slate-500"> / night</span>}
+                      {l.category === 'rent' && <span className="text-caption font-normal text-slate-500"> / year</span>}
                     </span>
                     <div className="flex items-center gap-3">
                       <Link
                         href={`/listings/edit/${l.id}`}
-                        className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-brand uppercase"
+                        className="inline-flex items-center gap-1 text-caption font-bold text-indigo-600 hover:text-brand uppercase"
                       >
                         {l.status === 'draft' ? 'Draft' : 'Manage'} <ChevronRight className="h-3 w-3" />
                       </Link>

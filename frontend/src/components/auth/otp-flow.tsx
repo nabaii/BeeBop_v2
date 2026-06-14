@@ -173,7 +173,7 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue', 
 
             {/* Checklist */}
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 space-y-2 text-xs">
-              <p className="font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Password Requirements</p>
+              <p className="font-semibold text-slate-500 uppercase tracking-wider text-caption">Password Requirements</p>
               <div className="space-y-1.5">
                 <ChecklistItem met={isLengthValid} text="Above 10 characters" />
                 <ChecklistItem met={hasNumber} text="Contains at least one number" />

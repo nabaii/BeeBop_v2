@@ -234,7 +234,7 @@ export function StudentInventory({ listingId }: Props) {
             <li className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 bg-slate-50/20 rounded-xl p-6 text-center text-slate-400">
               <LayoutGrid className="h-5 w-5 mb-2" />
               <span className="text-xs font-semibold">No unit types yet.</span>
-              <span className="text-[10px]">Add your first unit type above.</span>
+              <span className="text-caption">Add your first unit type above.</span>
             </li>
           )}
         </ul>
@@ -295,7 +295,7 @@ function UnitTypeCard({
               {unit.amenities.map((amenity, idx) => (
                 <span
                   key={idx}
-                  className="inline-block rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-600 border border-stone-200/60"
+                  className="inline-block rounded-md bg-stone-100 px-1.5 py-0.5 text-caption font-medium text-stone-600 border border-stone-200/60"
                 >
                   {amenity}
                 </span>
@@ -314,7 +314,7 @@ function UnitTypeCard({
       
       <div className="mt-4 bg-white rounded-xl border border-slate-200 p-3.5 space-y-3">
         <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">Add Room Instance</div>
-        <p className="text-[11px] text-slate-400">
+        <p className="text-caption text-slate-400">
           Sex and amenities are set on the unit type above and apply to every room here.
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -334,7 +334,7 @@ function UnitTypeCard({
 
       {unit.rooms.length > 0 && (
         <div className="mt-4 space-y-2">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Room Instances</div>
+          <div className="text-caption font-bold text-slate-400 uppercase tracking-wider">Room Instances</div>
           <ul className="divide-y divide-slate-100 rounded-xl border border-slate-100 bg-white overflow-hidden text-xs">
             {unit.rooms.map((r) => (
               <li key={r.id} className="flex items-center justify-between p-3 text-slate-700 hover:bg-slate-50 transition-colors">
@@ -354,7 +354,7 @@ function UnitTypeCard({
 function GenderBadge({ gender }: { gender: 'female' | 'male' | 'any' }) {
   return (
     <span
-      className={`inline-block rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${
+      className={`inline-block rounded-full px-1.5 py-0.5 text-caption font-bold uppercase ${
         gender === 'female'
           ? 'bg-rose-50 text-rose-600 border border-rose-100'
           : gender === 'male'

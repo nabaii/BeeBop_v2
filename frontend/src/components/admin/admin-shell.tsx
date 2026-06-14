@@ -222,7 +222,7 @@ function NavGroup<THref extends string>({
 }) {
   return (
     <section className="mb-5 last:mb-0">
-      <h2 className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+      <h2 className="px-2 pb-2 text-caption font-semibold uppercase tracking-wide text-slate-400">
         {title}
       </h2>
       <div className="space-y-0.5">

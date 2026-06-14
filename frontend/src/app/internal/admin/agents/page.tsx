@@ -84,11 +84,11 @@ export default function AdminAgentsPage() {
                   <td className="px-4 py-3 text-slate-700">{a.operating_area ?? '—'}</td>
                   <td className="px-4 py-3">
                     {a.activation_complete ? (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-caption font-medium text-emerald-800">
                         Active
                       </span>
                     ) : (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-caption font-medium text-amber-800">
                         Pending
                       </span>
                     )}

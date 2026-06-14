@@ -101,7 +101,7 @@ function StatusBadge({
 }) {
   if (signaturesNeeded) {
     return (
-      <span className="rounded-full bg-brand px-2 py-0.5 text-[11px] font-medium text-slate-900">
+      <span className="rounded-full bg-brand px-2 py-0.5 text-caption font-medium text-slate-900">
         Sign now
       </span>
     );
@@ -121,7 +121,7 @@ function StatusBadge({
         ? 'bg-amber-100 text-amber-800'
         : 'bg-slate-100 text-slate-700';
   return (
-    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${colour}`}>
+    <span className={`rounded-full px-2 py-0.5 text-caption font-medium capitalize ${colour}`}>
       {label}
     </span>
   );

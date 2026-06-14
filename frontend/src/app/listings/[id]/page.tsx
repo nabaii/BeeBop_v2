@@ -108,7 +108,7 @@ export default function ListingDetailPage({
                 </p>
               )}
               <div className="mt-6">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-600">
+                <p className="text-caption font-semibold uppercase tracking-[0.16em] text-stone-600">
                   {priceCaption(listing.category)}
                 </p>
                 <p className="mt-2 text-2xl font-bold leading-none text-slate-950">
@@ -133,7 +133,7 @@ export default function ListingDetailPage({
                 <p className="mt-3 text-3xl font-bold leading-none text-slate-950">
                   {formatPrice(listing.price)}
                 </p>
-                <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.08em] text-stone-600">
+                <p className="mt-3 text-caption font-bold uppercase tracking-[0.08em] text-stone-600">
                   Secure transaction support available in Beebop
                 </p>
               </section>
@@ -246,7 +246,7 @@ function SpecTiles({ listing }: { listing: PublicListingDetail }) {
           className="rounded-[18px] bg-white px-5 py-6 text-center shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
         >
           <Icon className="mx-auto h-7 w-7 text-brand-600" aria-hidden />
-          <dt className="mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-stone-600">
+          <dt className="mt-3 text-caption font-medium uppercase tracking-[0.08em] text-stone-600">
             {label}
           </dt>
           <dd className="mt-1 text-xl font-bold text-slate-950">{value}</dd>
@@ -273,7 +273,7 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
     <section className="rounded-[24px] bg-white p-6 shadow-[0_14px_38px_rgba(15,23,42,0.08)]">
       <div className="flex items-baseline justify-between">
         <h2 className="text-2xl font-bold text-slate-950">Available units</h2>
-        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-stone-600">
+        <p className="text-caption font-bold uppercase tracking-[0.08em] text-stone-600">
           {units.length} option{units.length > 1 ? 's' : ''}
         </p>
       </div>
@@ -309,13 +309,13 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
                       {u.amenities.slice(0, 3).map((a) => (
                         <span
                           key={a}
-                          className="inline-block rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-stone-600 ring-1 ring-slate-200"
+                          className="inline-block rounded-md bg-white px-2 py-0.5 text-caption font-medium text-stone-600 ring-1 ring-slate-200"
                         >
                           {a}
                         </span>
                       ))}
                       {u.amenities.length > 3 && (
-                        <span className="inline-block rounded-md bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700 ring-1 ring-brand-100">
+                        <span className="inline-block rounded-md bg-brand-50 px-2 py-0.5 text-caption font-semibold text-brand-700 ring-1 ring-brand-100">
                           +{u.amenities.length - 3} more
                         </span>
                       )}
@@ -324,7 +324,7 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-lg font-bold leading-none text-slate-950">{formatPrice(u.price)}</p>
-                  <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-stone-500">
+                  <p className="mt-1 text-caption font-medium uppercase tracking-[0.08em] text-stone-500">
                     per {pricePeriodLabel(u.price_period)}
                   </p>
                 </div>
@@ -334,7 +334,7 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
           );
         })}
       </ul>
-      <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.08em] text-stone-600">
+      <p className="mt-4 text-caption font-bold uppercase tracking-[0.08em] text-stone-600">
         Secure transaction support available in Beebop
       </p>
     </section>
@@ -345,7 +345,7 @@ function UnitGenderBadge({ gender }: { gender: 'female' | 'male' | 'any' }) {
   if (gender === 'any') return null;
   return (
     <span
-      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+      className={`shrink-0 rounded-full px-2 py-0.5 text-caption font-bold uppercase ${
         gender === 'female' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'
       }`}
     >

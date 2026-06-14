@@ -80,7 +80,7 @@ export function ValuationReportPanel({ report }: Props) {
         {report.area_scores && <AreaScores scores={report.area_scores} />}
         {report.inspector_note && (
           <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
-            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <div className="mb-1 text-caption font-semibold uppercase tracking-wide text-slate-500">
               Inspector note
             </div>
             {report.inspector_note}
@@ -100,7 +100,7 @@ function AreaScores({ scores }: { scores: Record<string, unknown> }) {
     <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {entries.map(([key, value]) => (
         <div key={key} className="rounded-lg border border-slate-200 p-3">
-          <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <dt className="text-caption font-semibold uppercase tracking-wide text-slate-500">
             {key.replaceAll('_', ' ')}
           </dt>
           <dd className="mt-1 text-sm font-semibold text-slate-900">{value} / 5</dd>

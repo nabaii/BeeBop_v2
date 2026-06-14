@@ -198,7 +198,7 @@ function ProfileHeader({
         </div>
         <button
           type="button"
-          className="w-full shrink-0 rounded-full bg-brand px-3 py-2 text-[11px] font-semibold text-slate-900 shadow-sm transition hover:bg-brand-600 min-[380px]:w-auto"
+          className="w-full shrink-0 rounded-full bg-brand px-3 py-2 text-caption font-semibold text-slate-900 shadow-sm transition hover:bg-brand-600 min-[380px]:w-auto"
         >
           Edit profile
         </button>
@@ -230,7 +230,7 @@ function StatTile({
       <a href={href} className={className}>
         <Icon className={`h-4 w-4 ${emphasis ? 'text-brand-700' : 'text-slate-500'}`} aria-hidden />
         <span className="text-base font-semibold text-slate-900">{display}</span>
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        <span className="text-caption font-semibold uppercase tracking-wide text-slate-500">
           {label}
         </span>
       </a>
@@ -244,7 +244,7 @@ function StatTile({
     >
       <Icon className={`h-4 w-4 ${emphasis ? 'text-brand-700' : 'text-slate-500'}`} aria-hidden />
       <span className="text-base font-semibold text-slate-900">{display}</span>
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+      <span className="text-caption font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </span>
     </Link>
@@ -265,7 +265,7 @@ function ComingSoonCard({
       <div className="flex items-center gap-2">
         {Icon && <Icon className="h-4 w-4 text-slate-400" aria-hidden />}
         <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
-        <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-caption font-semibold uppercase tracking-wide text-slate-500">
           Coming soon
         </span>
       </div>
