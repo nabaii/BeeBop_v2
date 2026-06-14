@@ -38,9 +38,9 @@ export function ListingCard({ data }: { data: ListingCardData }) {
   return (
     <Link
       href={href as Route}
-      className="group block overflow-hidden rounded-xl border border-hairline bg-white transition-colors hover:border-ink-soft/50"
+      className="group flex h-full flex-col overflow-hidden rounded-xl border border-hairline bg-white transition-colors hover:border-ink-soft/50"
     >
-      <div className="relative aspect-[4/3] bg-hairline">
+      <div className="relative aspect-[4/3] shrink-0 bg-hairline">
         {data.cover_photo?.url ? (
           <img
             src={data.cover_photo.url}
@@ -68,7 +68,7 @@ export function ListingCard({ data }: { data: ListingCardData }) {
               {data.title ?? 'Untitled listing'}
             </div>
             {data.district && (
-              <div className="text-caption text-ink-muted">{data.district}</div>
+              <div className="truncate text-caption text-ink-muted">{data.district}</div>
             )}
           </div>
           <div className="shrink-0 text-left min-[380px]:text-right">
