@@ -315,14 +315,12 @@ async def featured_listings(
 ) -> list[dict]:
     stmt = (
         select(Listing)
-        .where(
-            Listing.status.in_(
-                (
-                    ListingStatus.FULLY_VERIFIED,
-                    ListingStatus.DOC_VERIFIED,
-                )
-            )
-        )
+        # Featured must match what seekers can actually see elsewhere. Reuse
+        # _PUBLIC_STATUSES (the same set the detail endpoint allows) so this row
+        # stays one source of truth with the rest of public visibility —
+        # otherwise live-but-unverified listings (the normal state for a freshly
+        # posted listing this test phase) silently vanish from this row.
+        .where(Listing.status.in_(_PUBLIC_STATUSES))
         # Featured mixes categories; off-campus rows need their unit types
         # loaded so _summarise can derive a "from" price (it accesses
         # listing.unit_types for that category).
