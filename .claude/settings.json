@@ -11,7 +11,14 @@
       "PowerShell(git status --short; Write-Output \"---LOG---\"; git --% log --oneline -2)",
       "PowerShell(git ls-files .claude | Select-Object -First 20; Write-Output \"---\"; \"branding folder size:\"; \"{0:N1} MB\" -f \\(\\(Get-ChildItem -Recurse \"beebop branding\" -File | Measure-Object -Property Length -Sum\\).Sum / 1MB\\))",
       "PowerShell(git add \"beebop branding\")",
-      "PowerShell(git add .claude/settings.json)"
+      "PowerShell(git add .claude/settings.json)",
+      "Bash(grep -iv \"metadata\\\\|description\\\\|title=\\\\|alt=\\\\|//\\\\|placeholder\")",
+      "Bash(cp __TRACKED_VAR__/favicon.ico __TRACKED_VAR__/favicon.ico)",
+      "Bash(cp __TRACKED_VAR__/favicon.svg __TRACKED_VAR__/icon.svg)",
+      "Bash(cp __TRACKED_VAR__/apple-touch-icon.png __TRACKED_VAR__/apple-icon.png)",
+      "Bash(cp __TRACKED_VAR__/icon-192.png frontend/public/icon-192.png)",
+      "Bash(cp __TRACKED_VAR__/icon-512.png frontend/public/icon-512.png)",
+      "Bash(awk '{print $5, $NF}')"
     ],
     "additionalDirectories": [
       "C:\\Users\\enaic\\OneDrive\\Desktop\\miyata\\BeeBop-v2\\.git"
