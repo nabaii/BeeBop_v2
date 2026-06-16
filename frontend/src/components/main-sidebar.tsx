@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { BeebopLockup } from '@/components/brand/beebop-logo';
 import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { becomeLandlord } from '@/lib/users';
@@ -89,8 +90,8 @@ export function MainSidebar({ onNewChat }: MainSidebarProps) {
       >
         <div className="flex items-center justify-between p-3">
           {!collapsed && (
-            <Link href="/" className="text-lg font-bold text-brand">
-              Beebop
+            <Link href="/" aria-label="Beebop home">
+              <BeebopLockup />
             </Link>
           )}
           <button

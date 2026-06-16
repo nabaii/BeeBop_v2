@@ -29,6 +29,7 @@ import type { Route } from 'next';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 
+import { BeebopLockup } from '@/components/brand/beebop-logo';
 import { Button } from '@/components/ui/button';
 import { logout } from '@/lib/auth';
 import { cn } from '@/lib/cn';
@@ -163,8 +164,8 @@ function AdminNavigation({
       )}
     >
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
-        <Link href="/" onClick={onNavigate} className="text-lg font-bold text-brand">
-          Beebop
+        <Link href="/" onClick={onNavigate} aria-label="Beebop home">
+          <BeebopLockup />
         </Link>
         <button
           type="button"

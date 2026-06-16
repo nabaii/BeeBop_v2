@@ -24,6 +24,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { use, useEffect, useState } from 'react';
 
+import { BeebopLockup } from '@/components/brand/beebop-logo';
 import { BookmarkButton } from '@/components/browse/bookmark-button';
 import { AmenitiesDisplay } from '@/components/listing/amenities-display';
 import { AreaScorePanel } from '@/components/listing/area-score-panel';
@@ -193,8 +194,7 @@ function ListingHeader({ listing }: { listing: PublicListingDetail }) {
         >
           <ArrowLeft className="h-5 w-5" aria-hidden />
         </Link>
-        <BeebopMark />
-        <span className="text-lg font-bold text-brand-700">Beebop</span>
+        <BeebopLockup />
       </div>
       <div className="flex items-center gap-2">
         <BookmarkButton
@@ -370,16 +370,6 @@ function ApproximateLocation({ listing }: { listing: PublicListingDetail }) {
         </div>
       </div>
     </section>
-  );
-}
-
-function BeebopMark() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 26 26" fill="none" aria-hidden>
-      <circle cx="6" cy="9" r="3" fill="#f59e0b" />
-      <circle cx="14" cy="6" r="3" fill="#f59e0b" />
-      <circle cx="10" cy="15" r="3" fill="#fbbf24" />
-    </svg>
   );
 }
 

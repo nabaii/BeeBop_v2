@@ -4,6 +4,7 @@ import { Plus, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { BeebopLockup } from '@/components/brand/beebop-logo';
 import { BottomNav } from '@/components/bottom-nav';
 import { ChatSearchPanel } from '@/components/chat-search';
 import { MainSidebar } from '@/components/main-sidebar';
@@ -45,7 +46,7 @@ export default function HomePage() {
             >
               <Plus className="h-5 w-5" aria-hidden />
             </button>
-            <span className="text-lg font-bold text-brand-700">Beebop</span>
+            <BeebopLockup />
           </div>
           <Link
             href={accountHref}

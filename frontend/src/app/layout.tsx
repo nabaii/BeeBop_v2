@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Bricolage_Grotesque, Instrument_Sans } from 'next/font/google';
 import '@/styles/globals.css';
 import { SessionHydrator } from '@/components/session-hydrator';
@@ -24,6 +24,11 @@ export const metadata: Metadata = {
   description:
     'A conversational property marketplace for Nigeria. Verified listings for off-campus student accommodation, short-let, rent, and sales.',
   metadataBase: new URL('https://beebop.store'),
+};
+
+// Honey browser/OS chrome (address bar, PWA splash) — matches the manifest.
+export const viewport: Viewport = {
+  themeColor: '#F0980F',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

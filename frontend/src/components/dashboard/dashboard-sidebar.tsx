@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { BeebopLockup } from '@/components/brand/beebop-logo';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/lib/api';
 import { logout } from '@/lib/auth';
@@ -60,8 +61,8 @@ export function DashboardSidebar() {
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
       <div className="border-b border-slate-200 p-4">
-        <Link href="/" className="text-lg font-bold text-brand">
-          Beebop
+        <Link href="/" aria-label="Beebop home">
+          <BeebopLockup />
         </Link>
         <div className="mt-1 truncate text-xs text-slate-500">{user.email}</div>
       </div>
