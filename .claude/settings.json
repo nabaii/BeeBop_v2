@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($py = if \\(Test-Path \".\\\\backend\\\\.venv\\\\Scripts\\\\python.exe\"\\) { \".\\\\backend\\\\.venv\\\\Scripts\\\\python.exe\" } elseif \\(Test-Path \".\\\\backend\\\\venv\\\\Scripts\\\\python.exe\"\\) { \".\\\\backend\\\\venv\\\\Scripts\\\\python.exe\" } else { \"python\" }; Write-Output \"Using: $py\"; & $py -c \"import ast; ast.parse\\(open\\('backend/app/search/routes.py', encoding='utf-8'\\).read\\(\\)\\); print\\('routes.py parses OK'\\)\")",
+      "PowerShell($py = \".\\\\backend\\\\.venv\\\\Scripts\\\\python.exe\"; Push-Location backend; try { & $py -c \"import app.search.routes as r; print\\('import OK; _PUBLIC_STATUSES =', r._PUBLIC_STATUSES\\)\" } finally { Pop-Location })",
+      "PowerShell($py = \"c:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\backend\\\\.venv\\\\Scripts\\\\python.exe\"; Push-Location \"c:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\backend\"; try { & $py -c \"import app.search.routes as r; print\\('import OK; _PUBLIC_STATUSES =', tuple\\(s.value for s in r._PUBLIC_STATUSES\\)\\)\" } finally { Pop-Location })",
+      "PowerShell(git status; Write-Output \"---DIFF---\"; git --% diff --stat)",
+      "PowerShell(git add backend/app/search/routes.py)",
+      "PowerShell(git status --short; Write-Output \"---LOG---\"; git --% log --oneline -1)",
+      "PowerShell(git push origin production-publish-prep)",
+      "PowerShell(git status --short; Write-Output \"---LOG---\"; git --% log --oneline -2)",
+      "PowerShell(git ls-files .claude | Select-Object -First 20; Write-Output \"---\"; \"branding folder size:\"; \"{0:N1} MB\" -f \\(\\(Get-ChildItem -Recurse \"beebop branding\" -File | Measure-Object -Property Length -Sum\\).Sum / 1MB\\))",
+      "PowerShell(git add \"beebop branding\")",
+      "PowerShell(git add .claude/settings.json)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\enaic\\OneDrive\\Desktop\\miyata\\BeeBop-v2\\.git"
+    ]
+  }
+}
