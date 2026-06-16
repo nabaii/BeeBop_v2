@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 32 32" role="img" aria-label="Beebop">
+  <title>Beebop</title>
+  <g fill="none" stroke="#F0980F" stroke-width="4.5" stroke-linejoin="round">
+    <path d="M16 4 l10 5.8 v11.6 l-10 5.8 l-10-5.8 v-11.6 Z"/>
+  </g>
+</svg>
