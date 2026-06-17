@@ -9,8 +9,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.refresh_store import RefreshTokenStore
 from app.core.exceptions import ConflictError, ForbiddenError, ValidationError
 from app.integrations.cac import get_cac_client
 from app.integrations.nimc import verify_nin_with_retry
@@ -271,6 +273,50 @@ async def verify_landlord_cac(
     user.business_name = payload.business_name
     await db.flush()
     return CacVerifyResponse(verified=False, pending=result.is_pending)
+
+
+async def delete_account(*, user: User, db: AsyncSession, redis: Redis) -> None:
+    """Soft-delete the caller's own account.
+
+    Most user-referencing tables use ``ON DELETE RESTRICT`` (offers, bookings,
+    listings, reviews, chat, audit log), so a hard row delete would fail for any
+    account that has activity. Instead we anonymise personal data, release the
+    email for reuse, and deactivate the account:
+
+      * ``get_current_user`` already rejects inactive users, so the session is
+        locked out immediately and any live access token stops working.
+      * The email is tombstoned to a unique address, freeing the original so the
+        same person can register again (useful for re-testing onboarding).
+      * Refresh tokens are revoked so they cannot mint new access tokens.
+
+    No row is removed, which keeps financial/audit references intact.
+    """
+    user.email = f"deleted+{user.id}@deleted.beebop.store"
+    user.password_hash = None
+    user.first_name = None
+    user.last_name = None
+    user.phone = None
+    user.profile_photo_url = None
+    user.bio = None
+    user.operating_area = None
+    user.business_name = None
+    user.cac_number = None
+    user.agency_logo_url = None
+    user.nin_document_url = None
+    user.nin_review_note = None
+    user.date_of_birth = None
+    user.category_preferences = None
+    user.institution = None
+    user.academic_level = None
+    user.gender = None
+    user.age_band = None
+    user.occupation = None
+    user.budget_min = None
+    user.budget_max = None
+    user.preferred_area = None
+    user.is_active = False
+    await db.flush()
+    await RefreshTokenStore(redis).revoke(str(user.id))
 
 
 async def set_profile(

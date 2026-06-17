@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
+from app.core.redis_client import get_redis
 from app.database import get_db
 from app.integrations.cloudinary_storage import build_signed_upload_params
 from app.models.user import User
@@ -34,6 +36,17 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.get("/me", response_model=UserView)
 async def me(user: User = Depends(get_current_user)) -> UserView:
     return await service.get_me(user)
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_me(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> None:
+    """Delete (soft, anonymising) the signed-in user's own account."""
+    await service.delete_account(user=user, db=db, redis=redis)
+    await db.commit()
 
 
 @router.patch("/me/identity", response_model=UserView)

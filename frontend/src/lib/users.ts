@@ -101,6 +101,15 @@ export async function saveSeekerExtras(args: SeekerExtras): Promise<UserView> {
   return u;
 }
 
+/**
+ * Permanently delete the signed-in user's account, then clear the local
+ * session. The backend anonymises the record and frees the email for reuse.
+ */
+export async function deleteAccount(): Promise<void> {
+  await api.delete('/users/me', { auth: true });
+  useSession.getState().clear();
+}
+
 export async function becomeLandlord(): Promise<UserView> {
   const u = await api.post<UserView>('/users/me/become-landlord', undefined, { auth: true });
   applyToSession(u);
