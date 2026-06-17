@@ -121,7 +121,8 @@
       "PowerShell($f = \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\frontend\"; Push-Location $f; & \"$f\\\\node_modules\\\\.bin\\\\next.cmd\" lint --dir src 2>&1 | Select-String -Pattern \"Error:|never used|/listings|student-inventory|dashboard\" | Select-Object -First 30; \"exit: $LASTEXITCODE\"; Pop-Location)",
       "PowerShell($f = \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\frontend\"; npx --prefix $f tsc -p \"$f\\\\tsconfig.json\" --noEmit 2>&1 | Select-Object -First 30; \"tsc exit: $LASTEXITCODE\")",
       "PowerShell($f = \"C:\\\\Users\\\\enaic\\\\OneDrive\\\\Desktop\\\\miyata\\\\BeeBop-v2\\\\frontend\"; Push-Location $f; & \"$f\\\\node_modules\\\\.bin\\\\next.cmd\" lint --dir src 2>&1 | Select-String -Pattern \"Error:|never used|units/|/listings/\\\\[id\\\\]/page\" | Select-Object -First 20; \"exit: $LASTEXITCODE\"; Pop-Location)",
-      "Bash(python -m pytest tests/test_student_inventory.py -q)"
+      "Bash(python -m pytest tests/test_student_inventory.py -q)",
+      "Bash(python -c \"import ast,sys; [ast.parse\\(open\\(f\\).read\\(\\), f\\) for f in ['app/users/service.py','app/users/routes.py']]; print\\('syntax OK'\\)\")"
     ]
   }
 }
