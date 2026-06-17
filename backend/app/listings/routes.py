@@ -309,14 +309,17 @@ def _unit_view(ut) -> UnitTypeView:  # type: ignore[no-untyped-def]
         beds_per_room=ut.beds_per_room,
         total_units=ut.total_units,
         price=float(ut.price),
+        # Gender, amenities and billing period live on the unit type (rooms are
+        # bare bed-count instances). Keep these in sync with UnitTypeView.
+        price_period=ut.price_period,
+        gender_tag=ut.gender_tag,
+        amenities=ut.amenities or [],
         rooms=[
             {
                 "id": str(r.id),
                 "name": r.name,
-                "gender_tag": r.gender_tag,
                 "beds_total": r.beds_total,
                 "beds_available": r.beds_available,
-                "amenities": r.amenities or [],
             }
             for r in getattr(ut, "rooms", []) or []
         ],
