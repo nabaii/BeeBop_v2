@@ -55,6 +55,7 @@ export function FeaturedCarousel({ showBrowseLink = true }: { showBrowseLink?: b
         {items.map((r) => (
           <div key={r.id} className="w-64 shrink-0">
             <ListingCard
+              showSave
               data={{
                 id: r.id,
                 title: r.title,

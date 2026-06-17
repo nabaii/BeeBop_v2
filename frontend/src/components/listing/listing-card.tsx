@@ -10,6 +10,7 @@ import { Bath, BadgeCheck, BedDouble } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
 
+import { BookmarkButton } from '@/components/browse/bookmark-button';
 import { cn } from '@/lib/cn';
 import { pricePeriodLabel } from '@/lib/listings';
 import type { ListingCategory, ListingStatus, PhotoView } from '@/lib/listings';
@@ -32,90 +33,103 @@ export interface ListingCardData {
   href?: string;                 // defaults to /listings/[id]
 }
 
-export function ListingCard({ data }: { data: ListingCardData }) {
+export function ListingCard({
+  data,
+  showSave = false,
+}: {
+  data: ListingCardData;
+  // Renders the on-card save control top-right of the photo. Off by default so
+  // compact/chat usages stay clean; discovery surfaces (browse, carousel) opt in.
+  showSave?: boolean;
+}) {
   const href = data.href ?? `/listings/${data.id}`;
   const tier = verificationTier(data.status);
 
   return (
-    <Link
-      href={href as Route}
-      className="group flex h-full flex-col overflow-hidden rounded-xl border border-hairline bg-white transition-[transform,border-color] duration-200 hover:border-ink-soft/50 motion-safe:hover:-translate-y-0.5"
-    >
-      <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-hairline">
-        {data.cover_photo?.url ? (
-          <>
-            <img
-              src={data.cover_photo.url}
-              alt={data.title ?? 'Listing'}
-              className="h-full w-full object-cover"
-            />
-            {data.secondary_url && (
-              // Crossfade to the second photo on hover — doubles photo exposure
-              // without a click. Static (never shown) under reduced motion.
+    // Wrapper owns the hover `group` and hosts the save control as a sibling of
+    // the Link — a <button> may never nest inside an <a>.
+    <div className="group relative h-full">
+      <Link
+        href={href as Route}
+        className="flex h-full flex-col overflow-hidden rounded-xl border border-hairline bg-white transition-[transform,border-color] duration-200 group-hover:border-ink-soft/50 motion-safe:group-hover:-translate-y-0.5"
+      >
+        <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-hairline">
+          {data.cover_photo?.url ? (
+            <>
               <img
-                src={data.secondary_url}
-                alt=""
-                aria-hidden
-                className="absolute inset-0 h-full w-full object-cover opacity-0 motion-safe:transition-opacity motion-safe:duration-300 motion-safe:group-hover:opacity-100"
+                src={data.cover_photo.url}
+                alt={data.title ?? 'Listing'}
+                loading="lazy"
+                className="h-full w-full object-cover"
               />
-            )}
-          </>
-        ) : (
-          <div className="flex h-full items-center justify-center text-caption text-ink-soft">
-            No photo
-          </div>
-        )}
-        <div className="absolute left-2 top-2">
-          <VerificationBadge tier={tier} />
-        </div>
-        {tier === 'unverified' && (
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/60 to-transparent px-3 py-2 text-caption text-white">
-            Awaiting verification
-          </div>
-        )}
-      </div>
-      <div className="p-3">
-        <div className="flex flex-col gap-2 min-[380px]:flex-row min-[380px]:items-start min-[380px]:justify-between">
-          <div className="min-w-0">
-            <div className="truncate font-display text-title font-semibold text-ink">
-              {data.title ?? 'Untitled listing'}
+              {data.secondary_url && (
+                // Crossfade to the second photo on hover — doubles photo exposure
+                // without a click. Static (never shown) under reduced motion.
+                <img
+                  src={data.secondary_url}
+                  alt=""
+                  aria-hidden
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full object-cover opacity-0 motion-safe:transition-opacity motion-safe:duration-300 motion-safe:group-hover:opacity-100"
+                />
+              )}
+            </>
+          ) : (
+            <div className="flex h-full items-center justify-center text-caption text-ink-soft">
+              No photo
             </div>
-            {data.district && (
-              <div className="truncate text-caption text-ink-muted">{data.district}</div>
-            )}
-          </div>
-          <div className="shrink-0 text-left min-[380px]:text-right">
-            <Price value={data.price} className="block text-body font-semibold text-ink" />
-            <div className="text-caption text-ink-muted">{priceUnit(data)}</div>
+          )}
+          <div className="absolute left-2 top-2">
+            <VerificationBadge tier={tier} />
           </div>
         </div>
-        {(data.bedroom_count != null || data.bathroom_count != null) && (
-          <div className="mt-2 flex items-center gap-3 text-caption text-ink-muted">
-            {data.bedroom_count != null && (
-              <span className="inline-flex items-center gap-1">
-                <BedDouble className="h-3.5 w-3.5" aria-hidden />
-                {data.bedroom_count} bed{data.bedroom_count === 1 ? '' : 's'}
-              </span>
-            )}
-            {data.bathroom_count != null && (
-              <span className="inline-flex items-center gap-1">
-                <Bath className="h-3.5 w-3.5" aria-hidden />
-                {data.bathroom_count} bath{data.bathroom_count === 1 ? '' : 's'}
-              </span>
-            )}
+        <div className="p-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate font-display text-title font-semibold text-ink">
+                {data.title ?? 'Untitled listing'}
+              </div>
+              {data.district && (
+                <div className="truncate text-caption text-ink-muted">{data.district}</div>
+              )}
+            </div>
+            {/* Price anchors the card — the strongest element in the body. */}
+            <div className="shrink-0 text-right">
+              <Price value={data.price} className="block text-title font-bold text-ink" />
+              <div className="text-caption text-ink-muted">{priceUnit(data)}</div>
+            </div>
           </div>
-        )}
-        {data.category !== 'sales' && typeof data.rating === 'number' && (
-          <div className="mt-2 flex items-center gap-1 text-caption text-ink-muted">
-            <Star />
-            <span className="font-medium text-ink">{data.rating.toFixed(1)}</span>
-            {typeof data.review_count === 'number' && (
-              <span className="text-ink-muted">({data.review_count})</span>
-            )}
-          </div>
-        )}
-      </div>
-    </Link>
+          {(data.bedroom_count != null || data.bathroom_count != null) && (
+            <div className="mt-2.5 flex items-center gap-3 text-caption text-ink-muted">
+              {data.bedroom_count != null && (
+                <span className="inline-flex items-center gap-1">
+                  <BedDouble className="h-3.5 w-3.5" aria-hidden />
+                  {data.bedroom_count} bed{data.bedroom_count === 1 ? '' : 's'}
+                </span>
+              )}
+              {data.bathroom_count != null && (
+                <span className="inline-flex items-center gap-1">
+                  <Bath className="h-3.5 w-3.5" aria-hidden />
+                  {data.bathroom_count} bath{data.bathroom_count === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
+          )}
+          {data.category !== 'sales' && typeof data.rating === 'number' && (
+            <div className="mt-2 flex items-center gap-1 text-caption text-ink-muted">
+              <Star />
+              <span className="font-medium text-ink">{data.rating.toFixed(1)}</span>
+              {typeof data.review_count === 'number' && (
+                <span className="text-ink-muted">({data.review_count})</span>
+              )}
+            </div>
+          )}
+        </div>
+      </Link>
+      {showSave && (
+        <BookmarkButton listingId={data.id} className="absolute right-2 top-2" />
+      )}
+    </div>
   );
 }
 
@@ -130,31 +144,29 @@ function verificationTier(status: ListingStatus): VerificationTier {
 }
 
 function VerificationBadge({ tier }: { tier: VerificationTier }) {
-  // Doc-verified reads as a compact verification icon rather than a text pill —
-  // faster to parse over a photo and less crowded. Colour + a11y label keep the
-  // meaning intact.
-  if (tier === 'doc_verified') {
+  // One language across tiers. Verified tiers are celebrated as a compact
+  // coloured check chip (faster to parse over a photo, brand-consistent);
+  // unverified is deliberately understated — a quiet neutral pill, not a loud
+  // dark banner — so verified states carry the emphasis.
+  if (tier === 'unverified') {
     return (
-      <span
-        role="img"
-        aria-label="Document verified"
-        title="Document verified"
-        className="flex h-6 w-6 items-center justify-center rounded-full bg-verification-doc text-white shadow-sm"
-      >
-        <BadgeCheck className="h-4 w-4" aria-hidden />
+      <span className="rounded-full bg-white/90 px-2 py-0.5 text-caption font-medium text-ink-muted shadow-sm">
+        Unverified
       </span>
     );
   }
-  const label = tier === 'fully_verified' ? 'AGIS Verified' : 'Unverified';
+  const fully = tier === 'fully_verified';
   return (
     <span
+      role="img"
+      aria-label={fully ? 'AGIS verified' : 'Document verified'}
+      title={fully ? 'AGIS verified' : 'Document verified'}
       className={cn(
-        'rounded-full px-2 py-0.5 text-caption font-medium',
-        tier === 'fully_verified' && 'bg-verification-fully text-white',
-        tier === 'unverified' && 'bg-verification-unverified text-white',
+        'flex h-6 w-6 items-center justify-center rounded-full text-white shadow-sm',
+        fully ? 'bg-verification-fully' : 'bg-verification-doc',
       )}
     >
-      {label}
+      <BadgeCheck className="h-4 w-4" aria-hidden />
     </span>
   );
 }

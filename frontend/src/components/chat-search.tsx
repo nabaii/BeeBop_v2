@@ -4,39 +4,27 @@ import type { Route } from 'next';
 import {
   ArrowRight,
   Banknote,
-  BadgeCheck,
-  Bath,
-  BedDouble,
   Briefcase,
-  ChevronRight,
   Clock,
   Home,
-  ImageOff,
   Loader2,
-  MapPin,
   MoreHorizontal,
   Paperclip,
-  Search,
-  SlidersHorizontal,
   Tag,
   type LucideIcon,
 } from 'lucide-react';
 import { startTransition, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-import { BookmarkButton } from '@/components/browse/bookmark-button';
 import { FeaturedCarousel } from '@/components/featured-carousel';
 import { ListingCard } from '@/components/listing/listing-card';
 import { ApiError } from '@/lib/api';
-import { cn } from '@/lib/cn';
 import {
   sendChatQuery,
   type ChatResponse,
   type ExtractedParameters,
   type ResultListingSummary,
 } from '@/lib/ai-search';
-import { pricePeriodLabel } from '@/lib/listings';
 import type { ListingCategory, PhotoView } from '@/lib/listings';
 import { useCyclingPlaceholder, useStreamedText } from '@/lib/use-motion';
 import type { SearchSeedFilters } from '@/stores/search';
@@ -72,7 +60,6 @@ export function ChatSearchPanel() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [expandedQueryId, setExpandedQueryId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const heroPlaceholder = useCyclingPlaceholder(PLACEHOLDER_EXAMPLES, {
     paused: value.trim().length > 0,
@@ -90,7 +77,6 @@ export function ChatSearchPanel() {
     setLoading(true);
     setError(null);
     setValue('');
-    setExpandedQueryId(null);
 
     try {
       const response = await sendChatQuery({ query, session_id: sessionId });
@@ -213,43 +199,15 @@ export function ChatSearchPanel() {
     );
   }
 
-  const latestEntry = entries[entries.length - 1];
-  const latestResultEntry = latestEntry?.response.results.length ? latestEntry : undefined;
-  const expandedEntry = expandedQueryId
-    ? entries.find((entry) => entry.response.query_id === expandedQueryId)
-    : undefined;
-
-  if (expandedEntry?.response.results.length) {
-    return (
-      <ExpandedResultsView
-        entry={expandedEntry}
-        value={value}
-        onValueChange={setValue}
-        loading={loading}
-        error={error}
-        onSubmit={submit}
-        onOpenBrowse={() => openBrowse(expandedEntry.response)}
-        canOpenBrowse={Boolean(expandedEntry.response.parameters?.listing_category)}
-      />
-    );
-  }
-
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-paper">
-      <div
-        ref={scrollRef}
-        className={cn(
-          'flex-1 overflow-y-auto px-4 py-4',
-          latestResultEntry ? 'pb-[250px]' : '',
-        )}
-      >
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
         <ul className="space-y-5">
           {entries.map((entry) => (
             <li key={entry.response.query_id} className="space-y-3">
               <UserBubble text={entry.query} />
               <BotBubble text={entry.response.assistant_message} />
-              {entry.response.results.length > 0 &&
-                entry.response.query_id !== latestResultEntry?.response.query_id && (
+              {entry.response.results.length > 0 && (
                 <ResultsPanel
                   results={entry.response.results}
                   onOpenBrowse={() => openBrowse(entry.response)}
@@ -273,27 +231,16 @@ export function ChatSearchPanel() {
         )}
       </div>
 
-      {latestResultEntry ? (
-        <CollapsedResultsWindow
-          entry={latestResultEntry}
+      <div className="border-t border-hairline bg-white px-4 py-3">
+        <RefineSearchForm
           value={value}
           onValueChange={setValue}
           loading={loading}
           onSubmit={submit}
-          onExpand={() => setExpandedQueryId(latestResultEntry.response.query_id)}
+          placeholder="Ask follow up..."
+          cyclePlaceholders={PLACEHOLDER_EXAMPLES}
         />
-      ) : (
-        <div className="border-t border-hairline bg-white px-4 py-3">
-          <RefineSearchForm
-            value={value}
-            onValueChange={setValue}
-            loading={loading}
-            onSubmit={submit}
-            placeholder="Ask follow up..."
-            cyclePlaceholders={PLACEHOLDER_EXAMPLES}
-          />
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -366,153 +313,9 @@ function ResultsPanel({
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
         {results.map((result) => (
           <div key={result.id} className="w-[220px] shrink-0">
-            <ListingCard data={toCardData(result)} />
+            <ListingCard data={toCardData(result)} showSave />
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function CollapsedResultsWindow({
-  entry,
-  value,
-  onValueChange,
-  loading,
-  onSubmit,
-  onExpand,
-}: {
-  entry: ChatEntry;
-  value: string;
-  onValueChange: (next: string) => void;
-  loading: boolean;
-  onSubmit: (query: string) => Promise<void>;
-  onExpand: () => void;
-}) {
-  const pointerStart = useRef<number | null>(null);
-
-  return (
-    <section className="absolute inset-x-0 bottom-0 rounded-t-[32px] border-t border-hairline bg-white px-4 pb-4 pt-3 shadow-[0_-12px_32px_rgba(35,26,15,0.08)] min-[380px]:px-6">
-      <button
-        type="button"
-        onClick={onExpand}
-        onPointerDown={(event) => {
-          pointerStart.current = event.clientY;
-        }}
-        onPointerUp={(event) => {
-          if (pointerStart.current !== null && pointerStart.current - event.clientY > 24) {
-            onExpand();
-          }
-          pointerStart.current = null;
-        }}
-        className="mb-3 flex w-full flex-col items-center gap-2 text-caption font-bold uppercase tracking-[0.14em] text-ink-muted"
-        aria-label="Expand results"
-      >
-        <span className="h-1.5 w-12 rounded-full bg-hairline" aria-hidden />
-        <span>Swipe up to expand results</span>
-      </button>
-
-      <div className="-mx-2 flex snap-x snap-mandatory gap-5 overflow-x-auto px-2 pb-4">
-        {entry.response.results.map((result) => (
-          <MiniResultCard key={result.id} result={result} />
-        ))}
-      </div>
-
-      <RefineSearchForm
-        value={value}
-        onValueChange={onValueChange}
-        loading={loading}
-        onSubmit={onSubmit}
-        placeholder="Ask follow up..."
-      />
-    </section>
-  );
-}
-
-function ExpandedResultsView({
-  entry,
-  value,
-  onValueChange,
-  loading,
-  error,
-  onSubmit,
-  onOpenBrowse,
-  canOpenBrowse,
-}: {
-  entry: ChatEntry;
-  value: string;
-  onValueChange: (next: string) => void;
-  loading: boolean;
-  error: string | null;
-  onSubmit: (query: string) => Promise<void>;
-  onOpenBrowse: () => void;
-  canOpenBrowse: boolean;
-}) {
-  return (
-    <div className="flex h-full flex-col bg-white">
-      <div className="shrink-0 bg-[linear-gradient(180deg,#F3ECDD_0%,#FCFAF6_100%)] px-0 pb-7 pt-9">
-        <SearchQueryPill
-          query={entry.query}
-          onOpenBrowse={onOpenBrowse}
-          canOpenBrowse={canOpenBrowse}
-        />
-      </div>
-
-      <div className="flex-1 overflow-y-auto bg-white pt-12">
-        <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-6 min-[380px]:px-[34px]">
-          {entry.response.results.map((result) => (
-            <div key={result.id} className="w-[calc(100vw-48px)] max-w-[320px] shrink-0 snap-center">
-              <ExpandedListingCard
-                result={result}
-                parameters={entry.response.parameters}
-              />
-            </div>
-          ))}
-        </div>
-
-        {error && (
-          <div className="mx-6 mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-      </div>
-
-      <div className="shrink-0 bg-white px-4 pb-4 pt-2 min-[380px]:px-6">
-        <RefineSearchForm
-          value={value}
-          onValueChange={onValueChange}
-          loading={loading}
-          onSubmit={onSubmit}
-          placeholder="Refine search... e.g. 'Must have a pool'"
-        />
-      </div>
-    </div>
-  );
-}
-
-function SearchQueryPill({
-  query,
-  onOpenBrowse,
-  canOpenBrowse,
-}: {
-  query: string;
-  onOpenBrowse: () => void;
-  canOpenBrowse: boolean;
-}) {
-  return (
-    <div className="rounded-t-[28px] border border-hairline bg-white px-4 py-5">
-      <div className="flex items-center gap-3">
-        <Search className="h-5 w-5 shrink-0 text-ink-muted" aria-hidden />
-        <p className="min-w-0 flex-1 text-sm leading-5 text-ink">{query}</p>
-        <button
-          type="button"
-          onClick={onOpenBrowse}
-          disabled={!canOpenBrowse}
-          aria-label="Open browse filters"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition hover:bg-nectar disabled:opacity-40"
-        >
-          <SlidersHorizontal className="h-5 w-5" aria-hidden />
-        </button>
       </div>
     </div>
   );
@@ -577,155 +380,6 @@ function RefineSearchForm({
   );
 }
 
-function MiniResultCard({
-  result,
-}: {
-  result: ResultListingSummary;
-}) {
-  return (
-    <Link
-      href={`/listings/${result.id}` as Route}
-      className="flex w-[min(258px,76vw)] shrink-0 snap-center overflow-hidden rounded-[22px] border border-hairline bg-white"
-    >
-      <div className="relative h-[92px] w-[92px] shrink-0 bg-hairline">
-        <CoverImage result={result} />
-        <VerificationBadge status={result.status} compact />
-      </div>
-      <div className="min-w-0 flex-1 px-3 py-2.5">
-        <p className="text-lg font-bold leading-none text-ink">
-          {formatPrice(result.price)}
-          <span className="ml-0.5 text-xs font-medium text-ink-muted">
-            {priceUnit(result)}
-          </span>
-        </p>
-        <h3 className="mt-2 line-clamp-2 text-sm leading-4 text-ink">
-          {cleanTitle(result.title)}
-        </h3>
-        <LocationPill district={result.district} className="mt-2" />
-      </div>
-    </Link>
-  );
-}
-
-function ExpandedListingCard({
-  result,
-  parameters,
-}: {
-  result: ResultListingSummary;
-  parameters: ExtractedParameters | null;
-}) {
-  const bedrooms =
-    result.bedroom_count ?? parameters?.bedroom_count ?? extractBedroomCount(result.title);
-  const bathrooms = result.bathroom_count ?? null;
-
-  return (
-    <article className="overflow-hidden rounded-[14px] border border-hairline bg-white">
-      <div className="relative aspect-[16/11] bg-hairline">
-        <CoverImage result={result} />
-        <VerificationBadge status={result.status} />
-        <BookmarkButton
-          listingId={result.id}
-          icon="heart"
-          className="absolute right-4 top-4 h-9 w-9 bg-white text-ink"
-        />
-      </div>
-
-      <div className="px-5 pb-5 pt-5">
-        <LocationPill district={result.district} />
-        <h2 className="mt-4 line-clamp-2 text-xl font-bold leading-6 text-ink">
-          {cleanTitle(result.title)}
-        </h2>
-        {(bedrooms != null || bathrooms != null) && (
-          <div className="mt-3 flex items-center gap-3 text-xs font-medium text-ink-muted">
-            {bedrooms != null && (
-              <span className="inline-flex items-center gap-1">
-                <BedDouble className="h-4 w-4" aria-hidden />
-                {bedrooms} bed{bedrooms === 1 ? '' : 's'}
-              </span>
-            )}
-            {bathrooms != null && (
-              <span className="inline-flex items-center gap-1">
-                <Bath className="h-4 w-4" aria-hidden />
-                {bathrooms} bath{bathrooms === 1 ? '' : 's'}
-              </span>
-            )}
-          </div>
-        )}
-
-        <div className="mt-4 flex items-end justify-between border-t border-hairline pt-4">
-          <div>
-            <p className="text-xs text-ink-muted">{priceLabel(result.category)}</p>
-            <p className="mt-1 text-2xl font-bold leading-none text-ink">
-              {formatPrice(result.price)}
-            </p>
-          </div>
-          <Link
-            href={`/listings/${result.id}` as Route}
-            aria-label={`Open ${result.title}`}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-ink transition hover:bg-brand-600"
-          >
-            <ChevronRight className="h-6 w-6" aria-hidden />
-          </Link>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function VerificationBadge({
-  status,
-  compact = false,
-}: {
-  status: string;
-  compact?: boolean;
-}) {
-  const tier = normaliseStatus(status);
-  const fullyVerified = ['fully_verified', 'let_agreed', 'sale_agreed'].includes(tier);
-  const docVerified = tier === 'doc_verified';
-  const label = fullyVerified
-    ? 'AGIS Verified'
-    : docVerified
-      ? 'Doc Verified'
-      : 'Unverified';
-
-  return (
-    <span
-      className={cn(
-        'absolute left-4 top-4 inline-flex items-center gap-1 rounded-full font-bold uppercase tracking-wide text-white shadow-sm',
-        // `compact` is an overlay pin on a small map/thumbnail — intentionally
-        // below the 13px reading floor (spatial constraint, not body text).
-        compact ? 'left-2 top-2 px-1.5 py-0.5 text-[8px]' : 'px-3 py-1.5 text-caption',
-        fullyVerified && 'bg-verification-fully',
-        docVerified && 'bg-verification-doc',
-        !fullyVerified && !docVerified && 'bg-verification-unverified',
-      )}
-    >
-      <BadgeCheck className={compact ? 'h-2.5 w-2.5' : 'h-3.5 w-3.5'} aria-hidden />
-      {label}
-    </span>
-  );
-}
-
-function LocationPill({
-  district,
-  className,
-}: {
-  district: string | null;
-  className?: string;
-}) {
-  return (
-    <span
-      className={cn(
-        'inline-flex max-w-full items-center gap-1 rounded-md bg-nectar px-3 py-1 text-xs font-medium text-brand-700',
-        className,
-      )}
-    >
-      <MapPin className="h-3 w-3 shrink-0" aria-hidden />
-      <span className="truncate">{district ?? 'Abuja'}</span>
-    </span>
-  );
-}
-
 function buildBrowseSeed(parameters: ExtractedParameters): SearchSeedFilters {
   return {
     q: parameters.raw_query,
@@ -769,7 +423,7 @@ function toCardData(result: ResultListingSummary) {
 
   return {
     id: result.id,
-    title: result.title,
+    title: cleanTitle(result.title),
     category: result.category,
     status: normaliseStatus(result.status),
     price: result.price,
@@ -785,69 +439,8 @@ function toCardData(result: ResultListingSummary) {
   };
 }
 
-/**
- * Renders the real cover photo when present, or an unmistakably generic
- * placeholder when the listing has none — we never substitute stock imagery
- * that could read as a photo of this specific unit.
- */
-function CoverImage({ result }: { result: ResultListingSummary }) {
-  if (!result.cover_url) {
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-hairline text-ink-soft">
-        <ImageOff className="h-6 w-6" aria-hidden />
-        <span className="text-caption font-medium">No photo yet</span>
-      </div>
-    );
-  }
-  return (
-    <img
-      src={result.cover_url}
-      alt={cleanTitle(result.title)}
-      className="h-full w-full object-cover"
-    />
-  );
-}
-
 function cleanTitle(title: string): string {
   return title.replace(/^\[seed\]\s*/i, '');
-}
-
-function formatPrice(value: number | null): string {
-  if (value == null) return 'Price on request';
-  return `\u20a6${value.toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
-}
-
-function priceUnit(result: ResultListingSummary): string {
-  switch (result.category) {
-    case 'rent':
-      return '/yr';
-    case 'short_let':
-      return '/night';
-    case 'off_campus':
-      return result.price_period ? `/${pricePeriodLabel(result.price_period)}` : '/term';
-    case 'sales':
-    default:
-      return '';
-  }
-}
-
-function priceLabel(category: ListingCategory): string {
-  switch (category) {
-    case 'rent':
-      return 'Annual Rent';
-    case 'short_let':
-      return 'Nightly Rate';
-    case 'off_campus':
-      return 'Starting rate';
-    case 'sales':
-    default:
-      return 'Asking Price';
-  }
-}
-
-function extractBedroomCount(title: string): number | null {
-  const match = title.match(/\b(\d+)\s*[- ]?bed(?:room)?/i);
-  return match ? Number(match[1]) : null;
 }
 
 function normaliseStatus(status: string) {

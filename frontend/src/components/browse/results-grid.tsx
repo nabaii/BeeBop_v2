@@ -4,7 +4,6 @@
  * Paginated results grid shared across all four category browse pages.
  */
 
-import { BookmarkButton } from '@/components/browse/bookmark-button';
 import { ListingCard } from '@/components/listing/listing-card';
 import { ListingCardSkeleton } from '@/components/ui/skeleton';
 import type { PublicListingSummary, SearchResponse } from '@/lib/search';
@@ -19,7 +18,7 @@ interface Props {
 export function ResultsGrid({ data, loading, onPageChange, emptyHint }: Props) {
   if (loading && !data) {
     return (
-      <ul className="grid grid-cols-1 gap-4" aria-busy="true">
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
         {Array.from({ length: 6 }).map((_, i) => (
           <li key={i}>
             <ListingCardSkeleton />
@@ -48,11 +47,10 @@ export function ResultsGrid({ data, loading, onPageChange, emptyHint }: Props) {
           {data.total.toLocaleString()} result{data.total === 1 ? '' : 's'}
         </p>
       </div>
-      <ul className="grid grid-cols-1 gap-4">
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {data.results.map((r) => (
-          <li key={r.id} className="relative">
-            <ListingCard data={toCardData(r)} />
-            <BookmarkButton listingId={r.id} className="absolute right-3 top-3" />
+          <li key={r.id}>
+            <ListingCard data={toCardData(r)} showSave />
           </li>
         ))}
       </ul>
