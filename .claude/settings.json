@@ -18,7 +18,10 @@
       "Bash(cp __TRACKED_VAR__/apple-touch-icon.png __TRACKED_VAR__/apple-icon.png)",
       "Bash(cp __TRACKED_VAR__/icon-192.png frontend/public/icon-192.png)",
       "Bash(cp __TRACKED_VAR__/icon-512.png frontend/public/icon-512.png)",
-      "Bash(awk '{print $5, $NF}')"
+      "Bash(awk '{print $5, $NF}')",
+      "PowerShell(git fetch origin --prune)",
+      "PowerShell(git rev-list --left-right --count HEAD...origin/production-publish-prep)",
+      "PowerShell(git merge --ff-only origin/production-publish-prep)"
     ],
     "additionalDirectories": [
       "C:\\Users\\enaic\\OneDrive\\Desktop\\miyata\\BeeBop-v2\\.git"
