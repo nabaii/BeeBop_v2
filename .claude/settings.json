@@ -21,7 +21,8 @@
       "Bash(awk '{print $5, $NF}')",
       "PowerShell(git fetch origin --prune)",
       "PowerShell(git rev-list --left-right --count HEAD...origin/production-publish-prep)",
-      "PowerShell(git merge --ff-only origin/production-publish-prep)"
+      "PowerShell(git merge --ff-only origin/production-publish-prep)",
+      "Bash(python -c \"from app.config import Settings; s=Settings\\(\\); print\\('refresh_days=', s.jwt_refresh_token_expire_days, 'access_min=', s.jwt_access_token_expire_minutes\\)\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\enaic\\OneDrive\\Desktop\\miyata\\BeeBop-v2\\.git"
