@@ -1083,7 +1083,11 @@ def _result_summary(
     parameters: ExtractedParameters,
     rating: tuple[float | None, int] | None,
 ) -> ResultListingSummary:
-    cover = next((photo for photo in listing.photos if photo.is_cover), None)
+    photos = sorted(listing.photos, key=lambda photo: photo.display_order)
+    cover = next((photo for photo in photos if photo.is_cover), None) or (
+        photos[0] if photos else None
+    )
+    secondary = next((photo for photo in photos if photo is not cover), None)
     avg_rating = rating[0] if rating is not None else None
     review_count = rating[1] if rating is not None else 0
     type_data = listing.type_data or {}
@@ -1110,6 +1114,7 @@ def _result_summary(
         price_period=price_period,
         district=listing.district,
         cover_url=cover.url if cover is not None else None,
+        secondary_url=secondary.url if secondary is not None else None,
         rating=avg_rating,
         review_count=review_count,
         bedroom_count=_as_int(type_data.get("bedroom_count")),

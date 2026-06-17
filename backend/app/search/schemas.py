@@ -81,6 +81,9 @@ class PublicListingSummary(BaseModel):
     gps_lat: float | None = None
     gps_lng: float | None = None
     cover_url: str | None = None
+    # First non-cover photo, when present — lets cards crossfade on hover to
+    # double photo exposure without a click. Null for single-photo listings.
+    secondary_url: str | None = None
     rating: float | None = None
     review_count: int = 0
     # Billing period for the price (off-campus only); e.g. "year" or "session".

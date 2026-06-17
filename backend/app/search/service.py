@@ -143,7 +143,9 @@ def off_campus_starting_unit(listing: Listing) -> tuple[float | None, str | None
 
 
 def _summarise(listing: Listing) -> PublicListingSummary:
-    cover = next((p for p in listing.photos if p.is_cover), None) or next(iter(listing.photos), None)
+    photos = sorted(listing.photos, key=lambda p: p.display_order)
+    cover = next((p for p in photos if p.is_cover), None) or (photos[0] if photos else None)
+    secondary = next((p for p in photos if p is not cover), None)
     # Callers that can return off-campus rows (off-campus search, featured)
     # eager-load `unit_types`; the category guard keeps other searches from
     # touching the relationship.
@@ -165,6 +167,7 @@ def _summarise(listing: Listing) -> PublicListingSummary:
         gps_lat=listing.gps_lat,
         gps_lng=listing.gps_lng,
         cover_url=cover.url if cover else None,
+        secondary_url=secondary.url if secondary else None,
         rating=None,        # populated from Review aggregations in Sprint 4
         review_count=0,
         bedroom_count=_as_int(type_data.get("bedroom_count")),

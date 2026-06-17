@@ -63,6 +63,7 @@ export interface PublicListingSummary {
   gps_lat: number | null;
   gps_lng: number | null;
   cover_url: string | null;
+  secondary_url?: string | null;
   rating: number | null;
   review_count: number;
   price_period?: string | null;

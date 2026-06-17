@@ -38,6 +38,7 @@ import {
 } from '@/lib/ai-search';
 import { pricePeriodLabel } from '@/lib/listings';
 import type { ListingCategory, PhotoView } from '@/lib/listings';
+import { useCyclingPlaceholder, useStreamedText } from '@/lib/use-motion';
 import type { SearchSeedFilters } from '@/stores/search';
 import { useSearch } from '@/stores/search';
 
@@ -46,6 +47,16 @@ const SUGGESTIONS: { text: string; icon: LucideIcon }[] = [
   { text: 'Short-let in Jahi', icon: Clock },
   { text: '1-bedroom under N500k', icon: Banknote },
   { text: 'Houses for sale in Maitama', icon: Tag },
+];
+
+// Rotated through the input placeholder so the bar keeps suggesting ideas —
+// on the hero and in the ongoing conversation, not just at the start.
+const PLACEHOLDER_EXAMPLES = [
+  '2-bedroom in Wuse under N300k',
+  'Hostels near Baze',
+  'Short-let in Jahi',
+  '1-bedroom under N500k',
+  'Houses for sale in Maitama',
 ];
 
 interface ChatEntry {
@@ -63,6 +74,9 @@ export function ChatSearchPanel() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [expandedQueryId, setExpandedQueryId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const heroPlaceholder = useCyclingPlaceholder(PLACEHOLDER_EXAMPLES, {
+    paused: value.trim().length > 0,
+  });
 
   useEffect(() => {
     const node = scrollRef.current;
@@ -122,54 +136,64 @@ export function ChatSearchPanel() {
       <div className="h-full overflow-y-auto px-4 py-5 min-[380px]:py-6">
         <div className="space-y-6">
           <div className="text-center">
-            <h2 className="font-display text-section font-bold text-ink min-[380px]:text-hero">
+            <h2 className="font-display text-section font-bold text-ink motion-safe:animate-fade-up-hero min-[380px]:text-hero">
               What kind of place are you looking for?
             </h2>
-            <p className="mt-2 text-body text-ink-muted">
+            <p
+              className="mt-2 text-body text-ink-muted motion-safe:animate-fade-up"
+              style={{ animationDelay: '200ms' }}
+            >
               I&apos;ll find verified options in Abuja for you.
             </p>
           </div>
 
           <form
+            className="motion-safe:animate-fade-up"
+            style={{ animationDelay: '280ms' }}
             onSubmit={(event) => {
               event.preventDefault();
               void submit(value);
             }}
           >
-            <div className="flex items-center gap-3 rounded-3xl border border-hairline bg-white p-2">
+            {/* The confident bar: tall, hairline at rest, Honey ring + warm glow on focus. */}
+            <div className="flex h-14 items-center gap-2 rounded-full border border-hairline bg-white pl-2 pr-2 transition-shadow focus-within:border-brand focus-within:shadow-[0_4px_24px_rgba(240,152,15,0.25)] focus-within:ring-2 focus-within:ring-brand">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-ink">
                 <Briefcase className="h-5 w-5" aria-hidden />
               </div>
               <input
                 value={value}
                 onChange={(event) => setValue(event.target.value)}
-                placeholder="2-bedroom in Wuse under N300k"
+                placeholder={heroPlaceholder}
                 className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-soft"
               />
               <button
                 type="submit"
                 disabled={loading || !value.trim()}
                 aria-label="Send message"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-ink transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-ink transition hover:bg-brand-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 motion-safe:transition-transform"
               >
                 <ArrowRight className="h-5 w-5" aria-hidden />
               </button>
             </div>
           </form>
 
-          <FeaturedCarousel />
+          <div className="motion-safe:animate-fade-up" style={{ animationDelay: '360ms' }}>
+            <FeaturedCarousel />
+          </div>
 
           <div className="space-y-2">
             <p className="text-xs font-medium text-ink-muted">
               Need ideas? Try asking for one of these:
             </p>
             <ul className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
-              {SUGGESTIONS.map(({ text, icon: Icon }) => (
+              {SUGGESTIONS.map(({ text, icon: Icon }, index) => (
                 <li key={text}>
                   <button
                     type="button"
                     onClick={() => void submit(text)}
-                    className="flex h-full w-full items-start gap-2 rounded-2xl border border-hairline bg-white px-3 py-2.5 text-left text-xs text-ink transition hover:border-brand/40 hover:bg-nectar"
+                    // Stagger left-to-right at 40ms intervals, after the hero settles.
+                    style={{ animationDelay: `${440 + index * 40}ms` }}
+                    className="flex h-full w-full items-start gap-2 rounded-2xl border border-hairline bg-white px-3 py-2.5 text-left text-xs text-ink transition hover:border-brand/40 hover:bg-nectar motion-safe:animate-fade-up"
                   >
                     <Icon className="h-4 w-4 shrink-0 text-brand" aria-hidden />
                     <span>{text}</span>
@@ -266,6 +290,7 @@ export function ChatSearchPanel() {
             loading={loading}
             onSubmit={submit}
             placeholder="Ask follow up..."
+            cyclePlaceholders={PLACEHOLDER_EXAMPLES}
           />
         </div>
       )}
@@ -275,7 +300,7 @@ export function ChatSearchPanel() {
 
 function UserBubble({ text }: { text: string }) {
   return (
-    <div className="flex justify-end">
+    <div className="flex justify-end motion-safe:animate-fade-up">
       {/* The branded move: Nectar (pale honey) with Hive Black text, no shadow. */}
       <div className="max-w-[86%] rounded-2xl rounded-tr-sm bg-nectar px-4 py-3 text-body text-ink">
         {text}
@@ -285,14 +310,18 @@ function UserBubble({ text }: { text: string }) {
 }
 
 function BotBubble({ text }: { text: string }) {
+  // Reveal word-by-word on first mount so the assistant reads as if it's
+  // composing the reply. Older bubbles have already finished; reduced motion
+  // shows the full text immediately.
+  const streamed = useStreamedText(text);
   return (
-    <div className="flex items-start gap-2">
+    <div className="flex items-start gap-2 motion-safe:animate-fade-up">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-ink">
         <Briefcase className="h-4 w-4" aria-hidden />
       </div>
       {/* Warm white with a hairline border instead of a floating drop shadow. */}
       <div className="max-w-[86%] rounded-2xl rounded-tl-sm border border-hairline bg-white px-4 py-3 text-body text-ink">
-        {text}
+        {streamed}
       </div>
     </div>
   );
@@ -495,13 +524,20 @@ function RefineSearchForm({
   loading,
   onSubmit,
   placeholder,
+  cyclePlaceholders,
 }: {
   value: string;
   onValueChange: (next: string) => void;
   loading: boolean;
   onSubmit: (query: string) => Promise<void>;
   placeholder: string;
+  // When supplied (and >1), the placeholder rotates through these examples
+  // instead of showing the static `placeholder`. Holds steady while typing.
+  cyclePlaceholders?: string[];
 }) {
+  const dynamicPlaceholder = useCyclingPlaceholder(cyclePlaceholders ?? [placeholder], {
+    paused: value.trim().length > 0,
+  });
   return (
     <form
       onSubmit={(event) => {
@@ -509,7 +545,8 @@ function RefineSearchForm({
         void onSubmit(value);
       }}
     >
-      <div className="flex min-h-[58px] items-center gap-3 rounded-full border border-hairline bg-white px-4 py-2 shadow-[0_8px_24px_rgba(35,26,15,0.06)]">
+      {/* 56px confident bar: hairline at rest, Honey ring + warm glow on focus. */}
+      <div className="flex h-14 items-center gap-2 rounded-full border border-hairline bg-white px-3 transition-shadow focus-within:border-brand focus-within:shadow-[0_4px_24px_rgba(240,152,15,0.25)] focus-within:ring-2 focus-within:ring-brand">
         <button
           type="button"
           aria-label="Attach preference"
@@ -520,14 +557,14 @@ function RefineSearchForm({
         <input
           value={value}
           onChange={(event) => onValueChange(event.target.value)}
-          placeholder={placeholder}
+          placeholder={dynamicPlaceholder}
           className="min-w-0 flex-1 bg-transparent text-sm leading-5 text-ink outline-none placeholder:text-ink-soft"
         />
         <button
           type="submit"
           disabled={loading || !value.trim()}
           aria-label="Send message"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-ink transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-ink transition hover:bg-brand-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 motion-safe:transition-transform"
         >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -738,6 +775,7 @@ function toCardData(result: ResultListingSummary) {
     price: result.price,
     district: result.district,
     cover_photo: coverPhoto,
+    secondary_url: result.secondary_url,
     rating: result.rating,
     review_count: result.review_count,
     bedroom_count: result.bedroom_count,

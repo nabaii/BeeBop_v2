@@ -37,6 +37,7 @@ export interface ResultListingSummary {
   price_period?: string | null;
   district: string | null;
   cover_url: string | null;
+  secondary_url?: string | null;
   rating: number | null;
   review_count: number;
   bedroom_count?: number | null;

@@ -91,6 +91,8 @@ class ResultListingSummary(BaseModel):
     price_period: str | None = None
     district: str | None = None
     cover_url: str | None = None
+    # First non-cover photo, when present — powers the hover crossfade on cards.
+    secondary_url: str | None = None
     rating: float | None = None
     review_count: int = 0
     bedroom_count: int | None = None

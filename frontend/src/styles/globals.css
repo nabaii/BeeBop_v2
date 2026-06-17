@@ -26,6 +26,19 @@ body {
   min-width: 0;
 }
 
+/* iOS Safari auto-zooms when a focused field's font-size is below 16px, and
+   often doesn't zoom back out. Our type scale sizes inputs at 15px, so on
+   touch devices bump form controls to 16px to suppress the zoom. `!important`
+   is required to win over Tailwind's `.text-sm` utility class. Pinch-zoom
+   stays enabled (no viewport maximum-scale), preserving accessibility. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 @layer utilities {
   .safe-pb {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));

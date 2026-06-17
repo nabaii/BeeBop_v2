@@ -29,7 +29,7 @@ export function FeaturedCarousel({ showBrowseLink = true }: { showBrowseLink?: b
     return (
       <section className="space-y-3">
         <h2 className="text-base font-semibold text-slate-900">Properties in Abuja</h2>
-        <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2" aria-busy="true">
+        <div className="flex gap-4 overflow-x-auto pb-2" aria-busy="true">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="w-64 shrink-0">
               <ListingCardSkeleton />
@@ -51,7 +51,7 @@ export function FeaturedCarousel({ showBrowseLink = true }: { showBrowseLink?: b
           </Link>
         )}
       </div>
-      <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2">
+      <div className="flex gap-4 overflow-x-auto pb-2">
         {items.map((r) => (
           <div key={r.id} className="w-64 shrink-0">
             <ListingCard
@@ -71,6 +71,7 @@ export function FeaturedCarousel({ showBrowseLink = true }: { showBrowseLink?: b
                       display_order: 0,
                     }
                   : null,
+                secondary_url: r.secondary_url,
                 rating: r.rating,
                 review_count: r.review_count,
                 bedroom_count: r.bedroom_count,

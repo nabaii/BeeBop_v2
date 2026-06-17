@@ -6,7 +6,7 @@
  *   • Unverified state is visually distinct from verified tiers.
  */
 
-import { Bath, BedDouble } from 'lucide-react';
+import { Bath, BadgeCheck, BedDouble } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
 
@@ -23,6 +23,7 @@ export interface ListingCardData {
   price: number | null;
   district: string | null;
   cover_photo?: PhotoView | null;
+  secondary_url?: string | null; // first non-cover photo; enables hover crossfade
   rating?: number | null;        // short-let / rent / student
   review_count?: number | null;
   bedroom_count?: number | null; // real specs from type_data; null = omit
@@ -38,15 +39,27 @@ export function ListingCard({ data }: { data: ListingCardData }) {
   return (
     <Link
       href={href as Route}
-      className="group flex h-full flex-col overflow-hidden rounded-xl border border-hairline bg-white transition-colors hover:border-ink-soft/50"
+      className="group flex h-full flex-col overflow-hidden rounded-xl border border-hairline bg-white transition-[transform,border-color] duration-200 hover:border-ink-soft/50 motion-safe:hover:-translate-y-0.5"
     >
-      <div className="relative aspect-[4/3] shrink-0 bg-hairline">
+      <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-hairline">
         {data.cover_photo?.url ? (
-          <img
-            src={data.cover_photo.url}
-            alt={data.title ?? 'Listing'}
-            className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
-          />
+          <>
+            <img
+              src={data.cover_photo.url}
+              alt={data.title ?? 'Listing'}
+              className="h-full w-full object-cover"
+            />
+            {data.secondary_url && (
+              // Crossfade to the second photo on hover — doubles photo exposure
+              // without a click. Static (never shown) under reduced motion.
+              <img
+                src={data.secondary_url}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 h-full w-full object-cover opacity-0 motion-safe:transition-opacity motion-safe:duration-300 motion-safe:group-hover:opacity-100"
+              />
+            )}
+          </>
         ) : (
           <div className="flex h-full items-center justify-center text-caption text-ink-soft">
             No photo
@@ -117,18 +130,27 @@ function verificationTier(status: ListingStatus): VerificationTier {
 }
 
 function VerificationBadge({ tier }: { tier: VerificationTier }) {
-  const label =
-    tier === 'fully_verified'
-      ? 'AGIS Verified'
-      : tier === 'doc_verified'
-        ? 'Doc Verified'
-        : 'Unverified';
+  // Doc-verified reads as a compact verification icon rather than a text pill —
+  // faster to parse over a photo and less crowded. Colour + a11y label keep the
+  // meaning intact.
+  if (tier === 'doc_verified') {
+    return (
+      <span
+        role="img"
+        aria-label="Document verified"
+        title="Document verified"
+        className="flex h-6 w-6 items-center justify-center rounded-full bg-verification-doc text-white shadow-sm"
+      >
+        <BadgeCheck className="h-4 w-4" aria-hidden />
+      </span>
+    );
+  }
+  const label = tier === 'fully_verified' ? 'AGIS Verified' : 'Unverified';
   return (
     <span
       className={cn(
         'rounded-full px-2 py-0.5 text-caption font-medium',
         tier === 'fully_verified' && 'bg-verification-fully text-white',
-        tier === 'doc_verified' && 'bg-verification-doc text-white',
         tier === 'unverified' && 'bg-verification-unverified text-white',
       )}
     >

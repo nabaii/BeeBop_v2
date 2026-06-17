@@ -44,6 +44,26 @@ const config: Config = {
         // Display face — opt in with `font-display` on hero/headings/listing names.
         display: ['var(--font-display)', 'var(--font-body)', 'system-ui', 'sans-serif'],
       },
+      // Motion: enter-only, no loops. Always opt in via `motion-safe:` so
+      // prefers-reduced-motion users get the static end state for free.
+      keyframes: {
+        // Message bubbles + suggestion chips: subtle fade-and-rise.
+        'fade-up': {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        // Hero question on page load: slightly larger travel, slower.
+        'fade-up-hero': {
+          '0%': { opacity: '0', transform: 'translateY(12px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        // `both` holds the 0% (hidden) state through any animation-delay, so
+        // staggered chips don't flash before their turn.
+        'fade-up': 'fade-up 180ms ease-out both',
+        'fade-up-hero': 'fade-up-hero 420ms ease-out both',
+      },
     },
     // The Beebop type scale — five sizes, used everywhere, no exceptions.
     // Declared at theme root (not extend) so it REPLACES Tailwind's default
