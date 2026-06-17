@@ -7,6 +7,7 @@
  */
 
 import { useSession } from '@/stores/session';
+import { isExpired } from '@/lib/jwt';
 
 const CONFIGURED_API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
 
@@ -90,7 +91,22 @@ async function rawFetch<T>(
   return payload as T;
 }
 
-async function refreshTokens(): Promise<boolean> {
+// Single-flight guard. The backend rotates refresh tokens and treats a reused
+// jti as theft — revoking the whole session. On app open the page fires several
+// authenticated requests at once; without this lock they'd each POST /refresh
+// with the same token, and all-but-one would look like a replay and nuke the
+// session. Concurrent callers share the one in-flight refresh instead.
+let inflightRefresh: Promise<boolean> | null = null;
+
+function refreshTokens(): Promise<boolean> {
+  if (inflightRefresh) return inflightRefresh;
+  inflightRefresh = doRefresh().finally(() => {
+    inflightRefresh = null;
+  });
+  return inflightRefresh;
+}
+
+async function doRefresh(): Promise<boolean> {
   const { refreshToken, setSession, clear } = useSession.getState();
   if (!refreshToken) return false;
   try {
@@ -120,6 +136,20 @@ async function refreshTokens(): Promise<boolean> {
     useSession.getState().clear();
     return false;
   }
+}
+
+/**
+ * Proactively make sure the access token is usable before firing real requests
+ * (called on app open after hydrate). If the access token is expired/near-expiry
+ * but the refresh token is still valid, refresh once up front so the first page
+ * request doesn't 401-then-lag. Returns true when a usable session exists after.
+ */
+export async function ensureFreshSession(): Promise<boolean> {
+  const { accessToken, refreshToken } = useSession.getState();
+  if (!refreshToken) return false;
+  // 10s skew: refresh slightly early so a request in flight can't beat the clock.
+  if (accessToken && !isExpired(accessToken, 10_000)) return true;
+  return refreshTokens();
 }
 
 export async function apiFetch<T>(path: string, init: FetchInit = {}): Promise<T> {

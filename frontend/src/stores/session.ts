@@ -8,6 +8,8 @@
  */
 import { create } from 'zustand';
 
+import { isExpired } from '@/lib/jwt';
+
 export type UserRole =
   | 'seeker'
   | 'landlord'
@@ -112,10 +114,16 @@ export const useSession = create<SessionState>(
     },
     hydrate: () => {
       const persisted = readPersisted();
-      if (persisted) {
+      // A persisted session is only honoured while its refresh token is still
+      // alive. Once the refresh token's exp has passed (the user has been idle
+      // past the session window), the session is dead — surface the signed-out
+      // state immediately instead of rendering a logged-in shell that would
+      // freeze on the first request and then eject the user.
+      if (persisted && !isExpired(persisted.refreshToken)) {
         set({ ...persisted, hydrated: true });
       } else {
-        set({ hydrated: true });
+        if (persisted) clearPersisted();
+        set({ user: null, accessToken: null, refreshToken: null, hydrated: true });
       }
     },
   }),

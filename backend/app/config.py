@@ -35,8 +35,14 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     # JWT
+    # The refresh token is a *sliding* idle window: every refresh issues a new
+    # token and re-records its jti in Redis with a fresh TTL (see
+    # auth/service.py rotate_refresh_token + refresh_store). So this value is
+    # effectively "log the user out after this long with no activity". One day
+    # by product decision — open the app at least once a day and you stay in;
+    # miss a day and you land cleanly on the sign-in screen.
     jwt_access_token_expire_minutes: int = 30
-    jwt_refresh_token_expire_days: int = 14
+    jwt_refresh_token_expire_days: int = 1
     jwt_algorithm: str = "HS256"
 
     # Email (Resend)
