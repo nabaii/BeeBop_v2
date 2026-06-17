@@ -54,7 +54,10 @@ export default function RegisterPage() {
       return;
     }
 
-    router.replace('/');
+    // New users always have onboardingComplete = false. Hand off to the
+    // /onboarding dispatcher, which routes to the right wizard by role
+    // (becomeLandlord above has already updated the session role).
+    router.replace('/onboarding');
   }
 
   return (

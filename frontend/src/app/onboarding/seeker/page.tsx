@@ -56,9 +56,6 @@ export default function SeekerOnboardingPage() {
   const [ageBand, setAgeBand] = useState<AgeBand | null>(null);
   const [occupation, setOccupation] = useState<(typeof OCCUPATIONS)[number] | null>(null);
   const [occupationOther, setOccupationOther] = useState('');
-  const [budgetMin, setBudgetMin] = useState('');
-  const [budgetMax, setBudgetMax] = useState('');
-  const [preferredArea, setPreferredArea] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -109,10 +106,6 @@ export default function SeekerOnboardingPage() {
 
   async function saveExtras() {
     setError(null);
-    if (budgetMin && budgetMax && Number(budgetMax) < Number(budgetMin)) {
-      setError('Maximum budget cannot be less than the minimum.');
-      return;
-    }
     setBusy(true);
     try {
       const occ =
@@ -120,9 +113,6 @@ export default function SeekerOnboardingPage() {
       await saveSeekerExtras({
         age_band: ageBand,
         occupation: occ,
-        budget_min: budgetMin ? Number(budgetMin) : null,
-        budget_max: budgetMax ? Number(budgetMax) : null,
-        preferred_area: preferredArea.trim() || null,
       });
       router.replace('/dashboard/seeker');
     } catch (err) {
@@ -313,32 +303,6 @@ export default function SeekerOnboardingPage() {
               maxLength={100}
             />
           )}
-        </Labelled>
-
-        <Labelled label="Budget range (₦, optional)">
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              inputMode="numeric"
-              value={budgetMin}
-              onChange={(e) => setBudgetMin(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="Min"
-            />
-            <Input
-              inputMode="numeric"
-              value={budgetMax}
-              onChange={(e) => setBudgetMax(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="Max"
-            />
-          </div>
-        </Labelled>
-
-        <Labelled label="Preferred area / district">
-          <Input
-            value={preferredArea}
-            onChange={(e) => setPreferredArea(e.target.value)}
-            placeholder="e.g. Wuse 2, Gwarinpa"
-            maxLength={255}
-          />
         </Labelled>
       </Form>
     );
