@@ -11,7 +11,6 @@ import {
   Bath,
   BedDouble,
   Building2,
-  Car,
   ChevronRight,
   MapPin,
   Share2,
@@ -31,6 +30,7 @@ import { AreaScorePanel } from '@/components/listing/area-score-panel';
 import { CtaBar } from '@/components/listing/cta-bar';
 import { ListingGallery } from '@/components/listing/gallery';
 import { LoadingScreen } from '@/components/ui/loading-screen';
+import { iconForAmenity, amenityLabel } from '@/lib/amenity-icons';
 import { ApiError } from '@/lib/api';
 import { pricePeriodLabel } from '@/lib/listings';
 import { getPublicListing, type PublicListingDetail } from '@/lib/search';
@@ -121,10 +121,11 @@ export default function ListingDetailPage({
                     </span>
                   )}
                 </p>
+                <GlanceStats listing={listing} />
               </div>
             </section>
 
-            <SpecTiles listing={listing} />
+            <FeaturedTiles listing={listing} />
 
             {listing.category === 'off_campus' ? (
               <UnitTypes listing={listing} />
@@ -235,24 +236,96 @@ function HighlightChips({ listing }: { listing: PublicListingDetail }) {
   );
 }
 
-function SpecTiles({ listing }: { listing: PublicListingDetail }) {
-  const specs = listingSpecs(listing);
+// Headline tiles: the amenities the landlord starred to feature. Falls back to
+// the first few present amenities (features group first) so existing listings
+// — and any that never starred anything — still show useful highlights instead
+// of an empty gap. Returns null when there are no amenities at all.
+function FeaturedTiles({ listing }: { listing: PublicListingDetail }) {
+  const tiles = featuredAmenities(listing);
+  if (tiles.length === 0) return null;
 
   return (
-    <dl className="grid grid-cols-1 gap-4 min-[360px]:grid-cols-2">
-      {specs.map(({ label, value, icon: Icon }) => (
-        <div
-          key={label}
-          className="rounded-[18px] bg-white px-5 py-6 text-center shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
-        >
-          <Icon className="mx-auto h-7 w-7 text-brand-600" aria-hidden />
-          <dt className="mt-3 text-caption font-medium uppercase tracking-[0.08em] text-stone-600">
-            {label}
-          </dt>
-          <dd className="mt-1 text-xl font-bold text-slate-950">{value}</dd>
-        </div>
-      ))}
+    <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {tiles.map(({ group, key }) => {
+        const Icon = iconForAmenity(group, key);
+        return (
+          <div
+            key={`${group}:${key}`}
+            className="rounded-[18px] bg-white px-4 py-5 text-center shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
+          >
+            <Icon className="mx-auto h-7 w-7 text-brand-600" aria-hidden />
+            <dd className="mt-2.5 text-sm font-bold leading-tight text-slate-950">
+              {amenityLabel(key)}
+            </dd>
+          </div>
+        );
+      })}
     </dl>
+  );
+}
+
+const MAX_FEATURED_TILES = 4;
+
+function featuredAmenities(listing: PublicListingDetail): { group: string; key: string }[] {
+  const present: { group: string; key: string; featured: boolean }[] = [];
+  for (const [group, items] of Object.entries(listing.amenities ?? {})) {
+    if (!items) continue;
+    for (const [key, meta] of Object.entries(items)) {
+      if (meta?.present) present.push({ group, key, featured: Boolean(meta?.featured) });
+    }
+  }
+  const starred = present.filter((a) => a.featured);
+  // Landlord intent wins; otherwise surface features-group items first.
+  const source =
+    starred.length > 0
+      ? starred
+      : [...present].sort((a, b) => Number(b.group === 'features') - Number(a.group === 'features'));
+  return source.slice(0, MAX_FEATURED_TILES).map(({ group, key }) => ({ group, key }));
+}
+
+// Glanceable specs under the price. Off-campus shows bed availability (when the
+// landlord opted in); other categories show bedrooms / bathrooms. Hidden when
+// no useful numbers exist (e.g. short-let, or availability turned off).
+function GlanceStats({ listing }: { listing: PublicListingDetail }) {
+  if (listing.category === 'off_campus') {
+    if (listing.type_data?.show_availability === false) return null;
+    const bedsAvailable = listing.unit_types.reduce((n, u) => n + u.beds_available, 0);
+    const bedsTotal = listing.unit_types.reduce((n, u) => n + u.beds_total, 0);
+    if (bedsTotal <= 0) return null;
+    const typeCount = listing.unit_types.length;
+    return (
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium text-slate-700">
+        <span className="inline-flex items-center gap-1.5">
+          <BedDouble className="h-4 w-4 text-brand-600" aria-hidden />
+          <span className="font-bold text-slate-950">{bedsAvailable}</span>
+          of {bedsTotal} beds available
+        </span>
+        <span className="text-stone-500">
+          · {typeCount} room type{typeCount === 1 ? '' : 's'}
+        </span>
+      </div>
+    );
+  }
+
+  const td = listing.type_data ?? {};
+  const bedrooms = numberValue(td.bedroom_count);
+  const bathrooms = numberValue(td.bathroom_count);
+  if (bedrooms == null && bathrooms == null) return null;
+  return (
+    <div className="mt-4 flex items-center gap-4 text-sm font-medium text-slate-700">
+      {bedrooms != null && (
+        <span className="inline-flex items-center gap-1.5">
+          <BedDouble className="h-4 w-4 text-brand-600" aria-hidden />
+          {bedrooms} bed{bedrooms === 1 ? '' : 's'}
+        </span>
+      )}
+      {bathrooms != null && (
+        <span className="inline-flex items-center gap-1.5">
+          <Bath className="h-4 w-4 text-brand-600" aria-hidden />
+          {bathrooms} bath{bathrooms === 1 ? '' : 's'}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -410,37 +483,6 @@ function priceCaption(category: PublicListingDetail['category']): string {
   }
 }
 
-function listingSpecs(listing: PublicListingDetail) {
-  const data = listing.type_data ?? {};
-  const bedrooms = numberValue(data.bedroom_count);
-  const bathrooms =
-    numberValue(data.bathroom_count) ?? (bedrooms ? (bedrooms >= 4 ? 4.5 : bedrooms) : null);
-  const propertyType = textValue(data.property_type) ?? categoryLabel(listing.category);
-
-  return [
-    {
-      label: 'Bedrooms',
-      value: bedrooms ? String(bedrooms) : listing.category === 'off_campus' ? 'Rooms' : 'Ask',
-      icon: BedDouble,
-    },
-    {
-      label: 'Bathrooms',
-      value: bathrooms ? String(bathrooms) : 'Ask',
-      icon: Bath,
-    },
-    {
-      label: 'Parking',
-      value: hasAmenity(listing, 'parking') ? 'Available' : 'Ask',
-      icon: Car,
-    },
-    {
-      label: 'Property type',
-      value: titleCase(propertyType),
-      icon: Building2,
-    },
-  ];
-}
-
 function highlightLabels(listing: PublicListingDetail): { label: string; icon: LucideIcon }[] {
   const labels: { label: string; icon: LucideIcon }[] = [];
   if (hasAmenity(listing, 'power')) labels.push({ label: '24/7 Power', icon: Sparkles });
@@ -460,14 +502,4 @@ function hasAmenity(listing: PublicListingDetail, group: string): boolean {
 
 function numberValue(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function textValue(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() ? value : null;
-}
-
-function titleCase(value: string): string {
-  return value
-    .replaceAll('_', ' ')
-    .replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1));
 }

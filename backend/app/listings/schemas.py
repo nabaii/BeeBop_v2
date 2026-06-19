@@ -12,7 +12,24 @@ from app.models._enums import Gender, ListingCategory, ListingStatus, UnitKind
 
 # Amenity groups per product brief / dev plan. Fixed UI copy — changes
 # require a code change + migration-safe backfill (rare).
+#
+# The "features" group holds lifestyle highlights a landlord can star to
+# surface as headline tiles on the listing detail page (see the `featured`
+# flag carried in each amenity's meta object). Unlike the utility groups it
+# is purely promotional — order here is the order shown in the checklist.
 AMENITY_GROUPS: dict[str, list[str]] = {
+    "features": [
+        "swimming_pool",
+        "gym",
+        "air_conditioning",
+        "balcony",
+        "garden",
+        "elevator",
+        "study_lounge",
+        "pet_friendly",
+        "rooftop_access",
+        "smart_home",
+    ],
     "power": ["generator", "solar", "inverter", "estate_grid", "prepaid_meter"],
     "water": ["borehole", "running_water", "water_treatment", "tank"],
     "security": ["gated_estate", "cctv", "perimeter_fence", "security_guards"],

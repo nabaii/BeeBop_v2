@@ -5,11 +5,16 @@
  * `listing.amenities`:
  *
  *   { power: { generator: { present: true } }, water: { borehole: {...} }, ... }
+ *
+ * A present amenity can also be *starred* to feature it as a headline tile on
+ * the public listing page; that adds `featured: true` to its meta. At most
+ * MAX_FEATURED amenities may be featured at once.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Sparkles, ChevronDown } from 'lucide-react';
+import { Sparkles, ChevronDown, Star } from 'lucide-react';
 
+import { cn } from '@/lib/cn';
 import { getAmenityVocabulary, updateDraft, type ListingView } from '@/lib/listings';
 
 interface Props {
@@ -17,7 +22,11 @@ interface Props {
   onSaved: (next: ListingView) => void;
 }
 
-type AmenitySel = Record<string, Record<string, { present: boolean }>>;
+// Headline tiles on the listing page — keep the grid to a tidy single row.
+const MAX_FEATURED = 4;
+
+type AmenityMeta = { present: boolean; featured?: boolean };
+type AmenitySel = Record<string, Record<string, AmenityMeta>>;
 
 function normalise(amenities: ListingView['amenities']): AmenitySel {
   const out: AmenitySel = {};
@@ -25,10 +34,18 @@ function normalise(amenities: ListingView['amenities']): AmenitySel {
     if (!items) continue;
     out[group] = {};
     for (const [key, meta] of Object.entries(items)) {
-      out[group][key] = { present: Boolean(meta?.present) };
+      out[group][key] = { present: Boolean(meta?.present), featured: Boolean(meta?.featured) };
     }
   }
   return out;
+}
+
+function countFeatured(sel: AmenitySel): number {
+  let n = 0;
+  for (const items of Object.values(sel)) {
+    for (const meta of Object.values(items)) if (meta.present && meta.featured) n += 1;
+  }
+  return n;
 }
 
 export function AmenitiesChecklist({ listing, onSaved }: Props) {
@@ -41,12 +58,9 @@ export function AmenitiesChecklist({ listing, onSaved }: Props) {
   }, []);
 
   const groups = useMemo(() => (vocab ? Object.entries(vocab) : []), [vocab]);
+  const featuredCount = useMemo(() => countFeatured(sel), [sel]);
 
-  async function toggle(group: string, key: string, present: boolean) {
-    const next: AmenitySel = {
-      ...sel,
-      [group]: { ...(sel[group] ?? {}), [key]: { present } },
-    };
+  async function persist(next: AmenitySel) {
     setSel(next);
     setSaving(true);
     try {
@@ -55,6 +69,26 @@ export function AmenitiesChecklist({ listing, onSaved }: Props) {
     } finally {
       setSaving(false);
     }
+  }
+
+  function toggle(group: string, key: string, present: boolean) {
+    const prev = sel[group]?.[key];
+    // Un-checking an amenity also drops it from the featured set.
+    const meta: AmenityMeta = present
+      ? { present: true, featured: Boolean(prev?.featured) }
+      : { present: false, featured: false };
+    void persist({ ...sel, [group]: { ...(sel[group] ?? {}), [key]: meta } });
+  }
+
+  function toggleFeatured(group: string, key: string) {
+    const prev = sel[group]?.[key];
+    if (!prev?.present) return;
+    const nextFeatured = !prev.featured;
+    if (nextFeatured && featuredCount >= MAX_FEATURED) return; // cap reached
+    void persist({
+      ...sel,
+      [group]: { ...(sel[group] ?? {}), [key]: { present: true, featured: nextFeatured } },
+    });
   }
 
   return (
@@ -66,10 +100,18 @@ export function AmenitiesChecklist({ listing, onSaved }: Props) {
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-900">Amenities</h2>
-            <p className="text-xs text-slate-500">Select facilities and amenities available</p>
+            <p className="text-xs text-slate-500">
+              Select what&apos;s available, then star up to {MAX_FEATURED} to feature as tiles.
+            </p>
           </div>
         </div>
-        {saving && <span className="text-xs text-slate-500 animate-pulse">Saving…</span>}
+        <div className="flex items-center gap-3">
+          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-caption font-semibold text-amber-700">
+            <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+            {featuredCount}/{MAX_FEATURED} featured
+          </span>
+          {saving && <span className="text-xs text-slate-500 animate-pulse">Saving…</span>}
+        </div>
       </header>
       {!vocab && (
         <div className="flex items-center gap-2 text-slate-400 py-4 justify-center">
@@ -82,26 +124,54 @@ export function AmenitiesChecklist({ listing, onSaved }: Props) {
           <details
             key={group}
             className="group rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden transition-all duration-200"
-            open={group === 'power'}
+            open={group === 'features'}
           >
             <summary className="flex items-center justify-between cursor-pointer text-sm font-bold capitalize text-slate-800 bg-slate-50/50 p-4 select-none outline-none hover:bg-slate-50 transition-colors">
-              <span>{group}</span>
+              <span>{group === 'features' ? 'Featured highlights' : group}</span>
               <ChevronDown className="h-4 w-4 text-slate-400 transition-transform duration-200 group-open:rotate-180" />
             </summary>
             <ul className="p-4 border-t border-slate-100 grid grid-cols-1 gap-3 sm:grid-cols-2 bg-white">
               {keys.map((key) => {
-                const checked = Boolean(sel[group]?.[key]?.present);
+                const meta = sel[group]?.[key];
+                const checked = Boolean(meta?.present);
+                const featured = Boolean(meta?.featured);
+                const capped = !featured && featuredCount >= MAX_FEATURED;
                 return (
-                  <li key={key}>
+                  <li key={key} className="flex items-center justify-between gap-2">
                     <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer select-none hover:text-slate-900 transition-colors">
                       <input
                         type="checkbox"
                         checked={checked}
-                        onChange={(e) => void toggle(group, key, e.target.checked)}
+                        onChange={(e) => toggle(group, key, e.target.checked)}
                         className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
                       />
                       <span className="capitalize">{key.replaceAll('_', ' ')}</span>
                     </label>
+                    {checked && (
+                      <button
+                        type="button"
+                        onClick={() => toggleFeatured(group, key)}
+                        disabled={capped}
+                        aria-pressed={featured}
+                        title={
+                          featured
+                            ? 'Featured as a tile — tap to remove'
+                            : capped
+                              ? `Remove another feature first (max ${MAX_FEATURED})`
+                              : 'Feature this as a tile on your listing'
+                        }
+                        className={cn(
+                          'shrink-0 rounded-lg p-1.5 transition-colors',
+                          featured
+                            ? 'text-amber-500 hover:bg-amber-50'
+                            : capped
+                              ? 'text-slate-200 cursor-not-allowed'
+                              : 'text-slate-300 hover:bg-slate-100 hover:text-amber-500',
+                        )}
+                      >
+                        <Star className={cn('h-4 w-4', featured && 'fill-amber-500')} />
+                      </button>
+                    )}
                   </li>
                 );
               })}

@@ -239,10 +239,16 @@ function SalesFields({ listing, onSaved }: Props) {
 }
 
 function OffCampusFields({ listing, onSaved }: Props) {
-  const initial = listing.type_data as { institutions_accepted?: string[] };
+  const initial = listing.type_data as {
+    institutions_accepted?: string[];
+    show_availability?: boolean;
+  };
   const [institutionsText, setInstitutionsText] = useState(
     (initial.institutions_accepted ?? []).join(', '),
   );
+  // Default on — available beds are a key glance stat for students. Stored as
+  // type_data.show_availability so the public page can hide it on request.
+  const [showAvailability, setShowAvailability] = useState(initial.show_availability !== false);
   const save = useAutoSave(listing, onSaved);
 
   return (
@@ -271,6 +277,24 @@ function OffCampusFields({ listing, onSaved }: Props) {
             placeholder="e.g. University of Abuja, Baze University"
           />
         </Labelled>
+        <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showAvailability}
+            onChange={(e) => {
+              setShowAvailability(e.target.checked);
+              save({ show_availability: e.target.checked });
+            }}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
+          />
+          <span className="text-sm">
+            <span className="block font-medium text-slate-800">Show available beds at a glance</span>
+            <span className="mt-0.5 block text-xs text-slate-500">
+              Displays total beds available across your unit types near the price. Turn off to keep
+              availability private.
+            </span>
+          </span>
+        </label>
         <p className="text-xs text-slate-500">
           Set room-level pricing and gender tags in the inventory section below.
         </p>

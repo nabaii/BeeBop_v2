@@ -125,7 +125,10 @@ export interface PublicListingDetail {
   gps_lng: number | null;
   price: number | null;
   price_period?: string | null;
-  amenities: Record<string, Record<string, { present?: boolean; confirmed?: boolean }> | null>;
+  amenities: Record<
+    string,
+    Record<string, { present?: boolean; confirmed?: boolean; featured?: boolean }> | null
+  >;
   type_data: Record<string, unknown>;
   photos: Array<{
     id: string;

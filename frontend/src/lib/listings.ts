@@ -73,7 +73,10 @@ export interface ListingView {
   district: string | null;
   gps_lat: number | null;
   gps_lng: number | null;
-  amenities: Record<string, Record<string, { present?: boolean; confirmed?: boolean }> | null>;
+  amenities: Record<
+    string,
+    Record<string, { present?: boolean; confirmed?: boolean; featured?: boolean }> | null
+  >;
   price: number | null;
   type_data: Record<string, unknown>;
   photos: PhotoView[];
