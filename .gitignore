@@ -58,3 +58,14 @@ secrets/
 
 # Alembic local overrides
 backend/alembic/versions/__pycache__/
+
+# design-sync (claude.ai/design import). Durable inputs under .design-sync/
+# (config.json, prepare.mjs, tailwind.config.ds.ts, css-prelude.css, NOTES.md,
+# conventions.md, previews/, overrides/) ARE committed; everything below is
+# staged scripts, generated build output, or machine state.
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+frontend/.ds-cache/

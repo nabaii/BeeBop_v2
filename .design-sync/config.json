@@ -1,0 +1,40 @@
+{
+  "projectId": "7bbb29cb-0ad9-4a90-a7b9-4858253eb92e",
+  "pkg": "beebop-frontend",
+  "globalName": "Beebop",
+  "shape": "package",
+  "entry": "frontend/.ds-cache/entry.tsx",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": ".ds-cache/bundle.css",
+  "componentSrcMap": {
+    "Button": "src/components/ui/button.tsx",
+    "Input": "src/components/ui/input.tsx",
+    "Price": "src/components/ui/price.tsx",
+    "Skeleton": "src/components/ui/skeleton.tsx",
+    "ListingCardSkeleton": "src/components/ui/skeleton.tsx",
+    "LoadingScreen": "src/components/ui/loading-screen.tsx",
+    "BeebopMark": "src/components/brand/beebop-logo.tsx",
+    "BeebopLockup": "src/components/brand/beebop-logo.tsx"
+  },
+  "dtsPropsFor": {
+    "Button": "  /** Visual style. Defaults to \"primary\". */\n  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';\n  /** Button content. */\n  children?: React.ReactNode;\n  type?: 'button' | 'submit' | 'reset';\n  disabled?: boolean;\n  className?: string;\n  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;",
+    "Input": "  /** Mark the field invalid — red border + aria-invalid. */\n  invalid?: boolean;\n  type?: string;\n  value?: string;\n  defaultValue?: string;\n  placeholder?: string;\n  disabled?: boolean;\n  className?: string;\n  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;",
+    "Price": "  /** Amount in naira. null or undefined renders the fallback. */\n  value: number | null | undefined;\n  /** Shown when value is null/undefined. Defaults to \"—\". */\n  fallback?: string;\n  /** Max fraction digits. Defaults to 0 (whole naira). */\n  maximumFractionDigits?: number;\n  className?: string;",
+    "Skeleton": "  /** Tailwind classes for size/shape (e.g. \"h-4 w-3/4\"). */\n  className?: string;",
+    "ListingCardSkeleton": "  /** No props — a fixed ListingCard-shaped placeholder (4:3 cover + title/price lines). */",
+    "LoadingScreen": "  /** Status text under the spinner. Defaults to \"Loading…\". */\n  message?: string;",
+    "BeebopMark": "  /** Square size in px. Brand floor is 16px. Defaults to 28. */\n  size?: number;\n  /** Hidden from the a11y tree when text carries the name (use inside a lockup). */\n  decorative?: boolean;\n  className?: string;",
+    "BeebopLockup": "  /** Mark size in px; the wordmark scales with it. Defaults to 28. */\n  size?: number;\n  className?: string;\n  /** Override the wordmark size/weight (default: title scale, SemiBold). */\n  wordClassName?: string;\n  /** Override the mark tone, e.g. \"text-ink\" for mono. */\n  markClassName?: string;"
+  },
+  "overrides": {
+    "LoadingScreen": { "cardMode": "single", "primaryStory": "Default" }
+  },
+  "docsMap": {
+    "Button": "../.design-sync/groups/Button.md",
+    "Input": "../.design-sync/groups/Input.md",
+    "Price": "../.design-sync/groups/Price.md",
+    "Skeleton": "../.design-sync/groups/Skeleton.md",
+    "ListingCardSkeleton": "../.design-sync/groups/ListingCardSkeleton.md",
+    "LoadingScreen": "../.design-sync/groups/LoadingScreen.md"
+  }
+}

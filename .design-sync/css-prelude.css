@@ -1,0 +1,16 @@
+/* Brand fonts for the design-system bundle.
+ *
+ * In the app these two faces are injected by next/font (self-hosted, no CDN).
+ * The DS bundle renders outside Next, so we load them from Google Fonts and
+ * define the same CSS variables next/font would expose:
+ *   --font-display → Bricolage Grotesque (hero/section heads, the "beebop" wordmark)
+ *   --font-body    → Instrument Sans     (everything else; inherited app-wide)
+ * Tailwind's `font-sans` / `font-display` utilities resolve to these vars,
+ * so defining them here is what makes the type system render on-brand.
+ * (validate reports this as [FONT_REMOTE] — served at runtime, not shipped.) */
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');
+
+:root {
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+}
