@@ -141,3 +141,34 @@ class NotificationStatus(StrEnum):
     SENT = "sent"
     DELIVERED = "delivered"
     FAILED = "failed"
+
+
+# --- Referral programme (spec: Beebop Referral System v1.0) -------------------
+
+
+class ReferralTier(StrEnum):
+    STANDARD = "standard"
+    PARTNER = "partner"             # campus partner — elevated, tiered rate
+
+
+class ReferralCodeStatus(StrEnum):
+    ACTIVE = "active"
+    SUSPENDED = "suspended"         # admin-suspended on confirmed abuse
+
+
+class ReferralEarningType(StrEnum):
+    REFERRER_EARNING = "referrer_earning"   # paid to the code owner
+    PAYER_CASHBACK = "payer_cashback"       # paid to the booking student
+
+
+class ReferralEarningState(StrEnum):
+    PENDING = "pending"             # in the clearing window
+    CLEARED = "cleared"             # cleared the window — withdrawable
+    PAID = "paid"                   # disbursed via Paystack — terminal
+    REVERSED = "reversed"           # transaction cancelled/disputed — terminal
+
+
+class PayoutStatus(StrEnum):
+    REQUESTED = "requested"
+    SUCCESS = "success"
+    FAILED = "failed"

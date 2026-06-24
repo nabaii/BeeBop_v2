@@ -79,6 +79,12 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     # Set to the activation timestamp; null means not-yet-activated.
     conduct_acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # Referral — the code captured from a share link before/at registration
+    # (Path A, §3.1). Advisory only: it pre-fills the checkout field and is the
+    # default attribution if the user later books. The binding money record is
+    # `referral_attributions`, written at checkout — not this column.
+    referred_by_code: Mapped[str | None] = mapped_column(String(32))
+
     # Relationships
     listings: Mapped[list["Listing"]] = relationship(
         back_populates="owner",

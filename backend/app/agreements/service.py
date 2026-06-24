@@ -274,6 +274,11 @@ async def submit_signature(
         agreement.status = AgreementStatus.PENDING_PAYMENT
         await _re_render_pdf(agreement=agreement, db=db)
         await _initiate_payments(agreement=agreement, db=db)
+        # Checkout reached — write the seeker's captured referral code onto the
+        # transaction (Path A, §3.1). Best-effort; never blocks signing.
+        from app.referrals import service as referral_service
+
+        await referral_service.auto_apply_referred_code(agreement=agreement, db=db)
     else:
         agreement.status = AgreementStatus.PARTIAL_SIGNED
         await _re_render_pdf(agreement=agreement, db=db)
@@ -458,6 +463,16 @@ async def confirm_payment(
                     "listing_title": listing.title or "the property",
                 },
                 db=db,
+            )
+
+        if listing.category == ListingCategory.OFF_CAMPUS:
+            # Seal the immutable referral attribution (§1) or, if no code was
+            # used, fire the Path C codeless prompt (§3.3).
+            from app.referrals import service as referral_service
+
+            seeker_id = await _seeker_id_from_offer(agreement=agreement, db=db)
+            await referral_service.on_transaction_completed(
+                agreement=agreement, seeker_id=seeker_id, db=db
             )
 
     await db.flush()

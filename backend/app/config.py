@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     # Core
     environment: Literal["development", "staging", "production"] = "development"
     secret_key: str = Field(default="change-me-in-production")
+    # Public web origin — used to build shareable referral links, e.g.
+    # https://www.beebop.store/r/AMINA7K2 (referral spec §2.1).
+    public_web_base_url: str = "https://www.beebop.store"
 
     # Database
     database_url: str = "postgresql+asyncpg://user:password@localhost:5432/beebop"

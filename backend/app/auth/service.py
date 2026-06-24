@@ -23,6 +23,7 @@ from app.core.security import (
 )
 from app.models._enums import AccountType, ListingCategory, UserRole
 from app.models.user import User
+from app.referrals.codes import get_or_create_code, normalize_code
 
 DEV_USERS: dict[UserRole, dict[str, str | bool | list[str]]] = {
     UserRole.SEEKER: {
@@ -167,6 +168,7 @@ async def verify_otp_and_issue_tokens(
     db: AsyncSession,
     redis: Redis,
     password: str | None = None,
+    referred_by_code: str | None = None,
 ) -> VerifyResponse:
     if role_if_new not in PUBLIC_SIGNUP_ROLES:
         raise ValidationError(
@@ -209,9 +211,15 @@ async def verify_otp_and_issue_tokens(
             password_hash=hash_password(password),
             is_active=True,
             is_suspended=False,
+            # Path A — advisory capture from the share link (§3.1).
+            referred_by_code=normalize_code(referred_by_code) or None
+            if referred_by_code
+            else None,
         )
         db.add(user)
         await db.flush()
+        # Every registered user automatically gets a referral code (§2.1).
+        await get_or_create_code(user=user, db=db)
 
     _assert_user_can_sign_in(user)
     refresh_store = RefreshTokenStore(redis)
@@ -262,6 +270,8 @@ async def dev_login_as(
 
     _apply_dev_user_spec(user=user, role=role, spec=spec)
     await db.flush()
+    # Keep dev accounts code-bearing so the referrals surface works end-to-end.
+    await get_or_create_code(user=user, db=db)
 
     refresh_store = RefreshTokenStore(redis)
     tokens = await _issue_token_pair(user=user, refresh_store=refresh_store)

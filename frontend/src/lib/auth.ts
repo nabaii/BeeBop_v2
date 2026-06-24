@@ -4,6 +4,7 @@
  */
 
 import { api } from './api';
+import { readCapturedReferralCode } from './referrals';
 import { useSession, type SessionUser, type UserRole } from '@/stores/session';
 
 export type OtpChannel = 'email' | 'whatsapp';
@@ -78,6 +79,9 @@ export async function verifyOtp(args: {
     identifier: args.identifier,
     code: args.code,
     password: args.password || undefined,
+    // Path A — forward the captured share-link code. The backend applies it
+    // only when creating a new account; harmless for existing users.
+    referred_by_code: readCapturedReferralCode(),
   });
   return applyVerifyResponse(data);
 }

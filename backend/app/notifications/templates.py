@@ -458,6 +458,25 @@ def _renewal_prompt_email(p: dict) -> EmailContent:
     )
 
 
+def _referral_codeless_email(p: dict) -> EmailContent:
+    code = p.get("code", "")
+    return EmailContent(
+        subject="Beebop: here's your referral code — start earning",
+        html=(
+            "<p>You didn't use a referral code on this booking — but here's yours.</p>"
+            f"<p>Share <strong>{code}</strong> with friends and earn when they book "
+            f"their accommodation on Beebop.</p>"
+            "<p>Open the Referrals section of your account to copy your link and "
+            "share it on WhatsApp.</p>"
+        ),
+        text=(
+            f"You didn't use a code this time — here's yours: {code}. Share it and "
+            f"earn when friends book on Beebop. Find your link in the Referrals "
+            f"section of your account."
+        ),
+    )
+
+
 def _landlord_nin_verified_email(p: dict) -> EmailContent:
     name = p.get("first_name") or "there"
     return EmailContent(
@@ -491,6 +510,11 @@ def _landlord_nin_rejected_email(p: dict) -> EmailContent:
 
 
 REGISTRY: dict[str, Template] = {
+    # Referral programme — Path C codeless auto-enrolment prompt (§3.3).
+    "referral.codeless_prompt": Template(
+        channels=(NotificationChannel.EMAIL, NotificationChannel.IN_APP),
+        render_email=_referral_codeless_email,
+    ),
     "landlord.nin_verified": Template(
         channels=(NotificationChannel.EMAIL, NotificationChannel.IN_APP),
         render_email=_landlord_nin_verified_email,

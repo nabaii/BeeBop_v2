@@ -31,6 +31,7 @@ celery_app = Celery(
         "app.offers.sweeper",
         "app.agreements.renewal",
         "app.bookings.sweeper",
+        "app.referrals.sweeper",
     ],
 )
 
@@ -76,5 +77,11 @@ celery_app.conf.beat_schedule = {
     "booking-auto-decline": {
         "task": "app.bookings.sweeper.auto_decline_stale_requests",
         "schedule": crontab(minute="*/30"),
+    },
+    # Referral programme — clear earnings past their clearing window. Hourly;
+    # the task is idempotent (only flips PENDING rows whose clears_at has passed).
+    "referral-clearing-sweeper": {
+        "task": "app.referrals.sweeper.clear_due_earnings",
+        "schedule": crontab(minute=15),
     },
 }

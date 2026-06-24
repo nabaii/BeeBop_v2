@@ -29,6 +29,11 @@ class FakeLoginResult:
     def scalar_one_or_none(self) -> SimpleNamespace | None:
         return self.user
 
+    def scalar(self) -> object:
+        # Used by the referral-code collision check during registration; with no
+        # seeded user this resolves to a zero count (no collision).
+        return self.user
+
 
 class FakeLoginDb:
     def __init__(self, user: SimpleNamespace | None) -> None:
@@ -221,7 +226,11 @@ async def test_verify_otp_new_user_creates_account_with_password(monkeypatch, fa
     )
 
     assert result.is_new_user is True
-    assert len(db.added) == 1
-    new_user = db.added[0]
-    assert new_user.email == "newuser@example.com"
+    # Registration adds the user and auto-issues their referral code (§2.1).
+    from app.models.referral import ReferralCode
+
+    new_user = next(
+        o for o in db.added if getattr(o, "email", None) == "newuser@example.com"
+    )
     assert verify_password("strongpass123", new_user.password_hash)
+    assert any(isinstance(o, ReferralCode) for o in db.added)

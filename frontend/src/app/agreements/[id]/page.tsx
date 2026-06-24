@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { ApiError } from '@/lib/api';
 import { agreements, type AgreementView } from '@/lib/agreements';
+import { referrals, readCapturedReferralCode, type AttributionView } from '@/lib/referrals';
 import { useSession } from '@/stores/session';
 
 export default function AgreementDetailPage({
@@ -88,6 +89,12 @@ function Inner({ id }: { id: string }) {
       </section>
 
       <SignaturesCard agreement={agreement} />
+
+      {myParty === 'seeker' &&
+        agreement.listing_category === 'off_campus' &&
+        agreement.payment_confirmed_at === null && (
+          <ReferralCodeCard agreement={agreement} />
+        )}
 
       {canSign && <SignCard agreementId={agreement.id} onSigned={refresh} />}
 
@@ -225,6 +232,80 @@ function SignCard({
         </>
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
+    </section>
+  );
+}
+
+function ReferralCodeCard({ agreement }: { agreement: AgreementView }) {
+  const [attribution, setAttribution] = useState<AttributionView | null | undefined>(
+    undefined,
+  );
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    referrals
+      .agreementAttribution(agreement.id)
+      .then((a) => !cancelled && setAttribution(a))
+      .catch(() => !cancelled && setAttribution(null));
+    const captured = readCapturedReferralCode();
+    if (captured) setCode(captured);
+    return () => {
+      cancelled = true;
+    };
+  }, [agreement.id]);
+
+  async function apply() {
+    setBusy(true);
+    setError(null);
+    try {
+      setAttribution(await referrals.apply(agreement.id, code.trim()));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not apply that code.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (attribution === undefined) return null; // still loading
+  const applied = attribution?.code ?? null;
+  const locked = attribution?.sealed ?? false;
+
+  return (
+    <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 text-sm">
+      <h2 className="text-base font-semibold text-slate-900">Referral code</h2>
+      {applied ? (
+        <p className="text-slate-700">
+          Code <strong>{applied}</strong> applied
+          {locked
+            ? ' and locked in for this booking.'
+            : ' — your referrer earns once your booking completes.'}
+        </p>
+      ) : (
+        <p className="text-slate-600">
+          Have a referral code? Add it before payment — you both earn when the
+          booking completes.
+        </p>
+      )}
+      {!locked && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            value={code}
+            onChange={(e) =>
+              setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
+            }
+            placeholder="e.g. AMINA7K2"
+            maxLength={32}
+            className="max-w-[200px]"
+          />
+          <Button onClick={() => void apply()} disabled={busy || code.trim().length === 0}>
+            {busy ? 'Applying…' : applied ? 'Change code' : 'Apply code'}
+          </Button>
+        </div>
+      )}
+      {error && <p className="text-red-600">{error}</p>}
     </section>
   );
 }

@@ -115,6 +115,7 @@ async def verify_otp(
         db=db,
         redis=redis,
         password=payload.password,
+        referred_by_code=payload.referred_by_code,
     )
 
 

@@ -69,6 +69,10 @@ class OtpVerifyPayload(BaseModel):
     identifier: str
     code: str = Field(..., min_length=6, max_length=6, pattern=r"^\d{6}$")
     password: str | None = Field(default=None, max_length=128)
+    # Referral share-link code captured before registration (Path A, §3.1).
+    # Advisory: stored on the new user and pre-filled at checkout. Ignored for
+    # existing users.
+    referred_by_code: str | None = Field(default=None, max_length=32)
 
     @field_validator("identifier")
     @classmethod

@@ -14,3 +14,10 @@ from app.models.chat import ChatThread, ChatMessage  # noqa: F401
 from app.models.bookmark import Bookmark  # noqa: F401
 from app.models.audit_log import AdminAuditLog  # noqa: F401
 from app.models.review import Review  # noqa: F401
+from app.models.referral import (  # noqa: F401
+    Payout,
+    ReferralAttribution,
+    ReferralCode,
+    ReferralConfig,
+    ReferralEarning,
+)
