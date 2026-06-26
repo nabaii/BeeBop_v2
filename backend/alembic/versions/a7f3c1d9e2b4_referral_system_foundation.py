@@ -28,7 +28,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-_IMMUTABILITY_TRIGGER = """
+_IMMUTABILITY_FUNCTION = """
 CREATE OR REPLACE FUNCTION beebop_referral_attribution_immutable()
 RETURNS trigger AS $$
 BEGIN
@@ -57,7 +57,11 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+"""
 
+# Kept as a separate statement — asyncpg cannot run multiple commands in one
+# prepared statement, so the function and trigger must execute independently.
+_IMMUTABILITY_TRIGGER = """
 CREATE TRIGGER trg_referral_attribution_immutable
 BEFORE UPDATE OR DELETE ON referral_attributions
 FOR EACH ROW EXECUTE FUNCTION beebop_referral_attribution_immutable();
@@ -215,6 +219,7 @@ def upgrade() -> None:
     )
 
     # --- immutability trigger (the inviolable rule) ------------------------
+    op.execute(_IMMUTABILITY_FUNCTION)
     op.execute(_IMMUTABILITY_TRIGGER)
 
 
