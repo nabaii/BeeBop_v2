@@ -11,21 +11,35 @@ import uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.admin import audit
 from app.config import get_settings
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.database import get_db
+from app.models._enums import UserRole
+from app.models.referral import ReferralPartnerApplication
 from app.models.user import User
+from app.referrals import admin as admin_service
 from app.referrals import payouts, service
 from app.referrals.codes import get_or_create_code
 from app.referrals.schemas import (
     ActivityItemView,
+    AdminApplicationView,
+    AdminCodeView,
+    AdminOverviewView,
+    AdminPayoutView,
     ApplyCodePayload,
     AttributionView,
     BalancesView,
     CashbackItemView,
+    ConfigUpdatePayload,
+    ConfigView,
     DashboardView,
     MyCodeView,
+    PartnerApplicationPayload,
+    PartnerApplicationView,
     PayoutView,
+    RejectPayload,
+    SetTierPayload,
     WithdrawPayload,
 )
 
@@ -173,3 +187,238 @@ async def payout_history(
     """The user's payout history, most recent first (§7.2)."""
     rows = await payouts.list_payouts(user_id=user.id, db=db)
     return [_payout_view(p) for p in rows]
+
+
+# ---------------------------------------------------------------------------
+# Campus-partner application (§2.2) — user side
+# ---------------------------------------------------------------------------
+
+
+def _application_view(a: ReferralPartnerApplication) -> PartnerApplicationView:
+    return PartnerApplicationView(
+        id=str(a.id),
+        status=a.status,
+        institution=a.institution,
+        position=a.position,
+        review_note=a.review_note,
+        created_at=a.created_at,
+        reviewed_at=a.reviewed_at,
+    )
+
+
+@router.post("/partner-application", response_model=PartnerApplicationView)
+async def apply_partner(
+    payload: PartnerApplicationPayload,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> PartnerApplicationView:
+    application = await service.apply_for_partner(
+        user=user,
+        full_name=payload.full_name,
+        institution=payload.institution,
+        position=payload.position,
+        promo_plan=payload.promo_plan,
+        contact_phone=payload.contact_phone,
+        contact_email=payload.contact_email,
+        payout_bank_code=payload.payout_bank_code,
+        payout_account_number=payload.payout_account_number,
+        db=db,
+    )
+    await db.commit()
+    return _application_view(application)
+
+
+@router.get("/partner-application", response_model=PartnerApplicationView | None)
+async def my_partner_application(
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+) -> PartnerApplicationView | None:
+    application = await service.my_partner_application(user_id=user.id, db=db)
+    return _application_view(application) if application else None
+
+
+# ---------------------------------------------------------------------------
+# Admin management view (§11)
+# ---------------------------------------------------------------------------
+
+admin_router = APIRouter(
+    prefix="/internal/admin/referrals",
+    tags=["admin", "referrals"],
+    dependencies=[Depends(require_role(UserRole.ADMIN))],
+)
+
+
+def _admin_application_view(a: ReferralPartnerApplication) -> AdminApplicationView:
+    return AdminApplicationView(
+        id=str(a.id),
+        user_id=str(a.user_id),
+        full_name=a.full_name,
+        institution=a.institution,
+        position=a.position,
+        promo_plan=a.promo_plan,
+        contact_phone=a.contact_phone,
+        contact_email=a.contact_email,
+        status=a.status,
+        review_note=a.review_note,
+        created_at=a.created_at,
+        reviewed_at=a.reviewed_at,
+    )
+
+
+def _config_view(c) -> ConfigView:  # type: ignore[no-untyped-def]
+    return ConfigView(
+        first_time_purchaser_required=c.first_time_purchaser_required,
+        per_code_semester_cap=c.per_code_semester_cap,
+        clearing_window_days=c.clearing_window_days,
+        min_withdrawal_naira=c.min_withdrawal_naira,
+        reward_pool_pct=float(c.reward_pool_pct),
+        referrer_share=float(c.referrer_share),
+        payer_cashback_share=float(c.payer_cashback_share),
+        partner_tier1_share=float(c.partner_tier1_share),
+        partner_tier2_share=float(c.partner_tier2_share),
+        partner_tier3_share=float(c.partner_tier3_share),
+        partner_tier1_max=c.partner_tier1_max,
+        partner_tier2_max=c.partner_tier2_max,
+    )
+
+
+@admin_router.get("/overview", response_model=AdminOverviewView)
+async def admin_overview(db: AsyncSession = Depends(get_db)) -> AdminOverviewView:
+    return AdminOverviewView(**await admin_service.overview(db))
+
+
+@admin_router.get("/codes", response_model=list[AdminCodeView])
+async def admin_codes(db: AsyncSession = Depends(get_db)) -> list[AdminCodeView]:
+    return [AdminCodeView(**c) for c in await admin_service.list_codes(db)]
+
+
+@admin_router.post("/codes/{code_id}/suspend")
+async def admin_suspend_code(
+    code_id: uuid.UUID,
+    admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    code = await admin_service.set_code_status(
+        admin=admin, code_id=code_id, suspend=True, db=db
+    )
+    await db.commit()
+    return {"status": code.status.value}
+
+
+@admin_router.post("/codes/{code_id}/reactivate")
+async def admin_reactivate_code(
+    code_id: uuid.UUID,
+    admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    code = await admin_service.set_code_status(
+        admin=admin, code_id=code_id, suspend=False, db=db
+    )
+    await db.commit()
+    return {"status": code.status.value}
+
+
+@admin_router.post("/codes/{code_id}/tier")
+async def admin_set_tier(
+    code_id: uuid.UUID,
+    payload: SetTierPayload,
+    admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    code = await admin_service.set_code_tier(
+        admin=admin, code_id=code_id, tier=payload.tier, db=db
+    )
+    await db.commit()
+    return {"tier": code.tier.value}
+
+
+@admin_router.get("/applications", response_model=list[AdminApplicationView])
+async def admin_applications(
+    db: AsyncSession = Depends(get_db),
+) -> list[AdminApplicationView]:
+    return [_admin_application_view(a) for a in await admin_service.list_applications(db)]
+
+
+@admin_router.post(
+    "/applications/{application_id}/approve", response_model=AdminApplicationView
+)
+async def admin_approve_application(
+    application_id: uuid.UUID,
+    admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+) -> AdminApplicationView:
+    application = await admin_service.approve_application(
+        admin=admin, application_id=application_id, db=db
+    )
+    await db.commit()
+    return _admin_application_view(application)
+
+
+@admin_router.post(
+    "/applications/{application_id}/reject", response_model=AdminApplicationView
+)
+async def admin_reject_application(
+    application_id: uuid.UUID,
+    payload: RejectPayload,
+    admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+) -> AdminApplicationView:
+    application = await admin_service.reject_application(
+        admin=admin, application_id=application_id, note=payload.note, db=db
+    )
+    await db.commit()
+    return _admin_application_view(application)
+
+
+@admin_router.get("/config", response_model=ConfigView)
+async def admin_get_config(db: AsyncSession = Depends(get_db)) -> ConfigView:
+    return _config_view(await service.get_config(db))
+
+
+@admin_router.patch("/config", response_model=ConfigView)
+async def admin_update_config(
+    payload: ConfigUpdatePayload,
+    admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+) -> ConfigView:
+    config = await admin_service.update_config(
+        admin=admin, changes=payload.model_dump(exclude_none=True), db=db
+    )
+    await db.commit()
+    return _config_view(config)
+
+
+@admin_router.get("/payouts", response_model=list[AdminPayoutView])
+async def admin_payouts(db: AsyncSession = Depends(get_db)) -> list[AdminPayoutView]:
+    rows = await admin_service.list_all_payouts(db)
+    return [
+        AdminPayoutView(
+            id=str(p.id),
+            user_id=str(p.user_id),
+            amount=float(p.amount),
+            status=p.status,
+            bank_account_name=p.bank_account_name,
+            failure_reason=p.failure_reason,
+            created_at=p.created_at,
+            settled_at=p.settled_at,
+        )
+        for p in rows
+    ]
+
+
+@admin_router.post("/earnings/{earning_id}/reverse")
+async def admin_reverse_earning(
+    earning_id: uuid.UUID,
+    admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    earning = await service.reverse_earning(earning_id=earning_id, db=db)
+    await audit.record(
+        admin_id=admin.id,
+        entity_type="referral_earning",
+        entity_id=earning.id,
+        action="reverse",
+        payload={"amount": float(earning.amount)},
+        db=db,
+    )
+    await db.commit()
+    return {"state": earning.state.value}

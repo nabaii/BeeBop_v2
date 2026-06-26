@@ -20,4 +20,5 @@ from app.models.referral import (  # noqa: F401
     ReferralCode,
     ReferralConfig,
     ReferralEarning,
+    ReferralPartnerApplication,
 )

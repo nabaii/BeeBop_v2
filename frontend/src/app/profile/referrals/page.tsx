@@ -14,6 +14,8 @@ import {
   MessageCircle,
   Wallet,
 } from 'lucide-react';
+import type { Route } from 'next';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -170,6 +172,24 @@ export default function ReferralsDashboardPage() {
       <WithdrawCard data={data} onDone={refresh} />
 
       {payouts.length > 0 && <PayoutHistory payouts={payouts} />}
+
+      {/* Campus partner application (§2.2) */}
+      {data.tier !== 'partner' && (
+        <Link
+          href={'/profile/referrals/partner' as Route}
+          className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm transition hover:bg-slate-50"
+        >
+          <span>
+            <span className="font-medium text-slate-900">Become a campus partner</span>
+            <span className="block text-xs text-slate-500">
+              Course reps &amp; union execs earn at a higher rate
+            </span>
+          </span>
+          <span aria-hidden className="text-slate-400">
+            ›
+          </span>
+        </Link>
+      )}
 
       {/* Activity feed (§6.2) */}
       <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">

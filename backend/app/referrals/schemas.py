@@ -7,7 +7,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.models._enums import PayoutStatus, ReferralCodeStatus, ReferralTier
+from app.models._enums import (
+    PayoutStatus,
+    ReferralCodeStatus,
+    ReferralPartnerApplicationStatus,
+    ReferralTier,
+)
 
 
 class MyCodeView(BaseModel):
@@ -91,3 +96,118 @@ class PayoutView(BaseModel):
     failure_reason: str | None
     created_at: datetime
     settled_at: datetime | None
+
+
+# --- Campus-partner applications (§2.2) ---------------------------------------
+
+
+class PartnerApplicationPayload(BaseModel):
+    full_name: str = Field(..., min_length=1, max_length=200)
+    institution: str = Field(..., min_length=1, max_length=255)
+    position: str = Field(..., min_length=1, max_length=255)
+    promo_plan: str = Field(..., min_length=1, max_length=2000)
+    contact_phone: str | None = Field(default=None, max_length=32)
+    contact_email: str | None = Field(default=None, max_length=255)
+    payout_bank_code: str | None = Field(default=None, max_length=20)
+    payout_account_number: str | None = Field(default=None, max_length=20)
+
+
+class PartnerApplicationView(BaseModel):
+    id: str
+    status: ReferralPartnerApplicationStatus
+    institution: str
+    position: str
+    review_note: str | None
+    created_at: datetime
+    reviewed_at: datetime | None
+
+
+# --- Admin management view (§11) ----------------------------------------------
+
+
+class AdminOverviewView(BaseModel):
+    new_users_via_referral: int
+    referred_users_booked: int
+    rewards_pending: float
+    rewards_cleared: float
+    rewards_paid: float
+    rewards_reversed: float
+    active_codes: int
+    partner_codes: int
+    suspended_codes: int
+    pending_applications: int
+
+
+class AdminCodeView(BaseModel):
+    id: str
+    code: str
+    owner_name: str | None
+    tier: ReferralTier
+    status: ReferralCodeStatus
+    referrals: int
+    earned: float
+    velocity_flagged: bool
+
+
+class AdminApplicationView(BaseModel):
+    id: str
+    user_id: str
+    full_name: str
+    institution: str
+    position: str
+    promo_plan: str
+    contact_phone: str | None
+    contact_email: str | None
+    status: ReferralPartnerApplicationStatus
+    review_note: str | None
+    created_at: datetime
+    reviewed_at: datetime | None
+
+
+class AdminPayoutView(BaseModel):
+    id: str
+    user_id: str
+    amount: float
+    status: PayoutStatus
+    bank_account_name: str | None
+    failure_reason: str | None
+    created_at: datetime
+    settled_at: datetime | None
+
+
+class RejectPayload(BaseModel):
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class SetTierPayload(BaseModel):
+    tier: ReferralTier
+
+
+class ConfigView(BaseModel):
+    first_time_purchaser_required: bool
+    per_code_semester_cap: int
+    clearing_window_days: int
+    min_withdrawal_naira: int
+    reward_pool_pct: float
+    referrer_share: float
+    payer_cashback_share: float
+    partner_tier1_share: float
+    partner_tier2_share: float
+    partner_tier3_share: float
+    partner_tier1_max: int
+    partner_tier2_max: int
+
+
+class ConfigUpdatePayload(BaseModel):
+    first_time_purchaser_required: bool | None = None
+    per_code_semester_cap: int | None = Field(default=None, ge=0)
+    clearing_window_days: int | None = Field(default=None, ge=0)
+    min_withdrawal_naira: int | None = Field(default=None, ge=0)
+    reward_pool_pct: float | None = Field(default=None, ge=0, le=1)
+    referrer_share: float | None = Field(default=None, ge=0, le=1)
+    payer_cashback_share: float | None = Field(default=None, ge=0, le=1)
+    partner_tier1_share: float | None = Field(default=None, ge=0, le=1)
+    partner_tier2_share: float | None = Field(default=None, ge=0, le=1)
+    partner_tier3_share: float | None = Field(default=None, ge=0, le=1)
+    partner_tier1_max: int | None = Field(default=None, ge=0)
+    partner_tier2_max: int | None = Field(default=None, ge=0)

@@ -65,6 +65,29 @@ export interface PayoutView {
   settled_at: string | null;
 }
 
+export type PartnerApplicationStatus = 'pending' | 'approved' | 'rejected';
+
+export interface PartnerApplicationView {
+  id: string;
+  status: PartnerApplicationStatus;
+  institution: string;
+  position: string;
+  review_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+export interface PartnerApplicationPayload {
+  full_name: string;
+  institution: string;
+  position: string;
+  promo_plan: string;
+  contact_phone?: string;
+  contact_email?: string;
+  payout_bank_code?: string;
+  payout_account_number?: string;
+}
+
 /** Read the share-link code captured by /r/[code] (Path A). */
 export function readCapturedReferralCode(): string | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -97,4 +120,14 @@ export const referrals = {
     ),
 
   payouts: () => api.get<PayoutView[]>('/referrals/payouts', { auth: true }),
+
+  applyPartner: (payload: PartnerApplicationPayload) =>
+    api.post<PartnerApplicationView>('/referrals/partner-application', payload, {
+      auth: true,
+    }),
+
+  myPartnerApplication: () =>
+    api.get<PartnerApplicationView | null>('/referrals/partner-application', {
+      auth: true,
+    }),
 };

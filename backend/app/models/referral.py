@@ -14,7 +14,7 @@ two places:
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,6 +24,7 @@ from app.models._enums import (
     ReferralCodeStatus,
     ReferralEarningState,
     ReferralEarningType,
+    ReferralPartnerApplicationStatus,
     ReferralTier,
 )
 from app.models._mixins import TimestampMixin, UUIDPrimaryKeyMixin
@@ -208,3 +209,41 @@ class ReferralConfig(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     partner_tier3_share: Mapped[float] = mapped_column(Numeric(6, 4), default=0.6000, nullable=False)
     partner_tier1_max: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
     partner_tier2_max: Mapped[int] = mapped_column(Integer, default=7, nullable=False)
+
+
+class ReferralPartnerApplication(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Campus-partner application (§2.2). On approval the applicant's existing
+    code is flagged partner; on rejection they keep their standard code."""
+
+    __tablename__ = "referral_partner_applications"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    full_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    institution: Mapped[str] = mapped_column(String(255), nullable=False)
+    position: Mapped[str] = mapped_column(String(255), nullable=False)   # e.g. course rep, union exec
+    promo_plan: Mapped[str] = mapped_column(Text, nullable=False)        # how they'll promote Beebop
+    contact_phone: Mapped[str | None] = mapped_column(String(32))
+    contact_email: Mapped[str | None] = mapped_column(String(255))
+    payout_bank_code: Mapped[str | None] = mapped_column(String(20))
+    payout_account_number: Mapped[str | None] = mapped_column(String(20))
+
+    status: Mapped[ReferralPartnerApplicationStatus] = mapped_column(
+        Enum(
+            ReferralPartnerApplicationStatus,
+            name="referral_partner_application_status",
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        default=ReferralPartnerApplicationStatus.PENDING,
+        nullable=False,
+        index=True,
+    )
+    review_note: Mapped[str | None] = mapped_column(String(1000))
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -39,7 +39,12 @@ from app.listings.routes import router as listings_router
 from app.notifications.routes import router as notifications_router
 from app.offers.routes import router as offers_router
 from app.payments.routes import router as payments_router
-from app.referrals.routes import router as referrals_router
+from app.referrals.routes import (
+    admin_router as admin_referrals_router,
+)
+from app.referrals.routes import (
+    router as referrals_router,
+)
 from app.search.routes import router as search_router
 from app.users.routes import router as users_router
 from app.visits.routes import (
@@ -180,3 +185,4 @@ app.include_router(bookings_router)
 app.include_router(ai_search_router)
 # Referral programme — codes, attribution at checkout, dashboard, payouts.
 app.include_router(referrals_router)
+app.include_router(admin_referrals_router)

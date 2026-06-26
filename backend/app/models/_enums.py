@@ -172,3 +172,9 @@ class PayoutStatus(StrEnum):
     REQUESTED = "requested"
     SUCCESS = "success"
     FAILED = "failed"
+
+
+class ReferralPartnerApplicationStatus(StrEnum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"

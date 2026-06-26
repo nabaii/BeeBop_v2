@@ -10,6 +10,7 @@ import {
   Building2,
   ClipboardCheck,
   FileCheck2,
+  Gift,
   GraduationCap,
   Home,
   House,
@@ -43,7 +44,8 @@ type AdminRoute =
   | '/internal/admin/visit-reports'
   | '/internal/admin/agents'
   | '/internal/admin/listings'
-  | '/internal/admin/seekers';
+  | '/internal/admin/seekers'
+  | '/internal/admin/referrals';
 
 type WebsiteRoute =
   | '/'
@@ -69,6 +71,7 @@ const ADMIN_SECTIONS: readonly NavItem<AdminRoute>[] = [
   { href: '/internal/admin/agents', label: 'Trusted agents', icon: UserRoundCheck },
   { href: '/internal/admin/listings', label: 'All listings', icon: Building2 },
   { href: '/internal/admin/seekers', label: 'Seeker insights', icon: BarChart3 },
+  { href: '/internal/admin/referrals', label: 'Referrals', icon: Gift },
 ] as const;
 
 const WEBSITE_LINKS: readonly NavItem<WebsiteRoute>[] = [

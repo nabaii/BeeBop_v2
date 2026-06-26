@@ -22,13 +22,19 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenError, NotFoundError, ValidationError
+from app.core.exceptions import (
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+    ValidationError,
+)
 from app.models._enums import (
     AgreementStatus,
     ListingCategory,
     ReferralCodeStatus,
     ReferralEarningState,
     ReferralEarningType,
+    ReferralPartnerApplicationStatus,
     ReferralTier,
 )
 from app.models.agreement import Agreement
@@ -39,9 +45,10 @@ from app.models.referral import (
     ReferralCode,
     ReferralConfig,
     ReferralEarning,
+    ReferralPartnerApplication,
 )
 from app.models.user import User
-from app.referrals.codes import normalize_code
+from app.referrals.codes import get_or_create_code, normalize_code
 from app.referrals.eligibility import (
     REASON_MESSAGES,
     EligibilityFacts,
@@ -652,3 +659,91 @@ async def get_cashback(
         )
         for e in rows
     ]
+
+
+# ---------------------------------------------------------------------------
+# Single-earning reversal (admin dispute handling — §11)
+# ---------------------------------------------------------------------------
+
+
+async def reverse_earning(*, earning_id: uuid.UUID, db: AsyncSession) -> ReferralEarning:
+    """Reverse one earning on a confirmed dispute/cancellation. Paid earnings
+    can't be reversed (the money has left); already-reversed is a no-op error."""
+    earning = await db.get(ReferralEarning, earning_id)
+    if earning is None:
+        raise NotFoundError("Earning not found.", code="earning_not_found")
+    if earning.state in (ReferralEarningState.PAID, ReferralEarningState.REVERSED):
+        raise ConflictError(
+            "This earning can no longer be reversed.", code="earning_not_reversible"
+        )
+    earning.state = ReferralEarningState.REVERSED
+    earning.reversed_at = datetime.now(UTC)
+    earning.payout_id = None
+    await db.flush()
+    return earning
+
+
+# ---------------------------------------------------------------------------
+# Campus-partner applications (§2.2) — user side
+# ---------------------------------------------------------------------------
+
+
+async def apply_for_partner(
+    *,
+    user: User,
+    full_name: str,
+    institution: str,
+    position: str,
+    promo_plan: str,
+    contact_phone: str | None,
+    contact_email: str | None,
+    payout_bank_code: str | None,
+    payout_account_number: str | None,
+    db: AsyncSession,
+) -> ReferralPartnerApplication:
+    code = await get_or_create_code(user=user, db=db)
+    if code.tier == ReferralTier.PARTNER:
+        raise ConflictError("You are already a campus partner.", code="already_partner")
+
+    pending = (
+        await db.execute(
+            select(ReferralPartnerApplication).where(
+                ReferralPartnerApplication.user_id == user.id,
+                ReferralPartnerApplication.status
+                == ReferralPartnerApplicationStatus.PENDING,
+            )
+        )
+    ).scalar_one_or_none()
+    if pending is not None:
+        raise ConflictError(
+            "You already have an application under review.", code="application_pending"
+        )
+
+    application = ReferralPartnerApplication(
+        user_id=user.id,
+        full_name=full_name,
+        institution=institution,
+        position=position,
+        promo_plan=promo_plan,
+        contact_phone=contact_phone,
+        contact_email=contact_email,
+        payout_bank_code=payout_bank_code,
+        payout_account_number=payout_account_number,
+        status=ReferralPartnerApplicationStatus.PENDING,
+    )
+    db.add(application)
+    await db.flush()
+    return application
+
+
+async def my_partner_application(
+    *, user_id: uuid.UUID, db: AsyncSession
+) -> ReferralPartnerApplication | None:
+    return (
+        await db.execute(
+            select(ReferralPartnerApplication)
+            .where(ReferralPartnerApplication.user_id == user_id)
+            .order_by(ReferralPartnerApplication.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
