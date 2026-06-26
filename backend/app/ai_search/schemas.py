@@ -108,9 +108,17 @@ class ChatResponse(BaseModel):
     missing_parameter_prompt: str | None = None
     reference_resolution: ReferenceResolution | None = None
     assistant_message: str
+    # The single most useful distinction across the result set (e.g. "The first
+    # is the only one Beebop has physically verified"). Computed deterministically
+    # from the data — never model-authored — so it is true and free of LLM cost.
+    # The frontend renders it as a styled note beside the results, not inline.
+    result_note: str | None = None
     results: list[ResultListingSummary] = Field(default_factory=list)
     used_fallback: bool = False
     prompt_version: str
+    # Concierge prompt revision when stage-two prose actually ran; null when the
+    # turn used the deterministic template. Logged for Phase-4 attribution.
+    concierge_prompt_version: str | None = None
     query_id: str
 
 

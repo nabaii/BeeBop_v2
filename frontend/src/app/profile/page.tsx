@@ -8,6 +8,7 @@ import {
   CalendarCheck,
   ChevronRight,
   CreditCard,
+  Gift,
   LogOut,
   MapPin,
   MessageSquare,
@@ -150,6 +151,12 @@ export default function ProfilePage() {
 
       <nav className="space-y-2">
         <RowLink href="/dashboard/seeker" icon={CalendarCheck} label="Activity" hint="Offers · Bookings · Agreements" />
+        <RowLink
+          href="/profile/referrals"
+          icon={Gift}
+          label="Refer & earn"
+          hint="Share your code · Track earnings · Withdraw"
+        />
         <RowLink
           href="/dashboard/landlord"
           icon={Building2}

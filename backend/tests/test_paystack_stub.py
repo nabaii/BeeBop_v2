@@ -47,3 +47,30 @@ async def test_stub_verify_marks_success() -> None:
     result = await client.verify("ref-123")
     assert result["status"] == "success"
     assert result["reference"] == "ref-123"
+
+
+@pytest.mark.asyncio
+async def test_stub_transfer_recipient_returns_code() -> None:
+    client = StubPaystackClient()
+    code = await client.create_transfer_recipient(
+        name="Amina Bello",
+        account_number="0123456789",
+        bank_code="058",
+    )
+    assert code.startswith("RCP_stub_")
+
+
+@pytest.mark.asyncio
+async def test_stub_transfer_disburses_instantly() -> None:
+    # The stub must report success so the payout flow (earnings -> Paid) can run
+    # end-to-end without a live Paystack balance (spec §7).
+    client = StubPaystackClient()
+    result = await client.initiate_transfer(
+        amount_naira=15_000.0,
+        recipient_code="RCP_stub_abc",
+        reference="payout_ref1",
+        reason="Beebop referral earnings",
+    )
+    assert result.reference == "payout_ref1"
+    assert result.status == "success"
+    assert result.transfer_code is not None

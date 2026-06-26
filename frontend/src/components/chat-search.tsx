@@ -3,6 +3,7 @@
 import type { Route } from 'next';
 import {
   ArrowRight,
+  BadgeCheck,
   Banknote,
   Briefcase,
   Clock,
@@ -210,6 +211,7 @@ export function ChatSearchPanel() {
               {entry.response.results.length > 0 && (
                 <ResultsPanel
                   results={entry.response.results}
+                  note={entry.response.result_note}
                   onOpenBrowse={() => openBrowse(entry.response)}
                   canOpenBrowse={Boolean(entry.response.parameters?.listing_category)}
                 />
@@ -287,10 +289,12 @@ function SearchingIndicator() {
 
 function ResultsPanel({
   results,
+  note,
   onOpenBrowse,
   canOpenBrowse,
 }: {
   results: ResultListingSummary[];
+  note?: string | null;
   onOpenBrowse: () => void;
   canOpenBrowse: boolean;
 }) {
@@ -310,6 +314,12 @@ function ResultsPanel({
           </button>
         )}
       </div>
+      {note && (
+        <div className="mb-2 flex items-start gap-1.5 rounded-xl bg-nectar px-3 py-2 text-caption text-ink">
+          <BadgeCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600" aria-hidden />
+          <span>{note}</span>
+        </div>
+      )}
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
         {results.map((result) => (
           <div key={result.id} className="w-[220px] shrink-0">

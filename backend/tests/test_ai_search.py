@@ -24,8 +24,15 @@ class _FakeCompletion:
 
 
 class _FakeLLM:
-    def __init__(self, payloads: list[dict]) -> None:
+    """Two-stage fake: intent calls pop the queued structured payloads; the
+    concierge call (stage two) is keyed off its schema title. By default the
+    concierge raises so the deterministic template stands in — tests that care
+    about the concierge prose pass ``concierge_reply`` to opt in."""
+
+    def __init__(self, payloads: list[dict], *, concierge_reply: str | None = None) -> None:
         self._payloads = payloads
+        self._concierge_reply = concierge_reply
+        self.concierge_calls = 0
 
     async def structured_completion(
         self,
@@ -36,7 +43,13 @@ class _FakeLLM:
         temperature: float = 0.0,
         model: str | None = None,
     ) -> _FakeCompletion:
-        del system_prompt, user_message, json_schema, temperature, model
+        del system_prompt, temperature, model
+        if json_schema is not None and json_schema.get("title") == "BeebopConciergeReply":
+            self.concierge_calls += 1
+            if self._concierge_reply is None:
+                raise RuntimeError("concierge not configured")
+            return _FakeCompletion(parsed={"reply": self._concierge_reply})
+        del user_message
         return _FakeCompletion(parsed=self._payloads.pop(0))
 
 
@@ -44,17 +57,22 @@ def _result(
     *,
     listing_id: str,
     title: str,
+    status: str = "fully_verified",
+    price: float | None = 3_200_000,
+    rating: float | None = 4.7,
+    review_count: int = 6,
+    category: ListingCategory = ListingCategory.RENT,
 ) -> ResultListingSummary:
     return ResultListingSummary(
         id=listing_id,
         title=title,
-        category=ListingCategory.RENT,
-        status="fully_verified",
-        price=3_200_000,
+        category=category,
+        status=status,
+        price=price,
         district="Wuse 2",
         cover_url=None,
-        rating=4.7,
-        review_count=6,
+        rating=rating,
+        review_count=review_count,
         rank_score=82.5,
         rank_signals={"score": 82.5},
     )
@@ -425,3 +443,144 @@ async def test_run_chat_query_handles_llm_client_initialization_error(fake_redis
     assert response.used_fallback is True
     assert response.parameters is not None
     assert response.parameters.listing_category == ListingCategory.OFF_CAMPUS
+
+
+def test_compute_differentiators_flags_sole_physically_verified() -> None:
+    results = [
+        _result(listing_id="l1", title="Doc-only flat", status="doc_verified", rating=None, review_count=0),
+        _result(listing_id="l2", title="Inspected flat", status="fully_verified", rating=None, review_count=0),
+    ]
+    facts = service._compute_differentiators(results)
+    assert any("Listing 2 (Inspected flat)" in fact and "physically verified" in fact for fact in facts)
+
+
+def test_compute_differentiators_flags_material_price_gap() -> None:
+    results = [
+        _result(listing_id="l1", title="Pricey", status="doc_verified", price=5_000_000, rating=None, review_count=0),
+        _result(listing_id="l2", title="Affordable", status="doc_verified", price=3_000_000, rating=None, review_count=0),
+    ]
+    facts = service._compute_differentiators(results)
+    # Listing 2 is the cheapest by ₦2,000,000 — well past the 10% threshold.
+    assert any("Listing 2 (Affordable)" in fact and "most affordable" in fact for fact in facts)
+
+
+def test_compute_differentiators_ignores_trivial_price_gap() -> None:
+    results = [
+        _result(listing_id="l1", title="A", status="doc_verified", price=3_050_000, rating=None, review_count=0),
+        _result(listing_id="l2", title="B", status="doc_verified", price=3_000_000, rating=None, review_count=0),
+    ]
+    facts = service._compute_differentiators(results)
+    assert not any("most affordable" in fact for fact in facts)
+
+
+def test_compute_differentiators_empty_for_single_result() -> None:
+    assert service._compute_differentiators([_result(listing_id="l1", title="Only one")]) == []
+
+
+@pytest.mark.asyncio
+async def test_concierge_message_replaces_template(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
+    async def fake_execute_search(*, parameters: ExtractedParameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+        del parameters, db
+        return [_result(listing_id="l1", title="Verified 2-bed in Wuse 2")]
+
+    monkeypatch.setattr(service, "_execute_search", fake_execute_search)
+    concierge_text = "Here are two verified two-beds in Wuse 2. Open the first to see more."
+    llm = _FakeLLM([_llm_payload()], concierge_reply=concierge_text)
+
+    response = await service.run_chat_query(
+        payload=ChatRequestPayload(query="a 2-bed in Wuse 2 under 4m"),
+        db=cast("object", object()),  # type: ignore[arg-type]
+        redis=cast("object", fake_redis),  # type: ignore[arg-type]
+        llm=cast("object", llm),  # type: ignore[arg-type]
+    )
+
+    assert response.assistant_message == concierge_text
+    assert response.concierge_prompt_version == prompts.CONCIERGE_PROMPT_VERSION
+    assert llm.concierge_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_generic_query_uses_template_but_keeps_result_note(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
+    """An unconstrained query skips the LLM concierge to save cost, yet the
+    deterministic difference note still ships."""
+
+    async def fake_execute_search(*, parameters: ExtractedParameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+        del parameters, db
+        return [
+            _result(listing_id="l1", title="Doc-only flat", status="doc_verified", rating=None, review_count=0),
+            _result(listing_id="l2", title="Inspected flat", status="fully_verified", rating=None, review_count=0),
+        ]
+
+    monkeypatch.setattr(service, "_execute_search", fake_execute_search)
+    # No location/price/bedroom/amenity → generic.
+    llm = _FakeLLM(
+        [_llm_payload(parameters={"raw_query": "a house to rent", "locations": []})],
+        concierge_reply="should not be used",
+    )
+
+    response = await service.run_chat_query(
+        payload=ChatRequestPayload(query="I'm looking for a house to rent"),
+        db=cast("object", object()),  # type: ignore[arg-type]
+        redis=cast("object", fake_redis),  # type: ignore[arg-type]
+        llm=cast("object", llm),  # type: ignore[arg-type]
+    )
+
+    assert llm.concierge_calls == 0  # cost saved
+    assert response.concierge_prompt_version is None
+    assert "I found" in response.assistant_message  # deterministic template
+    assert response.result_note is not None
+    assert "physically verified" in response.result_note
+
+
+@pytest.mark.asyncio
+async def test_concierge_falls_back_to_template_on_failure(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
+    async def fake_execute_search(*, parameters: ExtractedParameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+        del parameters, db
+        return [_result(listing_id="l1", title="Verified 2-bed in Wuse 2")]
+
+    monkeypatch.setattr(service, "_execute_search", fake_execute_search)
+    # concierge_reply=None → the concierge call raises → template stands in.
+    llm = _FakeLLM([_llm_payload()])
+
+    response = await service.run_chat_query(
+        payload=ChatRequestPayload(query="a 2-bed in Wuse 2 under 4m"),
+        db=cast("object", object()),  # type: ignore[arg-type]
+        redis=cast("object", fake_redis),  # type: ignore[arg-type]
+        llm=cast("object", llm),  # type: ignore[arg-type]
+    )
+
+    assert llm.concierge_calls == 1
+    assert "I found" in response.assistant_message  # deterministic template
+
+
+@pytest.mark.asyncio
+async def test_concierge_skipped_for_transactional(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
+    async def fake_execute_search(*, parameters: ExtractedParameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+        del parameters, db
+        return [_result(listing_id="l1", title="Verified 2-bed in Wuse 2")]
+
+    monkeypatch.setattr(service, "_execute_search", fake_execute_search)
+    llm = _FakeLLM(
+        [
+            _llm_payload(
+                intent="transactional",
+                reference_resolution={
+                    "kind": "action",
+                    "index": None,
+                    "amenity": None,
+                    "action_kind": "schedule_visit",
+                },
+            )
+        ],
+        concierge_reply="should not be used",
+    )
+
+    response = await service.run_chat_query(
+        payload=ChatRequestPayload(query="schedule a visit"),
+        db=cast("object", object()),  # type: ignore[arg-type]
+        redis=cast("object", fake_redis),  # type: ignore[arg-type]
+        llm=cast("object", llm),  # type: ignore[arg-type]
+    )
+
+    assert llm.concierge_calls == 0
+    assert response.assistant_message != "should not be used"

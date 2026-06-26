@@ -513,3 +513,142 @@ async def get_balances(*, user_id: uuid.UUID, db: AsyncSession) -> Balances:
         pending=pending,
         paid=paid,
     )
+
+
+# ---------------------------------------------------------------------------
+# Activity feed + cashback view (the dashboard surfaces — §6.2, §6.3)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ActivityItem:
+    """One privacy-safe row in the referrer's activity feed (§6.2)."""
+
+    label: str
+    state: str          # joined | pending | cleared | paid
+    amount: float | None
+    at: datetime
+
+
+@dataclass(frozen=True)
+class CashbackItem:
+    """The signed-in user's own cashback on a booking they used a code for (§6.3)."""
+
+    amount: float
+    state: str
+    clears_at: datetime | None
+    at: datetime
+
+
+def _naira(amount: float) -> str:
+    return f"₦{amount:,.0f}"
+
+
+async def get_activity(
+    *, user_id: uuid.UUID, db: AsyncSession, limit: int = 50
+) -> list[ActivityItem]:
+    """The referrer's activity feed — most recent first, identity-safe (§6.2).
+
+    Built from the user's own referral code: earnings it has generated, plus
+    bookings in progress (attributed but not yet completed) and people who have
+    joined on the code without booking yet.
+    """
+    code = (
+        await db.execute(select(ReferralCode).where(ReferralCode.user_id == user_id))
+    ).scalar_one_or_none()
+    if code is None:
+        return []
+
+    items: list[ActivityItem] = []
+
+    # Earnings this code has generated (referrer side; reversed ones are hidden).
+    earnings = (
+        await db.execute(
+            select(ReferralEarning)
+            .where(
+                ReferralEarning.beneficiary_user_id == user_id,
+                ReferralEarning.type == ReferralEarningType.REFERRER_EARNING,
+                ReferralEarning.state != ReferralEarningState.REVERSED,
+            )
+            .order_by(ReferralEarning.created_at.desc())
+        )
+    ).scalars().all()
+    for e in earnings:
+        amount = float(e.amount)
+        state = e.state.value if hasattr(e.state, "value") else str(e.state)
+        if state == "paid":
+            label = f"Paid out — {_naira(amount)}"
+        elif state == "cleared":
+            label = f"Booking completed — {_naira(amount)} earned"
+        else:  # pending
+            label = f"Booking completed — {_naira(amount)} clearing"
+        items.append(ActivityItem(label=label, state=state, amount=amount, at=e.created_at))
+
+    # Agreements already represented by an earning — so in-progress rows don't
+    # duplicate a completed booking.
+    earned_agreements = {e.agreement_id for e in earnings}
+
+    attributions = (
+        await db.execute(
+            select(ReferralAttribution).where(ReferralAttribution.code == code.code)
+        )
+    ).scalars().all()
+    for a in attributions:
+        if a.agreement_id in earned_agreements:
+            continue
+        items.append(
+            ActivityItem(
+                label="A booking is in progress",
+                state="pending",
+                amount=None,
+                at=a.applied_at,
+            )
+        )
+
+    # People who joined on the code but haven't started a booking yet (§6.2).
+    attributed_users = {a.referred_user_id for a in attributions}
+    joined = (
+        await db.execute(
+            select(User.id, User.created_at).where(User.referred_by_code == code.code)
+        )
+    ).all()
+    for joined_id, joined_at in joined:
+        if joined_id in attributed_users:
+            continue
+        items.append(
+            ActivityItem(
+                label="Someone joined with your code",
+                state="joined",
+                amount=None,
+                at=joined_at,
+            )
+        )
+
+    items.sort(key=lambda i: i.at, reverse=True)
+    return items[:limit]
+
+
+async def get_cashback(
+    *, user_id: uuid.UUID, db: AsyncSession
+) -> list[CashbackItem]:
+    """The user's own cashback earnings, most recent first (§6.3)."""
+    rows = (
+        await db.execute(
+            select(ReferralEarning)
+            .where(
+                ReferralEarning.beneficiary_user_id == user_id,
+                ReferralEarning.type == ReferralEarningType.PAYER_CASHBACK,
+                ReferralEarning.state != ReferralEarningState.REVERSED,
+            )
+            .order_by(ReferralEarning.created_at.desc())
+        )
+    ).scalars().all()
+    return [
+        CashbackItem(
+            amount=float(e.amount),
+            state=e.state.value if hasattr(e.state, "value") else str(e.state),
+            clears_at=e.clears_at,
+            at=e.created_at,
+        )
+        for e in rows
+    ]

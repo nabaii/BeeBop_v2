@@ -8,6 +8,7 @@ and browse pages stay aligned.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import uuid
@@ -63,6 +64,15 @@ from app.search.schemas import (
 
 _SEARCH_LIMIT = 48
 _CHAT_RESULT_LIMIT = 8
+# How many of the top results the concierge actually narrates. The card grid
+# still shows every result; this only bounds the prose so it stays scannable.
+_CONCIERGE_VIEW_LIMIT = 5
+# A price gap only counts as a real differentiator past this fraction of the
+# pricier listing — avoids "cheapest by ₦5,000" noise on near-identical homes.
+_PRICE_GAP_RATIO = 0.1
+
+# Status values that mean the listing cleared Beebop's on-site inspection.
+_PHYSICALLY_VERIFIED_STATUSES = {"fully_verified", "let_agreed", "sale_agreed"}
 
 _ORDINAL_WORDS: dict[str, int] = {
     "first": 1,
@@ -150,6 +160,30 @@ async def run_chat_query(
         db=db,
     )
 
+    # The single most useful distinction across the set, computed
+    # deterministically — true and free of LLM cost. Surfaced as a styled note
+    # beside the results rather than woven into the prose.
+    result_note = _result_note(handled.results)
+
+    # Stage two: hand the deterministic facts to the concierge for warmer,
+    # honest prose. The template message that `_handle_intent` produced is the
+    # fallback — if the concierge is unconfigured, skipped, or fails, we keep it.
+    # Generic, unconstrained searches stay on the template to save LLM cost; the
+    # difference note still ships, so they lose little.
+    assistant_message = handled.assistant_message
+    concierge_version: str | None = None
+    if _should_use_concierge(intent=interpreted.intent, handled=handled):
+        concierge_message = await _generate_concierge_message(
+            intent=interpreted.intent,
+            user_message=payload.query,
+            results=handled.results,
+            session_summary=_session_summary(state),
+            llm=llm_client,
+        )
+        if concierge_message:
+            assistant_message = concierge_message
+            concierge_version = prompts.CONCIERGE_PROMPT_VERSION
+
     if handled.parameters is not None:
         state.parameters = handled.parameters
     if handled.next_result_listing_ids is not None:
@@ -164,10 +198,21 @@ async def run_chat_query(
     await store.append_turn(
         state=state,
         role="assistant",
-        content=handled.assistant_message,
+        content=assistant_message,
         intent=interpreted.intent,
     )
     await store.save(state)
+
+    query_id = uuid.uuid4().hex
+    # Phase-4 attribution: tie behaviour shifts to the exact prompt revisions.
+    logger.info(
+        "[ai-search] query_id=%s intent=%s prompt_version=%s concierge_version=%s used_fallback=%s",
+        query_id,
+        interpreted.intent,
+        prompts.PROMPT_VERSION,
+        concierge_version or "-",
+        used_fallback,
+    )
 
     return ChatResponse(
         session_id=session_id,
@@ -175,11 +220,13 @@ async def run_chat_query(
         parameters=handled.parameters,
         missing_parameter_prompt=handled.missing_parameter_prompt,
         reference_resolution=handled.reference_resolution,
-        assistant_message=handled.assistant_message,
+        assistant_message=assistant_message,
+        result_note=result_note,
         results=handled.results,
         used_fallback=used_fallback,
         prompt_version=prompts.PROMPT_VERSION,
-        query_id=uuid.uuid4().hex,
+        concierge_prompt_version=concierge_version,
+        query_id=query_id,
     )
 
 
@@ -1288,6 +1335,198 @@ def _normalise_amenity(raw: str) -> str | None:
             if token == item or token == item.replace("_", " "):
                 return f"{group}:{item}"
     return None
+
+
+# --- Concierge response generator -------------------------------------------
+
+
+def _should_use_concierge(*, intent: Intent, handled: _HandledTurn) -> bool:
+    """Run the LLM concierge only where prose adds value.
+
+    Transactional confirmations stay on deterministic templates so an action
+    confirmation can never drift. Clarifying questions (missing category, an
+    ambiguous reference) also stay deterministic — they are precise prompts,
+    not result presentations, and `missing_parameter_prompt` flags them.
+
+    Generic, unconstrained searches ("looking for student accommodation", "a
+    house to rent") are the highest-volume queries and gain the least from
+    bespoke prose, so they stay on the template to save LLM cost. The
+    deterministic difference note still ships with them.
+    """
+    if intent not in ("search", "clarification", "information"):
+        return False
+    if handled.missing_parameter_prompt is not None:
+        return False
+    # Information answers benefit from natural phrasing regardless of filters.
+    if intent == "information":
+        return True
+    return not _is_generic_query(handled.parameters)
+
+
+def _is_generic_query(parameters: ExtractedParameters | None) -> bool:
+    """A query is generic when the seeker named only a category (or less) — no
+    location, institution, budget, bedroom count, or amenity to tailor around."""
+    if parameters is None:
+        return True
+    return not (
+        parameters.locations
+        or parameters.institution
+        or parameters.amenities
+        or parameters.min_price is not None
+        or parameters.max_price is not None
+        or parameters.bedroom_count is not None
+    )
+
+
+def _result_note(results: list[ResultListingSummary]) -> str | None:
+    """The single most useful distinction across the set, or None. Deterministic
+    by design — surfaced as a styled note, never authored by the model."""
+    facts = _compute_differentiators(results)
+    return facts[0] if facts else None
+
+
+async def _generate_concierge_message(
+    *,
+    intent: Intent,
+    user_message: str,
+    results: list[ResultListingSummary],
+    session_summary: str,
+    llm: LLMClient,
+) -> str | None:
+    """Turn the deterministic facts into warm concierge prose.
+
+    Returns ``None`` whenever we should keep the template message: the dev stub
+    (no API key) and any LLM failure. The caller treats the template it already
+    built as the fallback, so the chat never breaks on a flaky model.
+    """
+    if isinstance(llm, StubLLMClient):
+        return None
+
+    narrated = results[:_CONCIERGE_VIEW_LIMIT]
+    payload = {
+        "intent": intent,
+        "user_message": user_message,
+        "context": session_summary or None,
+        "results": [
+            _concierge_result_view(item, index)
+            for index, item in enumerate(narrated, start=1)
+        ],
+        "differentiators": _compute_differentiators(narrated),
+    }
+    try:
+        completion = await llm.structured_completion(
+            system_prompt=prompts.concierge_system_prompt(),
+            user_message=prompts.concierge_user_message(
+                payload_json=json.dumps(payload, ensure_ascii=False)
+            ),
+            json_schema=prompts.CONCIERGE_RESPONSE_SCHEMA,
+            temperature=0.4,
+        )
+    except Exception:
+        logger.warning("Concierge generation failed; using template message.", exc_info=True)
+        return None
+
+    reply = completion.parsed.get("reply") if isinstance(completion.parsed, dict) else None
+    if not isinstance(reply, str):
+        return None
+    reply = reply.strip()
+    return reply or None
+
+
+def _concierge_result_view(result: ResultListingSummary, index: int) -> dict[str, object]:
+    """Sanitized, narration-only projection. We never hand raw ORM rows or
+    internal ranking signals to the concierge — only the facts a seeker sees."""
+    view: dict[str, object] = {
+        "index": index,
+        "title": result.title,
+        "verification": _verification_label(result.status),
+    }
+    price = _format_listing_price(result)
+    if price is not None:
+        view["price"] = price
+    if result.district:
+        view["district"] = result.district
+    if result.bedroom_count is not None:
+        view["bedrooms"] = result.bedroom_count
+    if result.bathroom_count is not None:
+        view["bathrooms"] = result.bathroom_count
+    if result.rating is not None and result.review_count > 0:
+        view["rating"] = result.rating
+        view["review_count"] = result.review_count
+    return view
+
+
+def _verification_label(status: str) -> str:
+    if status in _PHYSICALLY_VERIFIED_STATUSES:
+        return "physically verified"
+    if status == "doc_verified":
+        return "document verified"
+    return "unverified"
+
+
+def _format_listing_price(result: ResultListingSummary) -> str | None:
+    if result.price is None:
+        return None
+    amount = f"₦{result.price:,.0f}"
+    if result.category == ListingCategory.SHORT_LET:
+        return f"{amount}/night"
+    if result.category == ListingCategory.RENT:
+        return f"{amount}/year"
+    if result.category == ListingCategory.OFF_CAMPUS:
+        period = result.price_period or "year"
+        return f"from {amount}/{period}"
+    return amount
+
+
+def _compute_differentiators(results: list[ResultListingSummary]) -> list[str]:
+    """Deterministic facts about how the narrated results differ, ordered by
+    usefulness. The concierge phrases at most one — but computing them here
+    (not in the model) keeps comparisons true to the data, never hallucinated."""
+    if len(results) < 2:
+        return []
+
+    # 1-based positions match the order the seeker sees, and the `index` we
+    # hand the concierge in each result view.
+    indexed = list(enumerate(results, start=1))
+    facts: list[str] = []
+
+    physically_verified = [
+        (pos, item) for pos, item in indexed if item.status in _PHYSICALLY_VERIFIED_STATUSES
+    ]
+    if len(physically_verified) == 1:
+        pos, only = physically_verified[0]
+        facts.append(
+            f"Listing {pos} ({only.title}) is the only one Beebop has physically verified."
+        )
+
+    priced = sorted(
+        ((pos, item) for pos, item in indexed if item.price is not None),
+        key=lambda pair: pair[1].price or 0.0,
+    )
+    if len(priced) >= 2:
+        (cheap_pos, cheapest), (_, runner_up) = priced[0], priced[1]
+        gap = (runner_up.price or 0.0) - (cheapest.price or 0.0)
+        if runner_up.price and gap >= _PRICE_GAP_RATIO * runner_up.price:
+            facts.append(
+                f"Listing {cheap_pos} ({cheapest.title}) is the most affordable, "
+                f"by about ₦{gap:,.0f}."
+            )
+
+    rated = [
+        (pos, item)
+        for pos, item in indexed
+        if item.rating is not None and item.review_count > 0
+    ]
+    if len(rated) >= 2:
+        top_pos, top = max(rated, key=lambda pair: pair[1].rating or 0.0)
+        others = [item.rating or 0.0 for pos, item in rated if pos != top_pos]
+        if others and (top.rating or 0.0) - max(others) >= 0.5:
+            facts.append(
+                f"Listing {top_pos} ({top.title}) has the strongest reviews "
+                f"at {top.rating:.1f}."
+            )
+
+    return facts
 
 
 def _search_message(

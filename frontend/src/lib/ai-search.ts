@@ -53,9 +53,14 @@ export interface ChatResponse {
   missing_parameter_prompt: string | null;
   reference_resolution: ReferenceResolution | null;
   assistant_message: string;
+  // The single most useful distinction across the results (e.g. "The first is
+  // the only one Beebop has physically verified"), rendered as a styled note
+  // beside the cards. Deterministic — never woven into assistant_message.
+  result_note: string | null;
   results: ResultListingSummary[];
   used_fallback: boolean;
   prompt_version: string;
+  concierge_prompt_version: string | null;
   query_id: string;
 }
 
