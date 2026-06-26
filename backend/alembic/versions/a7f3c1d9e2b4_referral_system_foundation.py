@@ -207,7 +207,7 @@ def upgrade() -> None:
                 partner_tier2_share, partner_tier3_share, partner_tier1_max,
                 partner_tier2_max
             ) VALUES (
-                :id, false, 25, 14, 5000, 0.0350,
+                CAST(:id AS uuid), false, 25, 14, 5000, 0.0350,
                 0.4000, 0.6000, 0.5000, 0.5500, 0.6000, 3, 7
             )
             """

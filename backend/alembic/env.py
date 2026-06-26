@@ -22,8 +22,12 @@ import app.models  # noqa: F401  — register all models on the metadata
 config = context.config
 settings = get_settings()
 
-# Inject the runtime database URL (async).
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Inject the runtime database URL (async). Escape literal '%' as '%%' because
+# Alembic stores this in a ConfigParser, whose interpolation treats '%' as a
+# special char — a URL-encoded password (e.g. '@' -> '%40') would otherwise
+# raise "invalid interpolation syntax". ConfigParser un-escapes it back to a
+# single '%' on read, so SQLAlchemy/asyncpg still receive the correct URL.
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

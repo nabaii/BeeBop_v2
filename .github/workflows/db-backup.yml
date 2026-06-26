@@ -1,0 +1,52 @@
+name: DB Backup
+
+# Free nightly logical backup of the production database, stored as a workflow
+# artifact. This is the safety net that was missing when the Render free-tier
+# Postgres expired with no backups. Once you move to a paid DB with managed
+# backups + PITR, you can keep this as a belt-and-braces second copy or remove it.
+#
+# Setup (one time):
+#   Repo -> Settings -> Secrets and variables -> Actions -> New repository secret
+#     BACKUP_DATABASE_URL = the libpq connection string from Neon
+#       (e.g. postgresql://user:pass@ep-xxx.aws.neon.tech/beebop?sslmode=require)
+#   Use the plain provider string here — pg_dump speaks libpq, not asyncpg.
+
+on:
+  schedule:
+    - cron: '17 2 * * *'  # 02:17 UTC nightly (off-peak, avoids the top-of-hour rush)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client (matching Neon's major version)
+        run: |
+          set -euo pipefail
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Dump database
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "BACKUP_DATABASE_URL secret is not set — add it in repo settings." >&2
+            exit 1
+          fi
+          bash backend/scripts/backup_db.sh backups
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backups/*.dump
+          retention-days: 30
+          if-no-files-found: error

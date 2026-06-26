@@ -2,9 +2,16 @@
 
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# libpq/psycopg connection query params that the asyncpg driver does NOT accept
+# and will raise on. Managed Postgres providers (Neon, Supabase direct, etc.)
+# append these to the connection string they hand you, so we strip them and
+# re-express the SSL intent in asyncpg's own terms (see _normalise_pg_url).
+_LIBPQ_ONLY_PARAMS = {"sslmode", "channel_binding"}
 
 
 class Settings(BaseSettings):
@@ -27,12 +34,41 @@ class Settings(BaseSettings):
     @field_validator("database_url", mode="before")
     @classmethod
     def normalise_database_url(cls, value: str) -> str:
-        """Render Postgres URLs omit the asyncpg dialect by default."""
+        """Coerce any Postgres URL into an asyncpg-compatible form.
+
+        Two jobs:
+        1. Force the asyncpg dialect (managed providers hand you a bare
+           ``postgres://`` / ``postgresql://`` URL).
+        2. Translate libpq-only SSL params into asyncpg's vocabulary. Neon's
+           string ends with ``?sslmode=require&channel_binding=require``;
+           asyncpg rejects both. We drop them and add ``ssl=require`` (which the
+           SQLAlchemy asyncpg dialect understands) so a managed DB connects on
+           the first try. Local URLs with no SSL params are left untouched.
+        """
         if value.startswith("postgres://"):
-            return value.replace("postgres://", "postgresql+asyncpg://", 1)
-        if value.startswith("postgresql://"):
-            return value.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return value
+            value = value.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif value.startswith("postgresql://"):
+            value = value.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        return cls._normalise_pg_url(value)
+
+    @staticmethod
+    def _normalise_pg_url(value: str) -> str:
+        parts = urlsplit(value)
+        if not parts.query:
+            return value
+
+        params = parse_qsl(parts.query, keep_blank_values=True)
+        kept = [(k, v) for k, v in params if k not in _LIBPQ_ONLY_PARAMS]
+        dropped_ssl = any(k in _LIBPQ_ONLY_PARAMS for k, _ in params)
+
+        # If the provider asked for SSL via sslmode, preserve that intent in the
+        # asyncpg-native form (unless an explicit ssl param is already present).
+        if dropped_ssl and not any(k == "ssl" for k, _ in kept):
+            kept.append(("ssl", "require"))
+
+        new_query = urlencode(kept)
+        return urlunsplit(parts._replace(query=new_query))
 
     # Redis (session context + Celery broker)
     redis_url: str = "redis://localhost:6379/0"

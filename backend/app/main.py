@@ -32,6 +32,7 @@ from app.bookings.routes import router as bookings_router
 from app.bookmarks.routes import router as bookmarks_router
 from app.config import get_settings
 from app.core.exceptions import DomainError
+from app.database import database_is_reachable, verify_database_connection
 from app.dashboards.routes import router as dashboards_router
 from app.inspector.routes import router as inspector_router
 from app.listings.routes import router as listings_router
@@ -63,6 +64,9 @@ if settings.sentry_dsn:
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # Startup hooks go here (e.g., warming caches). Keep lightweight — Render
     # free tier cold starts matter. Heavy work belongs in Celery.
+    # Fail fast and loudly if the database is unreachable, rather than booting
+    # into a state that mimics "all data/accounts lost".
+    await verify_database_connection()
     await bootstrap_admin_from_settings(settings)
     await bootstrap_landlord_from_settings(settings)
     yield
@@ -123,6 +127,23 @@ async def health() -> dict[str, str]:
     dependency-free — no DB, no Redis, no external calls.
     """
     return {"status": "ok"}
+
+
+@app.get("/health/ready", tags=["system"])
+async def readiness() -> JSONResponse:
+    """Readiness probe that *does* check the database.
+
+    Unlike /health (pure liveness, dependency-free), this distinguishes a
+    down/unreachable database (503) from a healthy API serving genuinely empty
+    data (200). Use this when "no listings / can't log in" appears, to tell an
+    infra outage apart from an application or data issue.
+    """
+    if await database_is_reachable():
+        return JSONResponse(content={"status": "ok", "database": "up"})
+    return JSONResponse(
+        status_code=503,
+        content={"status": "unavailable", "database": "down"},
+    )
 
 
 # Routers are registered here as each sprint lands them.
