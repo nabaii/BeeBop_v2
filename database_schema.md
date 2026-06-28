@@ -189,7 +189,7 @@ Defined in [_enums.py](file:///c:/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2/
 | **rent** | `bedroom_count`, `property_type` (flat/detached/semi_detached/terraced/bq/mini_flat/self_contain), `furnishing`, `payment_structure`, `available_from` |
 | **sales** | `bedroom_count`, `property_type` (flat/detached/semi_detached/terraced/land_only/commercial), `development_status`, `title_type` |
 | **short_let** | `base_rate`, `weekend_rate`, `min_stay_nights`, `turnaround_days`, `instant_booking` |
-| **off_campus** | `institutions_accepted` (string array) |
+| **off_campus** | `institutions_accepted` (string array), `show_availability` (bool), `rules_doc_url` + `rules_doc_name` (optional landlord house-rules PDF on Cloudinary), `drive_min_nile` + `drive_min_baze` (manually-recorded driving time in minutes; landlord-entered, admin-overridable; `drive_min_nile` featured on cards/detail), `house_rules` (object keyed by rule → `{present, featured, value}`; `value` holds e.g. curfew time) |
 
 ---
 

@@ -65,7 +65,7 @@ export function BeebopLockup({ size = 28, className, wordClassName, markClassNam
   return (
     <span className={cn('inline-flex items-center gap-2', className)}>
       <BeebopMark size={size} decorative className={markClassName} />
-      <span className={cn('font-display text-title font-semibold lowercase tracking-tight text-ink', wordClassName)}>
+      <span className={cn('font-display text-section font-semibold leading-none lowercase tracking-tight text-ink', wordClassName)}>
         beebop
       </span>
     </span>

@@ -69,6 +69,8 @@ export interface PublicListingSummary {
   price_period?: string | null;
   bedroom_count?: number | null;
   bathroom_count?: number | null;
+  // Off-campus: manually-recorded driving time (minutes) to Nile University.
+  drive_min_nile?: number | null;
 }
 
 export interface SearchResponse {

@@ -23,13 +23,15 @@ import {
   ArrowLeft,
   LayoutGrid,
   Check,
-  ChevronRight
+  ChevronRight,
+  ScrollText
 } from 'lucide-react';
 
 import { RouteGuard } from '@/components/route-guard';
 import { Button } from '@/components/ui/button';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { AmenitiesChecklist } from '@/components/listing/amenities-checklist';
+import { HouseRulesChecklist } from '@/components/listing/house-rules-checklist';
 import { DocumentUpload } from '@/components/listing/document-upload';
 import { ListingBaseForm } from '@/components/listing/base-form';
 import { PhotoUpload } from '@/components/listing/photo-upload';
@@ -137,12 +139,20 @@ function EditingShell({ id }: { id: string }) {
 
   const isPhotosComplete = Boolean(listing.photos && listing.photos.length > 0);
   const isDocsComplete = Boolean(listing.documents && listing.documents.length > 0);
+  // House rules are optional — the checkmark is informational, not gating.
+  const isHouseRulesComplete = Boolean(
+    Object.values(
+      (listing.type_data as { house_rules?: Record<string, { present?: boolean }> })?.house_rules ??
+        {},
+    ).some((r) => r?.present),
+  );
 
   const steps = [
     { id: 'section-base', label: 'Basic Details', desc: 'Title, price & location', icon: FileText, complete: isBaseComplete },
     { id: 'section-category', label: 'Property Details', desc: 'Bedrooms, type & structure', icon: Home, complete: isCategoryComplete },
     ...(listing.category === 'short_let' ? [{ id: 'section-pricing', label: 'Pricing Rules', desc: 'Weekend & stay rules', icon: DollarSign, complete: isCategoryComplete }] : []),
     { id: 'section-amenities', label: 'Amenities', desc: 'Borehole, generator, etc.', icon: Sparkles, complete: isAmenitiesComplete },
+    ...(listing.category === 'off_campus' ? [{ id: 'section-house-rules', label: 'House Rules', desc: 'Curfew, no smoking, etc.', icon: ScrollText, complete: isHouseRulesComplete }] : []),
     { id: 'section-photos', label: 'Photos Upload', desc: 'Showcase your property', icon: ImageIcon, complete: isPhotosComplete },
     ...(listing.category !== 'off_campus' ? [{ id: 'section-documents', label: 'Title Documents', desc: 'Verification evidence', icon: FileCheck, complete: isDocsComplete }] : []),
     ...(listing.category === 'off_campus' ? [{ id: 'section-inventory', label: 'Room Inventory', desc: 'Unit types & beds', icon: LayoutGrid, complete: isPhotosComplete }] : []),
@@ -306,6 +316,12 @@ function EditingShell({ id }: { id: string }) {
             <div id="section-amenities">
               <AmenitiesChecklist listing={listing} onSaved={setListing} />
             </div>
+
+            {listing.category === 'off_campus' && (
+              <div id="section-house-rules">
+                <HouseRulesChecklist listing={listing} onSaved={setListing} />
+              </div>
+            )}
 
             <div id="section-photos">
               <PhotoUpload listing={listing} onSaved={patch} />

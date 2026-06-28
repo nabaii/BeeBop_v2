@@ -113,6 +113,10 @@ class AdminListingEditPayload(BaseModel):
     description: str | None = Field(default=None, max_length=20_000)
     district: str | None = Field(default=None, max_length=100)
     price: float | None = Field(default=None, ge=0)
+    # Partial override of category-specific data (e.g. admin-recorded driving
+    # times on off-campus listings). Merged into the existing JSONB, not
+    # replaced, so an admin edit never wipes landlord-entered keys.
+    type_data: dict | None = None
 
 
 class DocumentPresignedView(BaseModel):

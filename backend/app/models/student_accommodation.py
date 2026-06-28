@@ -28,8 +28,9 @@ class UnitType(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     beds_per_room: Mapped[int] = mapped_column(Integer, nullable=False)
     total_units: Mapped[int] = mapped_column(Integer, nullable=False)
     price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, server_default="0.0")
-    # Billing period the price covers, e.g. "year" or "session". Shown next to
+    # Billing period the price covers, e.g. "year" or "semester". Shown next to
     # every off-campus price so seekers always know what they are paying per.
+    # ("session" is the legacy value for what is now called a semester.)
     price_period: Mapped[str] = mapped_column(
         String(16), nullable=False, default="year", server_default="year"
     )

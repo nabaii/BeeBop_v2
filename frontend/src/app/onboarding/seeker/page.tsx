@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/lib/api';
+import { KNOWN_INSTITUTIONS, OTHER_INSTITUTION } from '@/lib/institutions';
 import {
   type AgeBand,
   type ListingCategory,
@@ -49,7 +50,11 @@ export default function SeekerOnboardingPage() {
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
   const [lastName, setLastName] = useState(user?.lastName ?? '');
   const [selected, setSelected] = useState<ListingCategory[]>([]);
-  const [institution, setInstitution] = useState('');
+  // Institution is a constrained choice (a known campus or "Other") so students
+  // are cleanly categorised. "Other" reveals a free-text field; the resolved
+  // string is what we persist on user.institution.
+  const [institutionChoice, setInstitutionChoice] = useState('');
+  const [institutionOther, setInstitutionOther] = useState('');
   const [level, setLevel] = useState<(typeof LEVELS)[number]>('100');
   const [gender, setGender] = useState<'female' | 'male'>('female');
   // Optional profile (extras step)
@@ -92,7 +97,7 @@ export default function SeekerOnboardingPage() {
     setBusy(true);
     try {
       await saveStudentExtras({
-        institution: institution.trim(),
+        institution: resolvedInstitution,
         academic_level: level,
         gender,
       });
@@ -129,6 +134,11 @@ export default function SeekerOnboardingPage() {
   function toggleCategory(c: ListingCategory) {
     setSelected((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
   }
+
+  // The institution string we persist: the typed value when "Other" is chosen,
+  // otherwise the selected campus name.
+  const resolvedInstitution =
+    institutionChoice === OTHER_INSTITUTION ? institutionOther.trim() : institutionChoice;
 
   if (step === 'identity') {
     return (
@@ -198,15 +208,35 @@ export default function SeekerOnboardingPage() {
         busy={busy}
         error={error}
         cta="Finish"
-        disabled={!institution.trim()}
+        disabled={!resolvedInstitution}
       >
         <Labelled label="Institution">
-          <Input
-            value={institution}
-            onChange={(e) => setInstitution(e.target.value)}
-            placeholder="e.g. University of Abuja"
+          <select
+            value={institutionChoice}
+            onChange={(e) => setInstitutionChoice(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             required
-          />
+          >
+            <option value="" disabled>
+              Select your institution
+            </option>
+            {KNOWN_INSTITUTIONS.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+            <option value={OTHER_INSTITUTION}>Other (specify)</option>
+          </select>
+          {institutionChoice === OTHER_INSTITUTION && (
+            <Input
+              className="mt-2"
+              value={institutionOther}
+              onChange={(e) => setInstitutionOther(e.target.value)}
+              placeholder="Enter your institution"
+              maxLength={255}
+              required
+            />
+          )}
         </Labelled>
         <Labelled label="Academic level">
           <select

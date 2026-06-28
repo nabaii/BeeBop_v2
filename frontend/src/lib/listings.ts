@@ -48,15 +48,17 @@ export interface UnitTypeView {
   beds_per_room: number;
   total_units: number;
   price: number;
-  price_period: 'year' | 'session';
+  price_period: 'year' | 'semester';
   gender_tag: 'female' | 'male' | 'any';
   amenities: string[];
   rooms: RoomView[];
 }
 
-/** Human label for a unit-type billing period, e.g. "year" / "session". */
+/** Human label for a unit-type billing period, e.g. "year" / "semester". */
 export function pricePeriodLabel(period?: string | null): string {
-  if (period === 'session') return 'session';
+  // 'session' is the legacy value for what we now call a semester — map it
+  // through so historic units still render with a label.
+  if (period === 'semester' || period === 'session') return 'semester';
   if (period === 'year') return 'year';
   return '';
 }
@@ -195,6 +197,41 @@ export async function uploadPhotoToCloudinary(
   return res.json() as Promise<{ secure_url: string }>;
 }
 
+// Upload a non-image file (e.g. a house-rules PDF) to Cloudinary. Reuses the
+// per-listing photo signature (it signs only folder + timestamp, so it is valid
+// for any resource type) and posts to the `auto` endpoint, which detects PDFs
+// and returns a publicly-viewable secure_url — unlike the private-S3 title-doc
+// pipeline, this file is meant to be shown to seekers.
+export async function uploadRawToCloudinary(
+  signature: Awaited<ReturnType<typeof getPhotoUploadSignature>>,
+  file: File,
+): Promise<{ secure_url: string }> {
+  if (signature.cloud_name === 'stub') {
+    return { secure_url: URL.createObjectURL(file) };
+  }
+  const form = new FormData();
+  form.append('file', file);
+  form.append('api_key', signature.api_key);
+  form.append('timestamp', String(signature.timestamp));
+  form.append('signature', signature.signature);
+  form.append('folder', signature.folder);
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${signature.cloud_name}/auto/upload`,
+    { method: 'POST', body: form },
+  );
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = (await res.json()) as { error?: { message?: string } };
+      if (body?.error?.message) detail = body.error.message;
+    } catch {
+      /* body wasn't JSON — keep the status code */
+    }
+    throw new Error(`Cloudinary upload rejected: ${detail}`);
+  }
+  return res.json() as Promise<{ secure_url: string }>;
+}
+
 // --- Documents (private S3) ---------------------------------------------
 
 export async function getDocumentUploadSignature(
@@ -255,7 +292,7 @@ export async function addUnitType(
     beds_per_room: number;
     total_units: number;
     price: number;
-    price_period: 'year' | 'session';
+    price_period: 'year' | 'semester';
     gender_tag: 'female' | 'male' | 'any';
     amenities?: string[];
   },

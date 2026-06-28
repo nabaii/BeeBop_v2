@@ -7,10 +7,15 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Home, DollarSign, LayoutGrid } from 'lucide-react';
+import { Clock, Home, DollarSign, FileText, LayoutGrid, Trash2, Upload } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
-import { type ListingView, updateDraft } from '@/lib/listings';
+import {
+  getPhotoUploadSignature,
+  updateDraft,
+  uploadRawToCloudinary,
+  type ListingView,
+} from '@/lib/listings';
 
 interface Props {
   listing: ListingView;
@@ -242,6 +247,10 @@ function OffCampusFields({ listing, onSaved }: Props) {
   const initial = listing.type_data as {
     institutions_accepted?: string[];
     show_availability?: boolean;
+    rules_doc_url?: string;
+    rules_doc_name?: string;
+    drive_min_nile?: number;
+    drive_min_baze?: number;
   };
   const [institutionsText, setInstitutionsText] = useState(
     (initial.institutions_accepted ?? []).join(', '),
@@ -249,7 +258,56 @@ function OffCampusFields({ listing, onSaved }: Props) {
   // Default on — available beds are a key glance stat for students. Stored as
   // type_data.show_availability so the public page can hide it on request.
   const [showAvailability, setShowAvailability] = useState(initial.show_availability !== false);
+  const [driveNile, setDriveNile] = useState(
+    initial.drive_min_nile != null ? String(initial.drive_min_nile) : '',
+  );
+  const [driveBaze, setDriveBaze] = useState(
+    initial.drive_min_baze != null ? String(initial.drive_min_baze) : '',
+  );
+  const [rulesUrl, setRulesUrl] = useState(initial.rules_doc_url ?? '');
+  const [rulesName, setRulesName] = useState(initial.rules_doc_name ?? '');
+  const [rulesUploading, setRulesUploading] = useState(false);
+  const [rulesError, setRulesError] = useState<string | null>(null);
   const save = useAutoSave(listing, onSaved);
+
+  async function onRulesFile(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      setRulesError('Please upload a PDF file.');
+      return;
+    }
+    if (file.size > 25 * 1024 * 1024) {
+      setRulesError('File is too large. Max 25MB.');
+      return;
+    }
+    setRulesUploading(true);
+    setRulesError(null);
+    try {
+      const sig = await getPhotoUploadSignature(listing.id);
+      const { secure_url } = await uploadRawToCloudinary(sig, file);
+      // Persist immediately (not debounced) so the link survives a quick exit.
+      const next = await updateDraft(listing.id, {
+        type_data: { rules_doc_url: secure_url, rules_doc_name: file.name },
+      });
+      setRulesUrl(secure_url);
+      setRulesName(file.name);
+      onSaved(next);
+    } catch {
+      setRulesError('Upload failed. Please try again.');
+    } finally {
+      setRulesUploading(false);
+    }
+  }
+
+  async function removeRules() {
+    const next = await updateDraft(listing.id, {
+      type_data: { rules_doc_url: null, rules_doc_name: null },
+    });
+    setRulesUrl('');
+    setRulesName('');
+    onSaved(next);
+  }
 
   return (
     <section className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm transition-all duration-300 hover:shadow-md hover:border-brand/40 space-y-6">
@@ -295,6 +353,102 @@ function OffCampusFields({ listing, onSaved }: Props) {
             </span>
           </span>
         </label>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Labelled
+            label="Drive time to Nile University"
+            hint="In minutes. Optional."
+          >
+            <div className="relative">
+              <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                inputMode="numeric"
+                className="pl-9"
+                value={driveNile}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^0-9]/g, '');
+                  setDriveNile(v);
+                  save({ drive_min_nile: v ? Number(v) : null });
+                }}
+                placeholder="e.g. 12"
+              />
+            </div>
+          </Labelled>
+          <Labelled
+            label="Drive time to Baze University"
+            hint="In minutes. Optional."
+          >
+            <div className="relative">
+              <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                inputMode="numeric"
+                className="pl-9"
+                value={driveBaze}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^0-9]/g, '');
+                  setDriveBaze(v);
+                  save({ drive_min_baze: v ? Number(v) : null });
+                }}
+                placeholder="e.g. 18"
+              />
+            </div>
+          </Labelled>
+        </div>
+
+        <div className="space-y-2">
+          <span className="block text-sm font-medium text-slate-700">
+            House rules / code of conduct
+            <span className="ml-2 text-xs font-normal text-slate-500">PDF, optional. Max 25MB.</span>
+          </span>
+          {rulesUrl ? (
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
+              <a
+                href={rulesUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-w-0 items-center gap-3"
+              >
+                <div className="rounded-lg bg-slate-50 p-2 text-slate-400">
+                  <FileText className="h-4 w-4" />
+                </div>
+                <span className="truncate text-xs font-bold text-slate-900 hover:underline">
+                  {rulesName || 'House rules.pdf'}
+                </span>
+              </a>
+              <button
+                type="button"
+                onClick={() => void removeRules()}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition-colors hover:border-red-100 hover:bg-red-50/50 hover:text-red-600"
+                aria-label="Remove house rules document"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <label
+              className={
+                'flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/20 p-6 text-center text-slate-400 transition-colors hover:border-brand/40 ' +
+                (rulesUploading ? 'pointer-events-none opacity-60' : '')
+              }
+            >
+              {rulesUploading ? (
+                <div className="mb-2 h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-transparent" />
+              ) : (
+                <Upload className="mb-2 h-5 w-5" />
+              )}
+              <span className="text-xs font-semibold">
+                {rulesUploading ? 'Uploading…' : 'Upload house rules (PDF)'}
+              </span>
+              <input
+                type="file"
+                hidden
+                accept="application/pdf"
+                onChange={(e) => void onRulesFile(e.target.files)}
+              />
+            </label>
+          )}
+          {rulesError && <p className="text-xs font-semibold text-red-600">{rulesError}</p>}
+        </div>
+
         <p className="text-xs text-slate-500">
           Set room-level pricing and gender tags in the inventory section below.
         </p>

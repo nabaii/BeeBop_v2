@@ -2,6 +2,7 @@
 
 import type { Route } from 'next';
 import {
+  ArrowLeft,
   ArrowRight,
   BadgeCheck,
   Banknote,
@@ -17,16 +18,18 @@ import {
 import { startTransition, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { FeaturedCarousel } from '@/components/featured-carousel';
+import { ListingCarousel } from '@/components/listing-carousel';
 import { ListingCard } from '@/components/listing/listing-card';
 import { ApiError } from '@/lib/api';
 import {
+  clearChatSession,
   sendChatQuery,
   type ChatResponse,
   type ExtractedParameters,
   type ResultListingSummary,
 } from '@/lib/ai-search';
 import type { ListingCategory, PhotoView } from '@/lib/listings';
+import { getFeaturedListings, search, type PublicListingSummary } from '@/lib/search';
 import { useCyclingPlaceholder, useStreamedText } from '@/lib/use-motion';
 import type { SearchSeedFilters } from '@/stores/search';
 import { useSearch } from '@/stores/search';
@@ -48,6 +51,41 @@ const PLACEHOLDER_EXAMPLES = [
   'Houses for sale in Maitama',
 ];
 
+// Homepage discovery rows. Defined at module scope so each fetcher is a stable
+// reference — ListingCarousel keys its load effect on it. Every row hides itself
+// when its dataset is empty, so a thin category never leaves a broken shell.
+const HOME_CAROUSELS: ReadonlyArray<{
+  title: string;
+  fetcher: () => Promise<PublicListingSummary[]>;
+  seeAllHref: '/browse' | '/browse/off-campus' | '/browse/sales' | '/browse/rent';
+}> = [
+  {
+    title: 'Popular listings',
+    fetcher: () => getFeaturedListings(50).catch(() => getFeaturedListings(12)),
+    seeAllHref: '/browse',
+  },
+  {
+    title: 'Off-campus near Nile',
+    fetcher: () =>
+      search
+        .offCampus({ institution: 'Nile University', page_size: 12 })
+        .then((r) => r.results),
+    seeAllHref: '/browse/off-campus',
+  },
+  {
+    title: 'Properties for sale',
+    fetcher: () =>
+      search.sales({ page_size: 12, sort: 'newest' }).then((r) => r.results),
+    seeAllHref: '/browse/sales',
+  },
+  {
+    title: 'Properties for rent',
+    fetcher: () =>
+      search.rent({ page_size: 12, sort: 'newest' }).then((r) => r.results),
+    seeAllHref: '/browse/rent',
+  },
+];
+
 interface ChatEntry {
   query: string;
   response: ChatResponse;
@@ -56,6 +94,7 @@ interface ChatEntry {
 export function ChatSearchPanel() {
   const router = useRouter();
   const setSessionContext = useSearch((state) => state.setSessionContext);
+  const clearSearchSession = useSearch((state) => state.clearSession);
   const [value, setValue] = useState('');
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +139,18 @@ export function ChatSearchPanel() {
     }
   }
 
+  // Leaves the conversation and returns to the homepage hero, clearing the
+  // local thread, the shared search context, and the remote chat session.
+  function resetToHome(): void {
+    const activeSessionId = sessionId;
+    setEntries([]);
+    setValue('');
+    setError(null);
+    setSessionId(null);
+    clearSearchSession();
+    if (activeSessionId) void clearChatSession(activeSessionId);
+  }
+
   function openBrowse(response: ChatResponse): void {
     const category = response.parameters?.listing_category;
     if (!category) return;
@@ -134,8 +185,11 @@ export function ChatSearchPanel() {
             </p>
           </div>
 
+          {/* Pinned to the top of the scroll panel so the chatbox never leaves
+              the viewport as the discovery rows below grow the page. The opaque
+              surface (matching the panel) lets carousels scroll cleanly under it. */}
           <form
-            className="motion-safe:animate-fade-up"
+            className="sticky top-0 z-20 -mx-4 bg-slate-50 px-4 py-3 motion-safe:animate-fade-up"
             style={{ animationDelay: '280ms' }}
             onSubmit={(event) => {
               event.preventDefault();
@@ -164,8 +218,15 @@ export function ChatSearchPanel() {
             </div>
           </form>
 
-          <div className="motion-safe:animate-fade-up" style={{ animationDelay: '360ms' }}>
-            <FeaturedCarousel />
+          <div className="space-y-6 motion-safe:animate-fade-up" style={{ animationDelay: '360ms' }}>
+            {HOME_CAROUSELS.map((row) => (
+              <ListingCarousel
+                key={row.title}
+                title={row.title}
+                fetcher={row.fetcher}
+                seeAllHref={row.seeAllHref}
+              />
+            ))}
           </div>
 
           <div className="space-y-2">
@@ -202,6 +263,17 @@ export function ChatSearchPanel() {
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-paper">
+      <div className="flex h-11 shrink-0 items-center border-b border-hairline bg-white px-2">
+        <button
+          type="button"
+          onClick={resetToHome}
+          aria-label="Back to home"
+          className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-caption font-semibold text-ink-muted transition hover:bg-nectar hover:text-ink"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          <span>Home</span>
+        </button>
+      </div>
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
         <ul className="space-y-5">
           {entries.map((entry) => (

@@ -1,6 +1,6 @@
 'use client';
 
-import { Compass, MessageSquare, User, type LucideIcon } from 'lucide-react';
+import { Compass, Home, User, type LucideIcon } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -17,7 +17,7 @@ type Tab = {
 };
 
 const STATIC_TABS: readonly Tab[] = [
-  { href: '/', label: 'Chat', icon: MessageSquare, match: (p: string) => p === '/' },
+  { href: '/', label: 'Home', icon: Home, match: (p: string) => p === '/' },
   {
     href: '/browse',
     label: 'Explore',

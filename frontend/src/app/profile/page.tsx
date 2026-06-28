@@ -16,19 +16,15 @@ import {
   PlusCircle,
   Settings,
   ShieldCheck,
-  Trash2,
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { Button } from '@/components/ui/button';
 import { ListingCard } from '@/components/listing/listing-card';
-import { ApiError } from '@/lib/api';
 import { logout } from '@/lib/auth';
 import { listSavedListings } from '@/lib/bookmarks';
-import { deleteAccount } from '@/lib/users';
 import { dashboards, type SeekerOverview } from '@/lib/dashboards';
 import type { PublicListingSummary } from '@/lib/search';
 import { useSession } from '@/stores/session';
@@ -38,9 +34,6 @@ export default function ProfilePage() {
   const user = useSession((s) => s.user);
   const [overview, setOverview] = useState<SeekerOverview | null>(null);
   const [saved, setSaved] = useState<PublicListingSummary[] | null>(null);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,20 +69,6 @@ export default function ProfilePage() {
   async function handleLogout() {
     await logout();
     router.replace('/');
-  }
-
-  async function handleDeleteAccount() {
-    setDeleteError(null);
-    setDeleting(true);
-    try {
-      await deleteAccount();
-      router.replace('/');
-    } catch (err) {
-      setDeleteError(
-        err instanceof ApiError ? err.message : 'Could not delete your account. Please try again.',
-      );
-      setDeleting(false);
-    }
   }
 
   return (
@@ -163,18 +142,20 @@ export default function ProfilePage() {
           label={hasLandlordAccess ? 'Landlord dashboard' : 'Become a landlord'}
           hint={hasLandlordAccess ? 'Listings · Uploads · Analytics' : 'List your property on Beebop'}
         />
-        <RowLink
-          href="/listings/new"
-          icon={PlusCircle}
-          label="Create listing"
-          hint="Upload property details"
-        />
+        {hasLandlordAccess && (
+          <RowLink
+            href="/listings/new"
+            icon={PlusCircle}
+            label="Create listing"
+            hint="Upload property details"
+          />
+        )}
         <RowLink href="/profile/notifications" icon={Bell} label="Notifications" />
         <RowLink
           href="/profile/security"
           icon={Settings}
-          label="Password & security"
-          hint="Manage sign-in"
+          label="Manage account"
+          hint="Password · Security · Delete account"
         />
         <button
           type="button"
@@ -188,88 +169,6 @@ export default function ProfilePage() {
           <ChevronRight className="h-4 w-4 text-red-400" aria-hidden />
         </button>
       </nav>
-
-      <section className="space-y-2 rounded-2xl border border-red-200 bg-red-50/40 p-4">
-        <h2 className="text-sm font-semibold text-red-700">Danger zone</h2>
-        <p className="text-xs text-slate-600">
-          Deleting your account removes your profile and signs you out everywhere. This cannot be
-          undone.
-        </p>
-        <button
-          type="button"
-          onClick={() => setConfirmingDelete(true)}
-          className="flex w-full items-center justify-between rounded-xl border border-red-300 bg-white px-4 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
-        >
-          <span className="flex items-center gap-3">
-            <Trash2 className="h-5 w-5" aria-hidden />
-            Delete my account
-          </span>
-          <ChevronRight className="h-4 w-4 text-red-400" aria-hidden />
-        </button>
-      </section>
-
-      {confirmingDelete && (
-        <DeleteAccountDialog
-          busy={deleting}
-          error={deleteError}
-          onCancel={() => {
-            if (deleting) return;
-            setConfirmingDelete(false);
-            setDeleteError(null);
-          }}
-          onConfirm={() => void handleDeleteAccount()}
-        />
-      )}
-    </div>
-  );
-}
-
-function DeleteAccountDialog({
-  busy,
-  error,
-  onCancel,
-  onConfirm,
-}: {
-  busy: boolean;
-  error: string | null;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="delete-account-title"
-    >
-      <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
-            <Trash2 className="h-5 w-5" aria-hidden />
-          </div>
-          <h2 id="delete-account-title" className="text-base font-semibold text-slate-900">
-            Delete your account?
-          </h2>
-        </div>
-        <p className="mt-3 text-sm text-slate-600">
-          This permanently removes your profile and preferences and signs you out. You won&apos;t be
-          able to recover this account.
-        </p>
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-        <div className="mt-5 flex gap-2">
-          <Button type="button" variant="secondary" className="flex-1" onClick={onCancel} disabled={busy}>
-            Cancel
-          </Button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={busy}
-            className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
-          >
-            {busy ? 'Deleting…' : 'Delete account'}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

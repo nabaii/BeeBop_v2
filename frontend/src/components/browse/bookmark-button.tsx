@@ -5,7 +5,7 @@
  * Anonymous visitors are routed to /login; the return URL is the current page.
  */
 
-import { Bookmark, Heart } from 'lucide-react';
+import { Bookmark } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -17,21 +17,14 @@ interface Props {
   listingId: string;
   initial?: boolean;
   className?: string;
-  icon?: 'bookmark' | 'heart';
 }
 
-export function BookmarkButton({
-  listingId,
-  initial = false,
-  className,
-  icon = 'bookmark',
-}: Props) {
+export function BookmarkButton({ listingId, initial = false, className }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const user = useSession((s) => s.user);
   const [saved, setSaved] = useState(initial);
   const [busy, setBusy] = useState(false);
-  const Icon = icon === 'heart' ? Heart : Bookmark;
 
   async function toggle(e: React.MouseEvent) {
     e.preventDefault();
@@ -67,7 +60,7 @@ export function BookmarkButton({
         className,
       )}
     >
-      <Icon
+      <Bookmark
         className={cn('h-4 w-4', saved ? 'fill-current' : 'fill-none')}
         strokeWidth={1.8}
         aria-hidden

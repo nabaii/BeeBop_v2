@@ -86,12 +86,15 @@ class PublicListingSummary(BaseModel):
     secondary_url: str | None = None
     rating: float | None = None
     review_count: int = 0
-    # Billing period for the price (off-campus only); e.g. "year" or "session".
+    # Billing period for the price (off-campus only); e.g. "year" or "semester".
     price_period: str | None = None
     # Surfaced from type_data so cards show real specs instead of guesses.
     # Null when the listing does not record them (e.g. off-campus per-unit).
     bedroom_count: int | None = None
     bathroom_count: float | None = None
+    # Off-campus: manually-recorded driving time (minutes) to Nile University,
+    # featured on every student-accommodation card. Null when not recorded.
+    drive_min_nile: int | None = None
 
 
 class SearchResponse(BaseModel):
@@ -139,7 +142,7 @@ class PublicListingDetail(BaseModel):
     gps_lat: float | None = None
     gps_lng: float | None = None
     price: float | None = None
-    # Billing period for the (off-campus starting) price; e.g. "year"/"session".
+    # Billing period for the (off-campus starting) price; e.g. "year"/"semester".
     price_period: str | None = None
     amenities: dict
     type_data: dict

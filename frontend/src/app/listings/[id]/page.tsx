@@ -11,8 +11,12 @@ import {
   Bath,
   BedDouble,
   Building2,
+  Car,
   ChevronRight,
+  FileText,
+  CircleCheck,
   MapPin,
+  ScrollText,
   Share2,
   Sparkles,
   SquareDashedMousePointer,
@@ -31,6 +35,7 @@ import { CtaBar } from '@/components/listing/cta-bar';
 import { ListingGallery } from '@/components/listing/gallery';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { iconForAmenity, amenityLabel } from '@/lib/amenity-icons';
+import { houseRuleDef, houseRuleLabel } from '@/lib/house-rules';
 import { ApiError } from '@/lib/api';
 import { pricePeriodLabel } from '@/lib/listings';
 import { getPublicListing, type PublicListingDetail } from '@/lib/search';
@@ -164,6 +169,10 @@ export default function ListingDetailPage({
               </div>
             </section>
 
+            {listing.category === 'off_campus' && <CampusDistances listing={listing} />}
+
+            {listing.category === 'off_campus' && <HouseRules listing={listing} />}
+
             <AreaScorePanel areaScore={listing.area_score} />
 
             <ApproximateLocation listing={listing} />
@@ -201,7 +210,6 @@ function ListingHeader({ listing }: { listing: PublicListingDetail }) {
         <BookmarkButton
           listingId={listing.id}
           initial={listing.is_bookmarked}
-          icon="heart"
           className="h-9 w-9 bg-white text-slate-600 shadow-none ring-0 hover:bg-slate-100"
         />
         <button
@@ -236,35 +244,71 @@ function HighlightChips({ listing }: { listing: PublicListingDetail }) {
   );
 }
 
-// Headline tiles: the amenities the landlord starred to feature. Falls back to
-// the first few present amenities (features group first) so existing listings
-// — and any that never starred anything — still show useful highlights instead
-// of an empty gap. Returns null when there are no amenities at all.
+// Headline tiles. For student accommodation the leading tile is always the
+// driving time to Nile (featured for every off-campus listing), followed by the
+// landlord's starred house rules and amenities. Other categories show starred
+// amenities, falling back to the first present ones so the row is never empty.
 function FeaturedTiles({ listing }: { listing: PublicListingDetail }) {
-  const tiles = featuredAmenities(listing);
-  if (tiles.length === 0) return null;
+  const tiles: { key: string; icon: LucideIcon; label: string }[] = [];
+
+  if (listing.category === 'off_campus') {
+    const nile = numberValue(listing.type_data?.drive_min_nile);
+    if (nile != null) {
+      tiles.push({ key: 'drive-nile', icon: Car, label: `${nile} min to Nile` });
+    }
+    for (const { key, label } of featuredHouseRules(listing)) {
+      tiles.push({ key: `rule:${key}`, icon: houseRuleDef(key)?.icon ?? CircleCheck, label });
+    }
+  }
+
+  for (const { group, key } of featuredAmenities(listing)) {
+    tiles.push({ key: `${group}:${key}`, icon: iconForAmenity(group, key), label: amenityLabel(key) });
+  }
+
+  const shown = tiles.slice(0, MAX_FEATURED_TILES);
+  if (shown.length === 0) return null;
 
   return (
     <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {tiles.map(({ group, key }) => {
-        const Icon = iconForAmenity(group, key);
-        return (
-          <div
-            key={`${group}:${key}`}
-            className="rounded-[18px] bg-white px-4 py-5 text-center shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
-          >
-            <Icon className="mx-auto h-7 w-7 text-brand-600" aria-hidden />
-            <dd className="mt-2.5 text-sm font-bold leading-tight text-slate-950">
-              {amenityLabel(key)}
-            </dd>
-          </div>
-        );
-      })}
+      {shown.map(({ key, icon: Icon, label }) => (
+        <div
+          key={key}
+          className="rounded-[18px] bg-white px-4 py-5 text-center shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
+        >
+          <Icon className="mx-auto h-7 w-7 text-brand-600" aria-hidden />
+          <dd className="mt-2.5 text-sm font-bold leading-tight text-slate-950">{label}</dd>
+        </div>
+      ))}
     </dl>
   );
 }
 
 const MAX_FEATURED_TILES = 4;
+
+// Present house rules the landlord starred, as { key, label } with the curfew
+// time folded into the label (e.g. "Curfew · 11:00 PM").
+function featuredHouseRules(listing: PublicListingDetail): { key: string; label: string }[] {
+  return presentHouseRules(listing)
+    .filter((r) => r.featured)
+    .map((r) => ({ key: r.key, label: r.value ? `${r.label} · ${r.value}` : r.label }));
+}
+
+type HouseRuleRow = { key: string; label: string; value: string | null; featured: boolean };
+
+function presentHouseRules(listing: PublicListingDetail): HouseRuleRow[] {
+  const raw = (listing.type_data?.house_rules ?? {}) as Record<
+    string,
+    { present?: boolean; featured?: boolean; value?: string | null }
+  >;
+  return Object.entries(raw)
+    .filter(([, m]) => m?.present)
+    .map(([key, m]) => ({
+      key,
+      label: houseRuleLabel(key),
+      value: typeof m?.value === 'string' && m.value ? m.value : null,
+      featured: Boolean(m?.featured),
+    }));
+}
 
 function featuredAmenities(listing: PublicListingDetail): { group: string; key: string }[] {
   const present: { group: string; key: string; featured: boolean }[] = [];
@@ -424,6 +468,105 @@ function UnitGenderBadge({ gender }: { gender: 'female' | 'male' | 'any' }) {
     >
       {gender}
     </span>
+  );
+}
+
+// Manually-recorded driving time (minutes) to the campuses BeeBop serves.
+// Rendered only when at least one figure exists. Values come straight from
+// type_data (set by the landlord and/or an admin).
+function CampusDistances({ listing }: { listing: PublicListingDetail }) {
+  const td = listing.type_data ?? {};
+  const campuses: { name: string; minutes: number | null }[] = [
+    { name: 'Nile University', minutes: numberValue(td.drive_min_nile) },
+    { name: 'Baze University', minutes: numberValue(td.drive_min_baze) },
+  ];
+  const present = campuses.filter((c) => c.minutes != null);
+  if (present.length === 0) return null;
+
+  return (
+    <section>
+      <h2 className="text-2xl font-bold text-slate-950">Distance to campus</h2>
+      <p className="mt-2 text-sm leading-6 text-stone-600">Approximate driving time.</p>
+      <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {present.map((c) => (
+          <div
+            key={c.name}
+            className="flex items-center gap-3 rounded-2xl bg-white px-5 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
+          >
+            <div className="rounded-xl bg-brand-50 p-2.5 text-brand-600">
+              <Car className="h-5 w-5" aria-hidden />
+            </div>
+            <div>
+              <dt className="text-sm font-semibold text-slate-950">{c.name}</dt>
+              <dd className="text-xs font-medium text-stone-600">
+                {c.minutes} min drive
+              </dd>
+            </div>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+// House rules: the landlord's checkable rules (curfew time inline) plus an
+// optional uploaded code-of-conduct PDF. Renders nothing when neither exists.
+function HouseRules({ listing }: { listing: PublicListingDetail }) {
+  const td = listing.type_data ?? {};
+  const rules = presentHouseRules(listing);
+  const url = typeof td.rules_doc_url === 'string' ? td.rules_doc_url : null;
+  const name =
+    typeof td.rules_doc_name === 'string' && td.rules_doc_name
+      ? td.rules_doc_name
+      : 'House rules (PDF)';
+  if (rules.length === 0 && !url) return null;
+
+  return (
+    <section>
+      <div className="flex items-center gap-2">
+        <ScrollText className="h-6 w-6 text-brand-600" aria-hidden />
+        <h2 className="text-2xl font-bold text-slate-950">House rules</h2>
+      </div>
+
+      {rules.length > 0 && (
+        <ul className="mt-5 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+          {rules.map((r) => {
+            const Icon = houseRuleDef(r.key)?.icon ?? CircleCheck;
+            return (
+              <li key={r.key} className="flex items-center gap-3 text-sm">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-brand-600 shadow-sm">
+                  <Icon className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1 text-slate-800">
+                  {r.label}
+                  {r.value && <span className="font-semibold text-slate-950"> · {r.value}</span>}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {url && (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-5 flex items-center gap-3 rounded-2xl bg-white px-5 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)] transition hover:shadow-md"
+        >
+          <div className="rounded-xl bg-slate-100 p-2.5 text-slate-500">
+            <FileText className="h-5 w-5" aria-hidden />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-950">{name}</p>
+            <p className="text-xs font-medium text-stone-600">
+              Tap to view the landlord&apos;s full code of conduct
+            </p>
+          </div>
+          <ChevronRight className="ml-auto h-5 w-5 shrink-0 text-slate-400" aria-hidden />
+        </a>
+      )}
+    </section>
   );
 }
 

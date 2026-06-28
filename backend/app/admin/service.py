@@ -546,7 +546,18 @@ async def edit_listing(
         "price": float(listing.price) if listing.price is not None else None,
     }
     after = payload.model_dump(exclude_unset=True)
+    # type_data is JSONB — merge so an admin override (e.g. driving times) keeps
+    # the landlord-entered keys intact instead of replacing the whole object.
+    type_data_patch = after.pop("type_data", None)
+    if type_data_patch is not None:
+        before["type_data"] = dict(listing.type_data or {})
+        merged = dict(listing.type_data or {})
+        merged.update(type_data_patch)
+        listing.type_data = merged
+        after["type_data"] = type_data_patch
     for k, v in after.items():
+        if k == "type_data":
+            continue
         setattr(listing, k, v)
     await audit.record(
         admin_id=admin.id,

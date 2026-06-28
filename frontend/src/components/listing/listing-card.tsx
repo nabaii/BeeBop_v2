@@ -6,7 +6,17 @@
  *   • Unverified state is visually distinct from verified tiers.
  */
 
-import { Bath, BadgeCheck, BedDouble } from 'lucide-react';
+import {
+  Bath,
+  BadgeCheck,
+  BedDouble,
+  Building2,
+  Car,
+  GraduationCap,
+  House,
+  Waves,
+  type LucideIcon,
+} from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
 
@@ -29,7 +39,8 @@ export interface ListingCardData {
   review_count?: number | null;
   bedroom_count?: number | null; // real specs from type_data; null = omit
   bathroom_count?: number | null;
-  price_period?: string | null;  // off-campus billing period (year/session)
+  price_period?: string | null;  // off-campus billing period (year/semester)
+  drive_min_nile?: number | null; // off-campus: featured drive time to Nile
   href?: string;                 // defaults to /listings/[id]
 }
 
@@ -82,6 +93,18 @@ export function ListingCard({
           <div className="absolute left-2 top-2">
             <VerificationBadge tier={tier} />
           </div>
+          <div className="absolute bottom-2 left-2">
+            <CategoryBadge category={data.category} />
+          </div>
+          {data.category === 'off_campus' && data.drive_min_nile != null && (
+            // Featured on every student-accommodation card: driving time to Nile.
+            <div className="absolute bottom-2 right-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand/90 px-2 py-0.5 text-caption font-semibold text-slate-900 shadow-sm">
+                <Car className="h-3.5 w-3.5" aria-hidden />
+                {data.drive_min_nile} min to Nile
+              </span>
+            </div>
+          )}
         </div>
         <div className="p-3.5">
           <div className="flex items-start justify-between gap-3">
@@ -130,6 +153,30 @@ export function ListingCard({
         <BookmarkButton listingId={data.id} className="absolute right-2 top-2" />
       )}
     </div>
+  );
+}
+
+// Per-vertical identity. Differentiation is carried by icon + label, not colour —
+// the palette reserves blue/green/Honey for verification, availability, and
+// actions, so category never introduces a competing colour axis. Icons mirror
+// the main sidebar's vocabulary for one consistent language across the app.
+const CATEGORY_META: Record<ListingCategory, { label: string; icon: LucideIcon }> = {
+  off_campus: { label: 'Off-campus', icon: GraduationCap },
+  short_let: { label: 'Short-let', icon: Waves },
+  rent: { label: 'Rent', icon: House },
+  sales: { label: 'For Sale', icon: Building2 },
+};
+
+function CategoryBadge({ category }: { category: ListingCategory }) {
+  // Neutral glass chip, matching the overlay-badge language already used on the
+  // photo, so the vertical reads at a glance without fighting the verification
+  // badge for colour.
+  const { label, icon: Icon } = CATEGORY_META[category];
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-caption font-medium text-ink shadow-sm">
+      <Icon className="h-3.5 w-3.5 text-ink-muted" aria-hidden />
+      {label}
+    </span>
   );
 }
 

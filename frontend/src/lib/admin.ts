@@ -264,6 +264,9 @@ export const admin = {
       description: string;
       district: string;
       price: number;
+      // Partial type_data override (merged server-side), e.g. admin-recorded
+      // driving times on off-campus listings.
+      type_data: Record<string, unknown>;
     }>,
   ) => api.patch(`/internal/admin/listings/${listingId}`, payload, { auth: true }),
   publishListing: (listingId: string) =>

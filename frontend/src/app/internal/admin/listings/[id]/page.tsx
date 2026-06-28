@@ -407,6 +407,14 @@ export default function AdminListingDetailPage() {
                 </div>
               </section>
 
+              {detail.category === 'off_campus' && (
+                <DistanceOverride
+                  listingId={listingId}
+                  typeData={detail.type_data}
+                  onSaved={load}
+                />
+              )}
+
               <section className="rounded-2xl border border-slate-200 bg-white p-5">
                 <h2 className="text-lg font-semibold text-slate-900">Type data</h2>
                 <pre className="mt-3 overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">
@@ -426,6 +434,90 @@ export default function AdminListingDetailPage() {
         />
       )}
     </div>
+  );
+}
+
+// Admin override for the manually-recorded campus driving times. Merges into
+// type_data server-side, so it never disturbs landlord-entered keys.
+function DistanceOverride({
+  listingId,
+  typeData,
+  onSaved,
+}: {
+  listingId: string;
+  typeData: Record<string, unknown>;
+  onSaved: () => Promise<void>;
+}) {
+  const toStr = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? String(v) : '');
+  const [nile, setNile] = useState(toStr(typeData.drive_min_nile));
+  const [baze, setBaze] = useState(toStr(typeData.drive_min_baze));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function save() {
+    setSaving(true);
+    setSaved(false);
+    setErr(null);
+    try {
+      await admin.editListing(listingId, {
+        type_data: {
+          drive_min_nile: nile ? Number(nile) : null,
+          drive_min_baze: baze ? Number(baze) : null,
+        },
+      });
+      await onSaved();
+      setSaved(true);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'Could not save driving times.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5">
+      <h2 className="text-lg font-semibold text-slate-900">Driving time to campus</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        Manually recorded, in minutes. Overrides the landlord-entered values and shows on the public
+        listing.
+      </p>
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="block text-sm">
+          <span className="mb-1 block font-medium text-slate-700">Nile University (min)</span>
+          <input
+            inputMode="numeric"
+            value={nile}
+            onChange={(e) => {
+              setNile(e.target.value.replace(/[^0-9]/g, ''));
+              setSaved(false);
+            }}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            placeholder="e.g. 12"
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block font-medium text-slate-700">Baze University (min)</span>
+          <input
+            inputMode="numeric"
+            value={baze}
+            onChange={(e) => {
+              setBaze(e.target.value.replace(/[^0-9]/g, ''));
+              setSaved(false);
+            }}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            placeholder="e.g. 18"
+          />
+        </label>
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <Button onClick={() => void save()} disabled={saving}>
+          {saving ? 'Saving…' : 'Save driving times'}
+        </Button>
+        {saved && <span className="text-sm font-medium text-emerald-600">Saved</span>}
+        {err && <span className="text-sm font-medium text-red-600">{err}</span>}
+      </div>
+    </section>
   );
 }
 

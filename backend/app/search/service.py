@@ -172,6 +172,7 @@ def _summarise(listing: Listing) -> PublicListingSummary:
         review_count=0,
         bedroom_count=_as_int(type_data.get("bedroom_count")),
         bathroom_count=_as_float(type_data.get("bathroom_count")),
+        drive_min_nile=_as_int(type_data.get("drive_min_nile")),
     )
 
 

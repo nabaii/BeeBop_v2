@@ -103,5 +103,6 @@ function toCardData(r: PublicListingSummary) {
     bedroom_count: r.bedroom_count,
     bathroom_count: r.bathroom_count,
     price_period: r.price_period,
+    drive_min_nile: r.drive_min_nile,
   };
 }

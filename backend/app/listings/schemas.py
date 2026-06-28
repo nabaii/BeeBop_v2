@@ -39,6 +39,24 @@ AMENITY_GROUPS: dict[str, list[str]] = {
     "laundry": ["washing_machine", "dryer", "external_line"],
 }
 
+# House rules a landlord can attach to a student-accommodation listing. Checked
+# like amenities and individually featurable. Fixed UI copy — the frontend
+# `lib/house-rules.ts` constant mirrors these keys for labels/icons.
+HOUSE_RULES: list[str] = [
+    "curfew",
+    "no_smoking",
+    "no_alcohol",
+    "no_pets",
+    "no_overnight_guests",
+    "no_parties_loud_music",
+    "visitors_sign_in",
+    "keep_common_areas_clean",
+]
+
+# Rules that carry a free-text value (e.g. curfew time "11:00 PM"). Others are
+# boolean only.
+HOUSE_RULES_WITH_VALUE: set[str] = {"curfew"}
+
 
 class ListingCreatePayload(BaseModel):
     """Minimal bootstrap payload. Category fixes downstream validation."""
@@ -222,7 +240,7 @@ class UnitTypePayload(BaseModel):
     total_units: int = Field(..., ge=1, le=500)
     price: float = Field(..., ge=0)
     # Billing period the price covers — shown next to every off-campus price.
-    price_period: Literal["year", "session"] = "year"
+    price_period: Literal["year", "semester"] = "year"
     # Sex served by this unit type. Self-contain units are normalised to ANY
     # server-side; shared units require female or male.
     gender_tag: Literal[Gender.FEMALE, Gender.MALE, Gender.ANY] = Gender.ANY
@@ -282,11 +300,43 @@ class SalesTypeData(BaseModel):
     title_type: Literal["c_of_o", "governors_consent", "deed_of_assignment", "leasehold"]
 
 
+class HouseRuleEntry(BaseModel):
+    """A single house rule's state on a listing. `featured` mirrors the amenity
+    star (surfaced as a tile on the public page); `value` holds the free-text
+    detail for valued rules like curfew ("11:00 PM")."""
+
+    present: bool = False
+    featured: bool = False
+    value: str | None = Field(default=None, max_length=50)
+
+
 class OffCampusTypeData(BaseModel):
     institutions_accepted: list[str] = Field(default_factory=list)
+    # Optional house rules / code of conduct, uploaded by the landlord as a PDF
+    # to Cloudinary (publicly viewable by seekers). URL + original filename.
+    rules_doc_url: str | None = Field(default=None, max_length=500)
+    rules_doc_name: str | None = Field(default=None, max_length=300)
+    # Manually-recorded driving time (minutes) to the campuses BeeBop serves.
+    # Set by the landlord at onboarding and/or overridden by an admin. Optional —
+    # never gates submission. Capped at 600 min to reject obvious typos.
+    drive_min_nile: int | None = Field(default=None, ge=0, le=600)
+    drive_min_baze: int | None = Field(default=None, ge=0, le=600)
+    # Checkable house rules, keyed by HOUSE_RULES. Featurable like amenities.
+    house_rules: dict[str, HouseRuleEntry] | None = None
     # Payment structure is per-unit-type — captured on the UnitType record,
-    # not here. This block is reserved for future shared off-campus metadata
-    # (e.g. "self_contain_available": bool, "rules": list[str]).
+    # not here.
+
+    @field_validator("house_rules")
+    @classmethod
+    def _validate_house_rules(
+        cls, v: dict[str, HouseRuleEntry] | None
+    ) -> dict[str, HouseRuleEntry] | None:
+        if v is None:
+            return v
+        for key in v:
+            if key not in HOUSE_RULES:
+                raise ValueError(f"Unknown house rule: {key}")
+        return v
 
 
 class ListingDeletePayload(BaseModel):

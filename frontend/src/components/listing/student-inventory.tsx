@@ -34,7 +34,7 @@ export function StudentInventory({ listingId }: Props) {
   const [bedsPerRoom, setBedsPerRoom] = useState('1');
   const [totalUnits, setTotalUnits] = useState('1');
   const [price, setPrice] = useState('');
-  const [pricePeriod, setPricePeriod] = useState<'year' | 'session'>('year');
+  const [pricePeriod, setPricePeriod] = useState<'year' | 'semester'>('year');
   const [gender, setGender] = useState<'female' | 'male'>('female');
   const [amenities, setAmenities] = useState('');
   const [adding, setAdding] = useState(false);
@@ -181,11 +181,11 @@ export function StudentInventory({ listingId }: Props) {
             <label className="text-xs font-medium text-slate-500 ml-1">Price per</label>
             <select
               value={pricePeriod}
-              onChange={(e) => setPricePeriod(e.target.value as 'year' | 'session')}
+              onChange={(e) => setPricePeriod(e.target.value as 'year' | 'semester')}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 cursor-pointer"
             >
               <option value="year">Per year</option>
-              <option value="session">Per session</option>
+              <option value="semester">Per semester</option>
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
