@@ -32,8 +32,8 @@ from app.bookings.routes import router as bookings_router
 from app.bookmarks.routes import router as bookmarks_router
 from app.config import get_settings
 from app.core.exceptions import DomainError
-from app.database import database_is_reachable, verify_database_connection
 from app.dashboards.routes import router as dashboards_router
+from app.database import database_is_reachable, verify_database_connection
 from app.inspector.routes import router as inspector_router
 from app.listings.routes import router as listings_router
 from app.notifications.routes import router as notifications_router
@@ -45,6 +45,7 @@ from app.referrals.routes import (
 from app.referrals.routes import (
     router as referrals_router,
 )
+from app.reservations.routes import router as reservations_router
 from app.search.routes import router as search_router
 from app.users.routes import router as users_router
 from app.visits.routes import (
@@ -181,6 +182,8 @@ app.include_router(agreements_router)
 app.include_router(payments_router)
 # Sprint 11 — short-let bookings.
 app.include_router(bookings_router)
+# Off-campus 'Book now' full-term reservations.
+app.include_router(reservations_router)
 # Sprint 12 — chat, ai_search.
 app.include_router(ai_search_router)
 # Referral programme — codes, attribution at checkout, dashboard, payouts.

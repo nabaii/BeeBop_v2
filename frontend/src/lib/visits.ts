@@ -33,7 +33,26 @@ export interface AvailableAgent {
   operating_area: string | null;
 }
 
+export interface SeekerVisit {
+  visit_id: string;
+  listing_id: string;
+  listing_title: string;
+  status: VisitStatus;
+  preferred_dates: string[];
+  scheduled_at: string | null;
+  created_at: string;
+}
+
 export const visits = {
+  // Seeker self-service.
+  request: (listingId: string, preferredDates: string[]) =>
+    api.post<SeekerVisit>(
+      `/visits/listing/${listingId}/request`,
+      { preferred_dates: preferredDates },
+      { auth: true },
+    ),
+  mine: () => api.get<SeekerVisit[]>('/visits/mine', { auth: true }),
+
   // Landlord read-only
   forListing: (listingId: string) =>
     api.get<VisitQueueRow[]>(`/visits/listing/${listingId}`, { auth: true }),

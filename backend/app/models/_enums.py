@@ -98,6 +98,14 @@ class BookingStatus(StrEnum):
     COMPLETED = "completed"
 
 
+class ReservationStatus(StrEnum):
+    """Off-campus 'Book now' — full-term reservation lifecycle."""
+
+    PENDING_PAYMENT = "pending_payment"   # created; awaiting Paystack confirmation
+    CONFIRMED = "confirmed"               # payment confirmed; bed reserved
+    CANCELLED = "cancelled"
+
+
 class VisitStatus(StrEnum):
     PENDING_ASSIGNMENT = "pending_assignment"   # admin queue
     AGENT_ASSIGNED = "agent_assigned"            # awaiting agent confirmation

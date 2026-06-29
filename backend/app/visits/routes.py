@@ -15,6 +15,8 @@ from app.visits import service
 from app.visits.schemas import (
     AssignAgentPayload,
     AvailableAgent,
+    RequestVisitPayload,
+    SeekerVisitView,
     VisitQueueRow,
 )
 
@@ -71,8 +73,32 @@ async def assign(
     return match
 
 
-# Landlord-side read-only view per dev plan §7.5.
+# Landlord read-only view (§7.5) + seeker self-service visit requests.
 landlord_router = APIRouter(prefix="/visits", tags=["visits"])
+
+
+@landlord_router.post(
+    "/listing/{listing_id}/request", response_model=SeekerVisitView
+)
+async def request_visit(
+    listing_id: uuid.UUID,
+    payload: RequestVisitPayload,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SeekerVisitView:
+    view = await service.request_visit(
+        seeker=user, listing_id=listing_id, payload=payload, db=db
+    )
+    await db.commit()
+    return view
+
+
+@landlord_router.get("/mine", response_model=list[SeekerVisitView])
+async def my_visits(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[SeekerVisitView]:
+    return await service.list_seeker_visits(seeker=user, db=db)
 
 
 @landlord_router.get(

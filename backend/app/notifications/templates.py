@@ -477,6 +477,53 @@ def _referral_codeless_email(p: dict) -> EmailContent:
     )
 
 
+# --- Off-campus: seeker-requested visits + 'Book now' reservations ---------
+
+
+def _visit_requested_email(p: dict) -> EmailContent:
+    title = p.get("listing_title", "your listing")
+    return EmailContent(
+        subject=f"Beebop: a seeker requested a visit to {title}",
+        html=(
+            f"<p>A seeker has requested a visit to <strong>{title}</strong>. "
+            f"A Beebop trusted agent will be assigned to show them around — no "
+            f"action is needed from you.</p>"
+        ),
+        text=(
+            f"A seeker requested a visit to {title}. A Beebop trusted agent will "
+            f"be assigned to show them around."
+        ),
+    )
+
+
+def _reservation_confirmed_seeker_email(p: dict) -> EmailContent:
+    title = p.get("listing_title", "the property")
+    unit = p.get("unit_type_name", "your unit")
+    return EmailContent(
+        subject=f"Beebop: reservation confirmed — {title}",
+        html=(
+            f"<p>Your reservation for <strong>{unit}</strong> at "
+            f"<strong>{title}</strong> is confirmed.</p>"
+            f"<p>The Beebop team will be in touch with the next steps for move-in.</p>"
+        ),
+        text=f"Reservation confirmed: {unit} at {title}.",
+    )
+
+
+def _reservation_confirmed_owner_email(p: dict) -> EmailContent:
+    title = p.get("listing_title", "your listing")
+    unit = p.get("unit_type_name", "a unit")
+    return EmailContent(
+        subject=f"Beebop: a unit was booked — {title}",
+        html=(
+            f"<p>Good news — <strong>{unit}</strong> at <strong>{title}</strong> "
+            f"has been booked and paid for. The bed has been marked as taken in "
+            f"your inventory.</p>"
+        ),
+        text=f"{unit} at {title} has been booked and paid for.",
+    )
+
+
 def _landlord_nin_verified_email(p: dict) -> EmailContent:
     name = p.get("first_name") or "there"
     return EmailContent(
@@ -587,6 +634,26 @@ REGISTRY: dict[str, Template] = {
     "visit.assigned": Template(
         channels=(NotificationChannel.WHATSAPP, NotificationChannel.IN_APP),
         render_whatsapp=_visit_assigned_whatsapp,
+    ),
+    # Off-campus: seeker self-requested a visit.
+    "visit.requested": Template(
+        channels=(NotificationChannel.EMAIL, NotificationChannel.IN_APP),
+        render_email=_visit_requested_email,
+    ),
+    # Off-campus 'Book now' reservation confirmed (after Paystack).
+    "reservation.confirmed_seeker": Template(
+        channels=(
+            NotificationChannel.EMAIL,
+            NotificationChannel.IN_APP,
+        ),
+        render_email=_reservation_confirmed_seeker_email,
+    ),
+    "reservation.confirmed_owner": Template(
+        channels=(
+            NotificationChannel.EMAIL,
+            NotificationChannel.IN_APP,
+        ),
+        render_email=_reservation_confirmed_owner_email,
     ),
     # Sprint 9 — visit lifecycle (per dev plan §12.2).
     "visit.confirmed": Template(

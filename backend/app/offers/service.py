@@ -51,12 +51,12 @@ from app.offers.schemas import (
 
 OFFER_RESPONSE_WINDOW = timedelta(hours=48)
 
-# Categories that route through the offer flow at all. Short-let uses
-# Booking instead (Sprint 11).
+# Categories that route through the offer flow at all. Short-let uses Booking
+# (Sprint 11); off-campus uses the Visit + 'Book now' Reservation flow and no
+# longer negotiates via offers.
 _OFFER_CATEGORIES = (
     ListingCategory.RENT,
     ListingCategory.SALES,
-    ListingCategory.OFF_CAMPUS,
 )
 
 

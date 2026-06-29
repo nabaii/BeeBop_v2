@@ -97,6 +97,10 @@ export function iconForAmenity(group: string, key: string): LucideIcon {
   return BY_KEY[key] ?? BY_GROUP[group] ?? CircleCheck;
 }
 
+export function iconForGroup(group: string): LucideIcon {
+  return BY_GROUP[group] ?? CircleCheck;
+}
+
 /** "swimming_pool" → "Swimming Pool". */
 export function amenityLabel(key: string): string {
   return key

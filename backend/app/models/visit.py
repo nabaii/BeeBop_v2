@@ -26,11 +26,17 @@ class Visit(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     seeker_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), index=True, nullable=False
     )
-    # The accepted offer that triggered this visit. NULL when admin schedules
+    # The accepted offer that triggered this visit. NULL when the seeker
+    # self-requests a visit (off-campus "Visit" CTA) or when admin schedules
     # a pre-offer site visit (rare; manual workflow).
     offer_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("offers.id", ondelete="SET NULL")
     )
+
+    # Seeker-supplied preferred visit dates (ISO date strings). Populated when
+    # the seeker self-requests a visit; the assigned agent confirms one of
+    # them. At least two dates are required at request time.
+    seeker_preferred_dates: Mapped[list | None] = mapped_column(JSONB)
 
     status: Mapped[VisitStatus] = mapped_column(
         Enum(VisitStatus, name="visit_status", values_callable=lambda x: [e.value for e in x]),

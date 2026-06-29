@@ -177,7 +177,14 @@
       "Bash(python -c \"import app.admin.service; import app.admin.routes; import app.users.schemas; print\\('backend imports OK'\\)\")",
       "Bash(python -m pytest tests/test_listing_submission.py tests/test_landlord_onboarding.py -q)",
       "Bash(python -m py_compile app/listings/schemas.py app/models/student_accommodation.py app/search/schemas.py)",
-      "Bash(python -m pytest tests/test_listing_submission.py tests/test_search_filters.py -q)"
+      "Bash(python -m pytest tests/test_listing_submission.py tests/test_search_filters.py -q)",
+      "Bash(python -m alembic heads)",
+      "Bash(python -c \"import app.main; import app.models; import app.reservations.routes; import app.visits.routes; print\\('imports OK'\\)\")",
+      "Bash(ruff check *)",
+      "Bash(python -m alembic history)",
+      "Bash(xargs grep -l \"off_campus\\\\|OFF_CAMPUS\")",
+      "Bash(python -m pytest tests/test_offer_state_machine.py tests/test_visit_assignment.py tests/test_agent_visits.py tests/test_fees.py -q)",
+      "Bash(python -m alembic upgrade b8e4d2f6a1c7:c7d8e9f0a1b2 --sql)"
     ]
   }
 }

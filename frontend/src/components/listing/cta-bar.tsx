@@ -18,6 +18,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 import { BookingModal } from '@/components/bookings/booking-modal';
+import { ReservationModal } from '@/components/bookings/reservation-modal';
+import { VisitModal } from '@/components/bookings/visit-modal';
 import { OfferModal } from '@/components/offers/offer-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +37,8 @@ export function CtaBar({ listing }: Props) {
   const user = useSession((s) => s.user);
   const [offerModalOpen, setOfferModalOpen] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [visitModalOpen, setVisitModalOpen] = useState(false);
+  const [reservationModalOpen, setReservationModalOpen] = useState(false);
 
   const loggedOutCta = (
     <Link
@@ -58,7 +62,12 @@ export function CtaBar({ listing }: Props) {
               </ShortLetCta>
             )}
             {listing.category === 'off_campus' && (
-              <OffCampusCta listing={listing} disabled={!user} onMakeOffer={openOffer}>
+              <OffCampusCta
+                listing={listing}
+                disabled={!user}
+                onVisit={() => setVisitModalOpen(true)}
+                onBook={() => setReservationModalOpen(true)}
+              >
                 {loggedOutCta}
               </OffCampusCta>
             )}
@@ -91,6 +100,30 @@ export function CtaBar({ listing }: Props) {
           onClose={() => setBookingModalOpen(false)}
           onCreated={(authUrl) => {
             setBookingModalOpen(false);
+            if (authUrl && !authUrl.startsWith('https://stub.local/')) {
+              window.location.href = authUrl;
+            } else {
+              router.push('/dashboard/seeker');
+            }
+          }}
+        />
+      )}
+      {visitModalOpen && (
+        <VisitModal
+          listing={listing}
+          onClose={() => setVisitModalOpen(false)}
+          onRequested={() => {
+            setVisitModalOpen(false);
+            router.push('/dashboard/seeker');
+          }}
+        />
+      )}
+      {reservationModalOpen && (
+        <ReservationModal
+          listing={listing}
+          onClose={() => setReservationModalOpen(false)}
+          onCreated={(authUrl) => {
+            setReservationModalOpen(false);
             if (authUrl && !authUrl.startsWith('https://stub.local/')) {
               window.location.href = authUrl;
             } else {
@@ -182,12 +215,14 @@ function OffCampusCta({
   listing,
   disabled,
   children,
-  onMakeOffer,
+  onVisit,
+  onBook,
 }: {
   listing: PublicListingDetail;
   disabled: boolean;
   children: React.ReactNode;
-  onMakeOffer: () => void;
+  onVisit: () => void;
+  onBook: () => void;
 }) {
   return (
     <>
@@ -200,7 +235,18 @@ function OffCampusCta({
         )}
         <span className="ml-2 text-xs text-slate-500">starting rate</span>
       </div>
-      {disabled ? children : <Button onClick={onMakeOffer} className="w-full sm:w-auto">Enquire</Button>}
+      {disabled ? (
+        children
+      ) : (
+        <div className="flex w-full gap-2 sm:w-auto">
+          <Button variant="secondary" onClick={onVisit} className="flex-1 sm:flex-none">
+            Visit
+          </Button>
+          <Button onClick={onBook} className="flex-1 sm:flex-none">
+            Book now
+          </Button>
+        </div>
+      )}
     </>
   );
 }

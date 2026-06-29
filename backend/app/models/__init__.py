@@ -9,6 +9,7 @@ from app.models.inspection import InspectionReport, AreaScore  # noqa: F401
 from app.models.notification import Notification  # noqa: F401
 from app.models.badge import Badge  # noqa: F401
 from app.models.booking import Booking  # noqa: F401
+from app.models.reservation import Reservation  # noqa: F401
 from app.models.visit import Visit  # noqa: F401
 from app.models.chat import ChatThread, ChatMessage  # noqa: F401
 from app.models.bookmark import Bookmark  # noqa: F401

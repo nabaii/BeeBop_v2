@@ -14,6 +14,7 @@ import { useMemo, useState } from 'react';
 import { ScrollText, Star } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
+import { countFeaturedAmenities, featuredBudget } from '@/lib/featured';
 import { HOUSE_RULES } from '@/lib/house-rules';
 import { updateDraft, type ListingView } from '@/lib/listings';
 
@@ -21,9 +22,6 @@ interface Props {
   listing: ListingView;
   onSaved: (next: ListingView) => void;
 }
-
-// Keep the featured tiles to a tidy row; the drive-time tile shares the grid.
-const MAX_FEATURED = 3;
 
 type RuleMeta = { present: boolean; featured?: boolean; value?: string | null };
 type RuleSel = Record<string, RuleMeta>;
@@ -48,7 +46,16 @@ function countFeatured(sel: RuleSel): number {
 export function HouseRulesChecklist({ listing, onSaved }: Props) {
   const [sel, setSel] = useState<RuleSel>(() => normalise(listing.type_data));
   const [saving, setSaving] = useState(false);
-  const featuredCount = useMemo(() => countFeatured(sel), [sel]);
+
+  // Stars are a shared budget: house rules starred here plus amenities starred
+  // in the other checklist (read live from props) must fit within the budget.
+  const max = featuredBudget({ category: listing.category, typeData: listing.type_data });
+  const amenityFeatured = useMemo(
+    () => countFeaturedAmenities(listing.amenities),
+    [listing.amenities],
+  );
+  const ownFeatured = useMemo(() => countFeatured(sel), [sel]);
+  const featuredCount = ownFeatured + amenityFeatured;
 
   async function persist(next: RuleSel) {
     setSel(next);
@@ -73,7 +80,7 @@ export function HouseRulesChecklist({ listing, onSaved }: Props) {
     const prev = sel[key];
     if (!prev?.present) return;
     const nextFeatured = !prev.featured;
-    if (nextFeatured && featuredCount >= MAX_FEATURED) return;
+    if (nextFeatured && featuredCount >= max) return;
     void persist({ ...sel, [key]: { ...prev, featured: nextFeatured } });
   }
 
@@ -93,14 +100,14 @@ export function HouseRulesChecklist({ listing, onSaved }: Props) {
           <div>
             <h2 className="text-base font-bold text-slate-900">House rules</h2>
             <p className="text-xs text-slate-500">
-              Select the rules tenants must follow, then star up to {MAX_FEATURED} to feature them.
+              Select the rules tenants must follow, then star up to {max} to feature them.
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-caption font-semibold text-amber-700">
             <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-            {featuredCount}/{MAX_FEATURED} featured
+            {featuredCount}/{max} featured
           </span>
           {saving && <span className="text-xs text-slate-500 animate-pulse">Saving…</span>}
         </div>
@@ -111,7 +118,7 @@ export function HouseRulesChecklist({ listing, onSaved }: Props) {
           const meta = sel[rule.key];
           const checked = Boolean(meta?.present);
           const featured = Boolean(meta?.featured);
-          const capped = !featured && featuredCount >= MAX_FEATURED;
+          const capped = !featured && featuredCount >= max;
           const Icon = rule.icon;
           return (
             <li key={rule.key} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
@@ -136,7 +143,7 @@ export function HouseRulesChecklist({ listing, onSaved }: Props) {
                       featured
                         ? 'Featured as a tile — tap to remove'
                         : capped
-                          ? `Remove another feature first (max ${MAX_FEATURED})`
+                          ? `Remove another feature first (max ${max})`
                           : 'Feature this rule on your listing'
                     }
                     className={cn(

@@ -15,6 +15,7 @@ from app.agreements import service as agreement_service
 from app.bookings import service as booking_service
 from app.config import get_settings
 from app.database import AsyncSessionLocal
+from app.reservations import service as reservation_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -55,6 +56,7 @@ async def paystack_webhook(
 
     agreement_id = metadata.get("agreement_id")
     booking_id = metadata.get("booking_id")
+    reservation_id = metadata.get("reservation_id")
 
     async with AsyncSessionLocal() as db:
         if agreement_id:
@@ -66,6 +68,12 @@ async def paystack_webhook(
         if booking_id:
             await booking_service.confirm_payment(
                 booking_id=uuid.UUID(booking_id),
+                reference=reference,
+                db=db,
+            )
+        if reservation_id:
+            await reservation_service.confirm_payment(
+                reservation_id=uuid.UUID(reservation_id),
                 reference=reference,
                 db=db,
             )

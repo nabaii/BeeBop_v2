@@ -7,23 +7,22 @@
  *   { power: { generator: { present: true } }, water: { borehole: {...} }, ... }
  *
  * A present amenity can also be *starred* to feature it as a headline tile on
- * the public listing page; that adds `featured: true` to its meta. At most
- * MAX_FEATURED amenities may be featured at once.
+ * the public listing page; that adds `featured: true` to its meta. Stars share
+ * one budget with featured house rules (see `lib/featured`) — at most
+ * `featuredBudget(listing)` items may be featured across both at once.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { Sparkles, ChevronDown, Star } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
+import { countFeaturedHouseRules, featuredBudget } from '@/lib/featured';
 import { getAmenityVocabulary, updateDraft, type ListingView } from '@/lib/listings';
 
 interface Props {
   listing: ListingView;
   onSaved: (next: ListingView) => void;
 }
-
-// Headline tiles on the listing page — keep the grid to a tidy single row.
-const MAX_FEATURED = 4;
 
 type AmenityMeta = { present: boolean; featured?: boolean };
 type AmenitySel = Record<string, Record<string, AmenityMeta>>;
@@ -58,7 +57,20 @@ export function AmenitiesChecklist({ listing, onSaved }: Props) {
   }, []);
 
   const groups = useMemo(() => (vocab ? Object.entries(vocab) : []), [vocab]);
-  const featuredCount = useMemo(() => countFeatured(sel), [sel]);
+
+  // Stars are a shared budget: amenities starred here plus house rules starred
+  // in the other checklist (read live from props) must fit within the budget.
+  const max = featuredBudget({ category: listing.category, typeData: listing.type_data });
+  const ruleFeatured = useMemo(
+    () =>
+      countFeaturedHouseRules(
+        (listing.type_data as { house_rules?: Record<string, { present?: boolean; featured?: boolean }> })
+          ?.house_rules,
+      ),
+    [listing.type_data],
+  );
+  const ownFeatured = useMemo(() => countFeatured(sel), [sel]);
+  const featuredCount = ownFeatured + ruleFeatured;
 
   async function persist(next: AmenitySel) {
     setSel(next);
@@ -84,7 +96,7 @@ export function AmenitiesChecklist({ listing, onSaved }: Props) {
     const prev = sel[group]?.[key];
     if (!prev?.present) return;
     const nextFeatured = !prev.featured;
-    if (nextFeatured && featuredCount >= MAX_FEATURED) return; // cap reached
+    if (nextFeatured && featuredCount >= max) return; // shared cap reached
     void persist({
       ...sel,
       [group]: { ...(sel[group] ?? {}), [key]: { present: true, featured: nextFeatured } },
@@ -101,14 +113,14 @@ export function AmenitiesChecklist({ listing, onSaved }: Props) {
           <div>
             <h2 className="text-base font-bold text-slate-900">Amenities</h2>
             <p className="text-xs text-slate-500">
-              Select what&apos;s available, then star up to {MAX_FEATURED} to feature as tiles.
+              Select what&apos;s available, then star up to {max} to feature as tiles.
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-caption font-semibold text-amber-700">
             <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-            {featuredCount}/{MAX_FEATURED} featured
+            {featuredCount}/{max} featured
           </span>
           {saving && <span className="text-xs text-slate-500 animate-pulse">Saving…</span>}
         </div>
@@ -135,7 +147,7 @@ export function AmenitiesChecklist({ listing, onSaved }: Props) {
                 const meta = sel[group]?.[key];
                 const checked = Boolean(meta?.present);
                 const featured = Boolean(meta?.featured);
-                const capped = !featured && featuredCount >= MAX_FEATURED;
+                const capped = !featured && featuredCount >= max;
                 return (
                   <li key={key} className="flex items-center justify-between gap-2">
                     <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer select-none hover:text-slate-900 transition-colors">
@@ -157,7 +169,7 @@ export function AmenitiesChecklist({ listing, onSaved }: Props) {
                           featured
                             ? 'Featured as a tile — tap to remove'
                             : capped
-                              ? `Remove another feature first (max ${MAX_FEATURED})`
+                              ? `Remove another feature first (max ${max})`
                               : 'Feature this as a tile on your listing'
                         }
                         className={cn(

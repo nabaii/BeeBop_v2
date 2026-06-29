@@ -35,6 +35,7 @@ import { CtaBar } from '@/components/listing/cta-bar';
 import { ListingGallery } from '@/components/listing/gallery';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { iconForAmenity, amenityLabel } from '@/lib/amenity-icons';
+import { MAX_FEATURED_TILES } from '@/lib/featured';
 import { houseRuleDef, houseRuleLabel } from '@/lib/house-rules';
 import { ApiError } from '@/lib/api';
 import { pricePeriodLabel } from '@/lib/listings';
@@ -261,8 +262,18 @@ function FeaturedTiles({ listing }: { listing: PublicListingDetail }) {
     }
   }
 
-  for (const { group, key } of featuredAmenities(listing)) {
+  const starredAmenities = featuredAmenities(listing);
+  for (const { group, key } of starredAmenities) {
     tiles.push({ key: `${group}:${key}`, icon: iconForAmenity(group, key), label: amenityLabel(key) });
+  }
+
+  // Nothing the landlord starred? Keep the row from being empty by surfacing the
+  // first present amenities (features-group first). Skipped once anything is
+  // starred so injected tiles never dilute a curated set.
+  if (tiles.length === 0) {
+    for (const { group, key } of fallbackAmenities(listing)) {
+      tiles.push({ key: `${group}:${key}`, icon: iconForAmenity(group, key), label: amenityLabel(key) });
+    }
   }
 
   const shown = tiles.slice(0, MAX_FEATURED_TILES);
@@ -282,8 +293,6 @@ function FeaturedTiles({ listing }: { listing: PublicListingDetail }) {
     </dl>
   );
 }
-
-const MAX_FEATURED_TILES = 4;
 
 // Present house rules the landlord starred, as { key, label } with the curfew
 // time folded into the label (e.g. "Curfew · 11:00 PM").
@@ -310,7 +319,25 @@ function presentHouseRules(listing: PublicListingDetail): HouseRuleRow[] {
     }));
 }
 
+// Amenities the landlord explicitly starred to feature (their intent).
 function featuredAmenities(listing: PublicListingDetail): { group: string; key: string }[] {
+  return presentAmenities(listing)
+    .filter((a) => a.featured)
+    .slice(0, MAX_FEATURED_TILES)
+    .map(({ group, key }) => ({ group, key }));
+}
+
+// Filler for when nothing is starred: present amenities, features-group first.
+function fallbackAmenities(listing: PublicListingDetail): { group: string; key: string }[] {
+  return [...presentAmenities(listing)]
+    .sort((a, b) => Number(b.group === 'features') - Number(a.group === 'features'))
+    .slice(0, MAX_FEATURED_TILES)
+    .map(({ group, key }) => ({ group, key }));
+}
+
+function presentAmenities(
+  listing: PublicListingDetail,
+): { group: string; key: string; featured: boolean }[] {
   const present: { group: string; key: string; featured: boolean }[] = [];
   for (const [group, items] of Object.entries(listing.amenities ?? {})) {
     if (!items) continue;
@@ -318,13 +345,7 @@ function featuredAmenities(listing: PublicListingDetail): { group: string; key: 
       if (meta?.present) present.push({ group, key, featured: Boolean(meta?.featured) });
     }
   }
-  const starred = present.filter((a) => a.featured);
-  // Landlord intent wins; otherwise surface features-group items first.
-  const source =
-    starred.length > 0
-      ? starred
-      : [...present].sort((a, b) => Number(b.group === 'features') - Number(a.group === 'features'));
-  return source.slice(0, MAX_FEATURED_TILES).map(({ group, key }) => ({ group, key }));
+  return present;
 }
 
 // Glanceable specs under the price. Off-campus shows bed availability (when the
