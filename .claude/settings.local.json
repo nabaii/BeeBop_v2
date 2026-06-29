@@ -184,7 +184,15 @@
       "Bash(python -m alembic history)",
       "Bash(xargs grep -l \"off_campus\\\\|OFF_CAMPUS\")",
       "Bash(python -m pytest tests/test_offer_state_machine.py tests/test_visit_assignment.py tests/test_agent_visits.py tests/test_fees.py -q)",
-      "Bash(python -m alembic upgrade b8e4d2f6a1c7:c7d8e9f0a1b2 --sql)"
+      "Bash(python -m alembic upgrade b8e4d2f6a1c7:c7d8e9f0a1b2 --sql)",
+      "Bash(awk '/async def student_pms/,/^async def [a-z_]+\\\\\\(.*\\\\\\)|\\\\Z/' app/dashboards/service.py)",
+      "Bash(awk '/class GenderBreakdown|class UnitOccupancy|class StudentPMS/,/^class [A-Z]/' app/dashboards/schemas.py)",
+      "Bash(python -c \"import app.dashboards.service; print\\('imports OK'\\)\")",
+      "Bash(awk '/def _unit_view/,/^@router|^async def [a-z]/' app/listings/routes.py)",
+      "Bash(awk '/class RoomView/,/^class [A-Z]/' app/listings/schemas.py)",
+      "Bash(awk '/export interface RoomView/,/^}/' frontend/src/lib/listings.ts)",
+      "Bash(python -m pytest tests/test_student_inventory.py tests/test_dashboard_metrics.py -q)",
+      "Bash(python -c \"import app.main; import app.listings.routes; import app.dashboards.service; print\\('backend imports OK'\\)\")"
     ]
   }
 }

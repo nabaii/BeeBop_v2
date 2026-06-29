@@ -288,23 +288,26 @@ async def student_pms(
     overall = GenderBreakdown()
     unit_views: list[UnitOccupancy] = []
     for u in units:
+        # Gender is a property of the unit type (moved off rooms in migration
+        # e5f6a1b2c3d4); every room in a unit shares the unit's gender tag.
         b = GenderBreakdown()
-        for r in u.rooms:
-            if r.gender_tag == Gender.FEMALE:
-                b.female_total += r.beds_total
-                b.female_available += r.beds_available
-                overall.female_total += r.beds_total
-                overall.female_available += r.beds_available
-            elif r.gender_tag == Gender.MALE:
-                b.male_total += r.beds_total
-                b.male_available += r.beds_available
-                overall.male_total += r.beds_total
-                overall.male_available += r.beds_available
-            else:
-                b.any_total += r.beds_total
-                b.any_available += r.beds_available
-                overall.any_total += r.beds_total
-                overall.any_available += r.beds_available
+        total = sum(r.beds_total for r in u.rooms)
+        available = sum(r.beds_available for r in u.rooms)
+        if u.gender_tag == Gender.FEMALE:
+            b.female_total += total
+            b.female_available += available
+            overall.female_total += total
+            overall.female_available += available
+        elif u.gender_tag == Gender.MALE:
+            b.male_total += total
+            b.male_available += available
+            overall.male_total += total
+            overall.male_available += available
+        else:
+            b.any_total += total
+            b.any_available += available
+            overall.any_total += total
+            overall.any_available += available
         unit_views.append(
             UnitOccupancy(
                 unit_type_id=str(u.id),

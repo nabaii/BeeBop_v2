@@ -6,6 +6,13 @@
  * own shell under /internal/*.
  */
 
+import {
+  CalendarDays,
+  GraduationCap,
+  Heart,
+  LayoutDashboard,
+  type LucideIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -19,13 +26,14 @@ import { becomeLandlord } from '@/lib/users';
 import { useSession, type UserRole } from '@/stores/session';
 
 const SECTIONS = [
-  { href: '/dashboard/seeker', label: 'Saved & enquiries', roles: ['seeker'] },
-  { href: '/dashboard/landlord', label: 'My listings', roles: ['landlord', 'agent'] },
-  { href: '/dashboard/student', label: 'Student PMS', roles: ['landlord', 'agent'] },
-  { href: '/dashboard/short-let', label: 'Short-let calendar', roles: ['landlord', 'agent'] },
+  { href: '/dashboard/seeker', label: 'Saved & enquiries', icon: Heart, roles: ['seeker'] },
+  { href: '/dashboard/landlord', label: 'Overview', icon: LayoutDashboard, roles: ['landlord', 'agent'] },
+  { href: '/dashboard/student', label: 'Student PMS', icon: GraduationCap, roles: ['landlord', 'agent'] },
+  { href: '/dashboard/short-let', label: 'Short-let calendar', icon: CalendarDays, roles: ['landlord', 'agent'] },
 ] as const satisfies ReadonlyArray<{
   href: '/dashboard/seeker' | '/dashboard/landlord' | '/dashboard/student' | '/dashboard/short-let';
   label: string;
+  icon: LucideIcon;
   roles?: readonly UserRole[];
 }>;
 
@@ -40,7 +48,6 @@ export function DashboardSidebar() {
   const visible = SECTIONS.filter(
     (s) => !s.roles || (s.roles as readonly UserRole[]).includes(user.role),
   );
-  const hasLandlordAccess = user.role === 'landlord' || user.role === 'agent';
   const canBecomeLandlord = user.role === 'seeker';
 
   async function handleBecomeLandlord() {
@@ -69,15 +76,20 @@ export function DashboardSidebar() {
       <nav className="flex-1 space-y-0.5 p-2">
         {visible.map((s) => {
           const active = pathname === s.href || pathname?.startsWith(s.href + '/');
+          const Icon = s.icon;
           return (
             <Link
               key={s.href}
               href={s.href}
+              aria-current={active ? 'page' : undefined}
               className={cn(
-                'block rounded-lg px-3 py-2 text-sm transition-colors',
-                active ? 'bg-brand/10 text-brand' : 'text-slate-700 hover:bg-slate-50',
+                'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                active
+                  ? 'bg-brand/10 text-brand'
+                  : 'text-slate-700 hover:bg-slate-50',
               )}
             >
+              <Icon className="h-4 w-4 shrink-0" />
               {s.label}
             </Link>
           );
@@ -97,14 +109,6 @@ export function DashboardSidebar() {
             </Button>
             {landlordError && <p className="text-xs text-red-600">{landlordError}</p>}
           </>
-        )}
-        {hasLandlordAccess && (
-          <Link
-            href="/dashboard/landlord"
-            className="block rounded-lg border border-slate-300 bg-white px-3 py-2 text-center text-sm font-medium text-slate-800 hover:bg-slate-50"
-          >
-            Landlord dashboard
-          </Link>
         )}
         <Link href="/" className="block text-center text-xs text-slate-500 hover:text-brand">
           Back to Beebop

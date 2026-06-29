@@ -38,6 +38,20 @@ from app.models.user import User
 # Core CRUD
 # ----------------------------------------------------------------------------
 
+# Statuses whose owner may still edit listing fields (base data, amenities,
+# house rules, etc.). Drafts plus all live/published states are editable — the
+# landlord dashboard's "Manage" flow reuses the draft editor for these. Locked
+# states are excluded: under review (frozen for moderation), let/sale agreed
+# (deal closed), suspended (admin action) and delisted (soft-deleted).
+_EDITABLE_STATUSES: frozenset[ListingStatus] = frozenset(
+    {
+        ListingStatus.DRAFT,
+        ListingStatus.LIVE_UNVERIFIED,
+        ListingStatus.DOC_VERIFIED,
+        ListingStatus.FULLY_VERIFIED,
+    }
+)
+
 
 def _view(listing: Listing) -> ListingView:
     return ListingView(
@@ -188,10 +202,10 @@ async def update_draft(
 ) -> ListingView:
     listing = await _load(db, listing_id)
     _ensure_owner(user, listing)
-    if listing.status != ListingStatus.DRAFT:
+    if listing.status not in _EDITABLE_STATUSES:
         raise ConflictError(
-            "Listing is no longer a draft — use the edit flow instead.",
-            code="not_draft",
+            "This listing can no longer be edited.",
+            code="not_editable",
         )
 
     data = payload.model_dump(exclude_unset=True)

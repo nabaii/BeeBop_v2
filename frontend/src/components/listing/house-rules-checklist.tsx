@@ -14,6 +14,7 @@ import { useMemo, useState } from 'react';
 import { ScrollText, Star } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
+import { ApiError } from '@/lib/api';
 import { countFeaturedAmenities, featuredBudget } from '@/lib/featured';
 import { HOUSE_RULES } from '@/lib/house-rules';
 import { updateDraft, type ListingView } from '@/lib/listings';
@@ -46,6 +47,7 @@ function countFeatured(sel: RuleSel): number {
 export function HouseRulesChecklist({ listing, onSaved }: Props) {
   const [sel, setSel] = useState<RuleSel>(() => normalise(listing.type_data));
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Stars are a shared budget: house rules starred here plus amenities starred
   // in the other checklist (read live from props) must fit within the budget.
@@ -58,11 +60,22 @@ export function HouseRulesChecklist({ listing, onSaved }: Props) {
   const featuredCount = ownFeatured + amenityFeatured;
 
   async function persist(next: RuleSel) {
+    const prev = sel;
     setSel(next);
     setSaving(true);
+    setSaveError(null);
     try {
       const updated = await updateDraft(listing.id, { type_data: { house_rules: next } });
       onSaved(updated);
+    } catch (err) {
+      // Roll back the optimistic update so the UI reflects what's actually
+      // persisted, and tell the user — otherwise a failed save looks saved.
+      setSel(prev);
+      setSaveError(
+        err instanceof ApiError && typeof err.message === 'string'
+          ? err.message
+          : "Couldn't save house rules. Please try again.",
+      );
     } finally {
       setSaving(false);
     }
@@ -112,6 +125,12 @@ export function HouseRulesChecklist({ listing, onSaved }: Props) {
           {saving && <span className="text-xs text-slate-500 animate-pulse">Saving…</span>}
         </div>
       </header>
+
+      {saveError && (
+        <div className="rounded-xl bg-red-50 border border-red-100 p-3 text-xs font-semibold text-red-700">
+          {saveError}
+        </div>
+      )}
 
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {HOUSE_RULES.map((rule) => {

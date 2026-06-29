@@ -375,13 +375,13 @@ async def add_room(
         db=db,
     )
     await db.commit()
+    # Gender and amenities live on the unit type now (migration
+    # e5f6a1b2c3d4); rooms are bare bed-count instances.
     return {
         "id": str(room.id),
         "name": room.name,
-        "gender_tag": room.gender_tag,
         "beds_total": room.beds_total,
         "beds_available": room.beds_available,
-        "amenities": room.amenities,
     }
 
 
@@ -405,13 +405,13 @@ async def update_room(
         db=db,
     )
     await db.commit()
+    # Gender and amenities live on the unit type now (migration
+    # e5f6a1b2c3d4); rooms are bare bed-count instances.
     return {
         "id": str(room.id),
         "name": room.name,
-        "gender_tag": room.gender_tag,
         "beds_total": room.beds_total,
         "beds_available": room.beds_available,
-        "amenities": room.amenities,
     }
 
 

@@ -664,6 +664,15 @@ function hasAmenity(listing: PublicListingDetail, group: string): boolean {
   return Object.values(items).some((item) => Boolean(item?.present));
 }
 
+// Coerce a type_data field to a finite number, accepting numeric strings.
+// Mirrors the backend's `_as_int`/`_as_float` (search/service.py) so the detail
+// page renders the same drive-time tile and campus distances as the cards — a
+// `drive_min_nile` stored as "10" must not silently vanish here.
 function numberValue(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
 }

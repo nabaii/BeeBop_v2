@@ -7,12 +7,19 @@
 
 import { useEffect } from 'react';
 
-import { ensureFreshSession } from '@/lib/api';
+import { checkHealth, ensureFreshSession } from '@/lib/api';
 import { useSession } from '@/stores/session';
 
 export function SessionHydrator(): null {
   const hydrate = useSession((s) => s.hydrate);
   useEffect(() => {
+    // Warm the backend as early as possible. On free-tier hosting it spins down
+    // after idling, so the first visit pays a cold start. Firing /health now —
+    // the moment any page mounts — means the server boots while the user reads
+    // the page, so their first real action usually lands on a warm instance.
+    // Fire-and-forget; the resilient GET retries through the cold start itself.
+    void checkHealth().catch(() => {});
+
     // Hydrate synchronously from localStorage (already drops dead sessions),
     // then — if the access token has lapsed but the refresh token is still
     // valid — refresh once up front so the first page request lands fresh

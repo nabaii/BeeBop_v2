@@ -4,7 +4,7 @@ import { UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
-import { BeebopLockup } from '@/components/brand/beebop-logo';
+import { BeebopMark } from '@/components/brand/beebop-logo';
 import { BottomNav } from '@/components/bottom-nav';
 import { ChatSearchPanel } from '@/components/chat-search';
 import { MainSidebar } from '@/components/main-sidebar';
@@ -36,10 +36,12 @@ export default function HomePage() {
     <div className="flex min-h-[100dvh] bg-slate-100">
       <MainSidebar onNewChat={() => void handleNewChat()} />
       <div className="mx-auto flex h-[100dvh] w-full max-w-[480px] flex-col bg-slate-50 shadow-xl">
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 bg-white px-4">
-          <div className="flex items-center gap-2">
-            <BeebopLockup />
-          </div>
+        <header className="relative flex h-16 shrink-0 items-center justify-between border-b border-slate-100 bg-white px-4">
+          {/* Triad mark stays anchored top-left; the wordmark is centered. */}
+          <BeebopMark size={28} />
+          <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 font-display text-hero font-semibold leading-none lowercase tracking-tight text-ink">
+            beebop
+          </span>
           <Link
             href={accountHref}
             aria-label="Open account area"

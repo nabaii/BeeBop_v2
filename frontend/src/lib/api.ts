@@ -66,6 +66,10 @@ export class ApiError extends Error {
 
 type FetchInit = Omit<RequestInit, 'body'> & { body?: unknown };
 
+// Per-attempt ceiling so a socket that stalls mid-cold-start aborts and hands
+// control back to the retry loop instead of hanging the page indefinitely.
+const REQUEST_TIMEOUT_MS = 30_000;
+
 async function rawFetch<T>(
   path: string,
   init: FetchInit,
@@ -77,18 +81,64 @@ async function rawFetch<T>(
   };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  const res = await fetch(apiUrl(path), {
-    method: init.method ?? 'GET',
-    headers,
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
-    credentials: 'include',
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(apiUrl(path), {
+      method: init.method ?? 'GET',
+      headers,
+      body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      credentials: 'include',
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (res.status === 204) return undefined as T;
 
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(res.status, payload);
   return payload as T;
+}
+
+// Free-tier hosting (Render) spins the backend down after ~15 min idle; the
+// first request then triggers a cold start — uvicorn boot plus a Neon DB wake —
+// that can take up to a minute. While it boots, the platform proxy answers
+// 502/503/504 or the connection is refused/aborts. Rather than fail the user's
+// first page load, we retry *idempotent* GETs with backoff until the server
+// answers or the budget runs out. Mutations are never auto-retried (avoids any
+// chance of a double submit); by the time a user acts, the warm-up ping fired on
+// app open has usually woken the server already.
+const COLD_START_STATUSES = new Set([502, 503, 504]);
+const COLD_START_BUDGET_MS = 60_000;
+
+function isColdStart(err: unknown): boolean {
+  if (err instanceof ApiError) return COLD_START_STATUSES.has(err.status);
+  return true; // fetch rejected (network error or abort) before any response
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function rawFetchResilient<T>(
+  path: string,
+  init: FetchInit,
+  accessToken: string | null,
+): Promise<T> {
+  if ((init.method ?? 'GET') !== 'GET') return rawFetch<T>(path, init, accessToken);
+  const start = Date.now();
+  let delay = 1_500;
+  for (;;) {
+    try {
+      return await rawFetch<T>(path, init, accessToken);
+    } catch (err) {
+      const elapsed = Date.now() - start;
+      if (!isColdStart(err) || elapsed >= COLD_START_BUDGET_MS) throw err;
+      await sleep(Math.min(delay, COLD_START_BUDGET_MS - elapsed));
+      delay = Math.min(delay * 1.7, 8_000);
+    }
+  }
 }
 
 // Single-flight guard. The backend rotates refresh tokens and treats a reused
@@ -155,13 +205,13 @@ export async function ensureFreshSession(): Promise<boolean> {
 export async function apiFetch<T>(path: string, init: FetchInit = {}): Promise<T> {
   const { accessToken } = useSession.getState();
   try {
-    return await rawFetch<T>(path, init, accessToken);
+    return await rawFetchResilient<T>(path, init, accessToken);
   } catch (err) {
     if (err instanceof ApiError && err.status === 401 && accessToken) {
       const refreshed = await refreshTokens();
       if (refreshed) {
         const retryToken = useSession.getState().accessToken;
-        return rawFetch<T>(path, init, retryToken);
+        return rawFetchResilient<T>(path, init, retryToken);
       }
     }
     throw err;
