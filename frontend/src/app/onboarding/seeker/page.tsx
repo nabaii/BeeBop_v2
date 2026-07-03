@@ -131,6 +131,12 @@ export default function SeekerOnboardingPage() {
     router.replace('/dashboard/seeker');
   }
 
+  function skipCategories() {
+    // Skipping leaves category_preferences unset (nothing saved); the user
+    // still gets the optional extras step before the dashboard.
+    setStep('extras');
+  }
+
   function toggleCategory(c: ListingCategory) {
     setSelected((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
   }
@@ -173,6 +179,7 @@ export default function SeekerOnboardingPage() {
         error={error}
         cta="Continue"
         disabled={selected.length === 0}
+        onSkip={skipCategories}
       >
         <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
           {CATEGORIES.map((c) => {
@@ -307,7 +314,7 @@ export default function SeekerOnboardingPage() {
         </Labelled>
 
         <Labelled label="Occupation">
-          <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3">
+          <div className="flex flex-wrap gap-2">
             {OCCUPATIONS.map((o) => (
               <button
                 key={o}

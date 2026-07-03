@@ -51,6 +51,40 @@ class TransferResult:
     status: Literal["pending", "success"]
 
 
+@dataclass
+class BankOption:
+    """A payout-eligible bank for the withdrawal picker (Paystack `/bank`)."""
+
+    name: str
+    code: str
+
+
+@dataclass
+class ResolvedAccount:
+    """The account-holder name Paystack resolves for a NUBAN + bank (§7.1) —
+    shown to the user before they confirm a withdrawal so a wrong number is
+    caught before any money moves."""
+
+    account_number: str
+    account_name: str
+
+
+# Curated fallback served by the stub so the dev withdrawal picker is populated
+# without a live account. Mirrors the common Nigerian banks + fintechs.
+_STUB_BANKS: tuple[BankOption, ...] = (
+    BankOption(name="Access Bank", code="044"),
+    BankOption(name="GTBank", code="058"),
+    BankOption(name="Zenith Bank", code="057"),
+    BankOption(name="UBA", code="033"),
+    BankOption(name="First Bank", code="011"),
+    BankOption(name="Fidelity Bank", code="070"),
+    BankOption(name="Kuda", code="50211"),
+    BankOption(name="Moniepoint", code="50515"),
+    BankOption(name="OPay", code="999992"),
+    BankOption(name="PalmPay", code="999991"),
+)
+
+
 class PaystackClient(Protocol):
     async def initialise_payment(
         self,
@@ -74,6 +108,12 @@ class PaystackClient(Protocol):
     ) -> InvoiceResult: ...
 
     async def verify(self, reference: str) -> dict: ...
+
+    async def list_banks(self) -> list[BankOption]: ...
+
+    async def resolve_account(
+        self, *, account_number: str, bank_code: str
+    ) -> ResolvedAccount: ...
 
     async def create_transfer_recipient(
         self,
@@ -183,6 +223,54 @@ class LivePaystackClient:
                 code="paystack_verify_failed",
             )
         return resp.json().get("data", {})
+
+    async def list_banks(self) -> list[BankOption]:
+        async with httpx.AsyncClient(timeout=15.0) as c:
+            resp = await c.get(
+                f"{PAYSTACK_API}/bank",
+                params={"currency": "NGN"},
+                headers=self._headers,
+            )
+        if resp.status_code >= 400:
+            logger.warning("Paystack bank list failed %s: %s", resp.status_code, resp.text)
+            raise ExternalServiceError(
+                "Could not load the bank list.", code="paystack_banks_failed"
+            )
+        data = resp.json().get("data", []) or []
+        return [
+            BankOption(name=b["name"], code=b["code"])
+            for b in data
+            if b.get("name") and b.get("code")
+        ]
+
+    async def resolve_account(
+        self, *, account_number: str, bank_code: str
+    ) -> ResolvedAccount:
+        async with httpx.AsyncClient(timeout=15.0) as c:
+            resp = await c.get(
+                f"{PAYSTACK_API}/bank/resolve",
+                params={"account_number": account_number, "bank_code": bank_code},
+                headers=self._headers,
+            )
+        if resp.status_code >= 400:
+            # 4xx here is the common "no account found" case — surface it as a
+            # user-facing validation, not a server error.
+            logger.info("Paystack resolve failed %s: %s", resp.status_code, resp.text)
+            raise ExternalServiceError(
+                "We couldn't verify that account. Check the number and bank.",
+                code="paystack_resolve_failed",
+            )
+        data = resp.json().get("data", {}) or {}
+        name = data.get("account_name")
+        if not name:
+            raise ExternalServiceError(
+                "We couldn't verify that account. Check the number and bank.",
+                code="paystack_resolve_missing",
+            )
+        return ResolvedAccount(
+            account_number=data.get("account_number", account_number),
+            account_name=name,
+        )
 
     async def create_transfer_recipient(
         self,
@@ -318,6 +406,22 @@ class StubPaystackClient:
         # flow (listing-status flip, agreement release) can be exercised.
         return {"status": "success", "reference": reference}
 
+    async def list_banks(self) -> list[BankOption]:
+        return list(_STUB_BANKS)
+
+    async def resolve_account(
+        self, *, account_number: str, bank_code: str
+    ) -> ResolvedAccount:
+        # Soft-pass with a deterministic placeholder so the dev withdrawal flow
+        # can exercise the "confirm the name" step end-to-end.
+        logger.info(
+            "[paystack:stub] resolve account=%s bank=%s", account_number, bank_code
+        )
+        return ResolvedAccount(
+            account_number=account_number,
+            account_name="Beebop Test Account",
+        )
+
     async def create_transfer_recipient(
         self,
         *,
@@ -371,3 +475,13 @@ def get_paystack() -> PaystackClient:
 def make_reference(prefix: str) -> str:
     """Helper for service code that wants to assign references up front."""
     return f"{prefix}_{secrets.token_hex(8)}"
+
+
+def payment_callback_url() -> str:
+    """Where Paystack returns the payer after the hosted checkout.
+
+    Paystack appends ``?reference=<ref>&trxref=<ref>`` to this URL; the frontend
+    page verifies that reference and shows the payer a definitive paid/pending/
+    failed state (rather than relying on the webhook having fired first)."""
+    base = settings.public_web_base_url.rstrip("/")
+    return f"{base}/payment/callback"

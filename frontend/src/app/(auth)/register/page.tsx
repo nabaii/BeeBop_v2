@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * Registration — choose seeker vs landlord, then OTP. On verify, the user
- * is redirected straight to their onboarding wizard because new users
- * always have `onboardingComplete: false`.
+ * Registration — choose seeker vs landlord, then OTP. On verify, seekers go
+ * straight to the chat/search home (onboarding is optional and deferred);
+ * landlords continue to their onboarding wizard, which gates listing on
+ * account-type + verification.
  */
 
 import type { Route } from 'next';
@@ -54,10 +55,11 @@ export default function RegisterPage() {
       return;
     }
 
-    // New users always have onboardingComplete = false. Hand off to the
-    // /onboarding dispatcher, which routes to the right wizard by role
-    // (becomeLandlord above has already updated the session role).
-    router.replace('/onboarding');
+    // Seekers go straight into the product (the chat/search home). Profile
+    // preferences are now optional and collected later, so we don't gate
+    // signup on a form. Landlords still need account-type + verification
+    // before they can list, so they continue through their onboarding wizard.
+    router.replace(role === 'landlord' ? '/onboarding' : '/');
   }
 
   return (

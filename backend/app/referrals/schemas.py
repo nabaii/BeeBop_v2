@@ -79,11 +79,34 @@ class DashboardView(BaseModel):
     can_withdraw: bool
 
 
+class BankOptionView(BaseModel):
+    """One payout-eligible bank for the withdrawal picker (§7.1)."""
+
+    name: str
+    code: str
+
+
+class ResolveAccountPayload(BaseModel):
+    account_number: str = Field(..., min_length=6, max_length=20)
+    bank_code: str = Field(..., min_length=2, max_length=20)
+
+
+class ResolvedAccountView(BaseModel):
+    """The verified account-holder name shown before a withdrawal is confirmed."""
+
+    account_number: str
+    account_name: str
+
+
 class WithdrawPayload(BaseModel):
     """Bank details for a payout request (§7.1)."""
 
     bank_account_number: str = Field(..., min_length=6, max_length=20)
     bank_code: str = Field(..., min_length=2, max_length=20)
+    # The name the frontend resolved and the user confirmed; stored on the
+    # payout so the record reflects the real account holder. Optional so the
+    # flow still works if resolution was unavailable.
+    account_name: str | None = Field(default=None, max_length=200)
 
 
 class PayoutView(BaseModel):

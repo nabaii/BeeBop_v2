@@ -107,6 +107,11 @@ class Settings(BaseSettings):
     # Payments (Paystack)
     paystack_secret_key: str = ""
     paystack_public_key: str = ""
+    # Optional comma-separated allowlist of Paystack webhook source IPs. When
+    # set, the webhook rejects other origins as defence-in-depth on top of the
+    # HMAC signature (the primary control). Blank = disabled. Paystack's
+    # published IPs: 52.31.139.75, 52.49.173.169, 52.214.14.220.
+    paystack_webhook_ips: str = ""
 
     # Identity verification
     nimc_api_key: str = ""

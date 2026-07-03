@@ -1,6 +1,6 @@
 'use client';
 
-import { Eye, EyeOff, LockKeyhole, Mail, MessageCircle } from 'lucide-react';
+import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
 import { useState } from 'react';
 
 import { OtpFlow } from '@/components/auth/otp-flow';
@@ -37,8 +37,8 @@ export function LoginForm({ onAuthenticated }: Props) {
       ) : (
         <div className="space-y-4">
           <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
-            <span>Email and WhatsApp codes still work.</span>
+            <Mail className="h-4 w-4 shrink-0" aria-hidden />
+            <span>We&rsquo;ll email you a 6-digit code to sign in.</span>
           </div>
           <OtpFlow roleIfNew="seeker" onAuthenticated={onAuthenticated} submitLabel="Send code" />
         </div>
@@ -135,7 +135,7 @@ function PasswordLoginForm({
         className="w-full rounded-lg px-3 py-2 text-center text-sm font-medium text-brand transition hover:bg-brand/5"
         onClick={onUseCode}
       >
-        Sign in with email or WhatsApp code
+        Sign in with an email code
       </button>
     </form>
   );

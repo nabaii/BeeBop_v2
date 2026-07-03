@@ -55,9 +55,10 @@ export default function LoginPage() {
       return;
     }
 
-    // Resume onboarding for self-signup roles that haven't finished it.
-    // The /onboarding dispatcher routes to the correct wizard by role.
-    if (!user.onboardingComplete && (user.role === 'seeker' || user.role === 'landlord')) {
+    // Landlords must finish onboarding (account-type + verification) before
+    // they can list, so resume it on sign-in. Seekers are never force-routed
+    // into onboarding — it's optional — so they fall through to their home.
+    if (!user.onboardingComplete && user.role === 'landlord') {
       router.replace('/onboarding');
       return;
     }

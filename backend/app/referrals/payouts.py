@@ -20,12 +20,18 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, datetime
+from typing import Literal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ExternalServiceError, ValidationError
-from app.integrations.paystack import get_paystack, make_reference
+from app.integrations.paystack import (
+    BankOption,
+    ResolvedAccount,
+    get_paystack,
+    make_reference,
+)
 from app.models._enums import PayoutStatus, ReferralEarningState
 from app.models.referral import Payout, ReferralEarning
 from app.models.user import User
@@ -61,6 +67,7 @@ async def request_withdrawal(
     bank_account_number: str,
     bank_code: str,
     db: AsyncSession,
+    account_name: str | None = None,
 ) -> Payout:
     """Disburse the user's available balance via Paystack Transfer.
 
@@ -85,13 +92,17 @@ async def request_withdrawal(
             code="referral_below_minimum",
         )
 
+    # Prefer the bank-resolved holder name (what the user confirmed on-screen);
+    # fall back to the account's own name when resolution wasn't available.
+    recipient_name = (account_name or "").strip() or _full_name(user)
+
     payout = Payout(
         user_id=user.id,
         amount=amount,
         status=PayoutStatus.REQUESTED,
         bank_account_number=bank_account_number,
         bank_code=bank_code,
-        bank_account_name=_full_name(user),
+        bank_account_name=recipient_name,
     )
     db.add(payout)
     await db.flush()  # assign payout.id before linking earnings
@@ -100,7 +111,7 @@ async def request_withdrawal(
     reference = make_reference("payout")
     try:
         recipient_code = await paystack.create_transfer_recipient(
-            name=_full_name(user),
+            name=recipient_name,
             account_number=bank_account_number,
             bank_code=bank_code,
         )
@@ -133,6 +144,97 @@ async def request_withdrawal(
         payout.settled_at = now
     await db.flush()
     return payout
+
+
+async def _restore_earnings(*, payout_id: uuid.UUID, db: AsyncSession) -> None:
+    """Undo the PAID reservation made against a payout that ultimately failed.
+
+    Returns the earnings to CLEARED (available) and detaches them from the
+    payout so the user can withdraw them again (§7.1.11). Symmetric with the
+    reservation loop in `request_withdrawal`.
+    """
+    rows = (
+        await db.execute(
+            select(ReferralEarning).where(ReferralEarning.payout_id == payout_id)
+        )
+    ).scalars().all()
+    for earning in rows:
+        earning.state = ReferralEarningState.CLEARED
+        earning.paid_at = None
+        earning.payout_id = None
+
+
+async def reconcile_transfer(
+    *,
+    reference: str,
+    outcome: Literal["success", "failed", "reversed"],
+    reason: str | None = None,
+    db: AsyncSession,
+) -> Payout | None:
+    """Apply a Paystack transfer webhook to the payout it settled.
+
+    On a live account transfers are asynchronous: `request_withdrawal` leaves the
+    payout REQUESTED (with its earnings reserved as PAID) and Paystack later fires
+    `transfer.success`, `transfer.failed`, or `transfer.reversed`. This is where
+    those land.
+
+    - success  → payout SUCCESS; the earnings stay PAID (already reserved).
+    - failed   → payout FAILED; the reserved earnings return to CLEARED so the
+                 balance is restored and the user can retry.
+    - reversed → same as failed — the money bounced back to Beebop's balance,
+                 even if the payout had briefly been marked SUCCESS.
+
+    Idempotent: Paystack retries webhooks, so a second delivery of an already
+    terminal outcome is a no-op. Returns None when no payout matches the
+    reference (e.g. an unrelated transfer), which the caller treats as ignored.
+    """
+    payout = (
+        await db.execute(
+            select(Payout).where(Payout.paystack_transfer_ref == reference)
+        )
+    ).scalars().first()
+    if payout is None:
+        return None
+
+    if outcome == "success":
+        if payout.status == PayoutStatus.SUCCESS:
+            return payout  # already reconciled — idempotent no-op
+        payout.status = PayoutStatus.SUCCESS
+        payout.settled_at = datetime.now(UTC)
+        payout.failure_reason = None
+        await db.flush()
+        logger.info("Payout %s reconciled to SUCCESS", payout.id)
+        return payout
+
+    # failed / reversed
+    if payout.status == PayoutStatus.FAILED:
+        return payout  # already reconciled — idempotent no-op
+    payout.status = PayoutStatus.FAILED
+    payout.failure_reason = reason or (
+        "The bank transfer was reversed." if outcome == "reversed"
+        else "The bank transfer failed."
+    )
+    payout.settled_at = None
+    await _restore_earnings(payout_id=payout.id, db=db)
+    await db.flush()
+    logger.info("Payout %s reconciled to FAILED (%s); earnings restored", payout.id, outcome)
+    return payout
+
+
+async def list_banks() -> list[BankOption]:
+    """Payout-eligible banks for the withdrawal picker (§7.1)."""
+    return await get_paystack().list_banks()
+
+
+async def resolve_account(*, account_number: str, bank_code: str) -> ResolvedAccount:
+    """Verify a NUBAN + bank and return the account holder's name (§7.1).
+
+    Raises ExternalServiceError when the account can't be resolved — the route
+    maps that to a user-facing validation so a wrong number is caught before any
+    money moves."""
+    return await get_paystack().resolve_account(
+        account_number=account_number, bank_code=bank_code
+    )
 
 
 async def list_payouts(*, user_id: uuid.UUID, db: AsyncSession) -> list[Payout]:

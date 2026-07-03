@@ -1,10 +1,13 @@
 'use client';
 
 /**
- * Reusable OTP flow — email or WhatsApp entry, then 6-digit code with resend
- * timer. Works for both login and registration; the difference is the
- * `roleIfNew` value forwarded to the verify endpoint and the post-success
- * callback.
+ * Reusable OTP flow — email entry, then 6-digit code with resend timer. Works
+ * for both login and registration; the difference is the `roleIfNew` value
+ * forwarded to the verify endpoint and the post-success callback.
+ *
+ * WhatsApp was previously offered as a second channel; it is disabled for now
+ * (email only). The backend still accepts a `channel`, so re-enabling is a
+ * UI-only change.
  */
 
 import { useEffect, useState } from 'react';
@@ -14,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Turnstile, turnstileEnabled } from '@/components/auth/turnstile';
 import { ApiError } from '@/lib/api';
-import { requestOtp, verifyOtp, type OtpChannel } from '@/lib/auth';
+import { requestOtp, verifyOtp } from '@/lib/auth';
 import type { UserRole, SessionUser } from '@/stores/session';
 
 type Step = 'identifier' | 'code';
@@ -28,7 +31,6 @@ interface Props {
 
 export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue', isSignup = false }: Props) {
   const [step, setStep] = useState<Step>('identifier');
-  const [channel, setChannel] = useState<OtpChannel>('email');
   const [identifier, setIdentifier] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
@@ -50,7 +52,7 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue', 
     return () => window.clearTimeout(t);
   }, [resendIn]);
 
-  const normalisedIdentifier = channel === 'email' ? identifier.trim().toLowerCase() : identifier.trim();
+  const normalisedIdentifier = identifier.trim().toLowerCase();
 
   // Password validation criteria
   const isLengthValid = password.length > 10;
@@ -62,7 +64,7 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue', 
     setError(null);
     setBusy(true);
     try {
-      const res = await requestOtp(channel, normalisedIdentifier, {
+      const res = await requestOtp('email', normalisedIdentifier, {
         turnstileToken: captchaToken,
         honeypot,
       });
@@ -88,7 +90,7 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue', 
     setBusy(true);
     try {
       const res = await verifyOtp({
-        channel,
+        channel: 'email',
         identifier: normalisedIdentifier,
         code,
         role_if_new: roleIfNew,
@@ -113,24 +115,13 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue', 
           }
         }}
       >
-        <div className="flex gap-2">
-          <ChannelTab active={channel === 'email'} onClick={() => setChannel('email')}>
-            Email
-          </ChannelTab>
-          <ChannelTab active={channel === 'whatsapp'} onClick={() => setChannel('whatsapp')}>
-            WhatsApp
-          </ChannelTab>
-        </div>
-        
         <label className="block text-sm">
-          <span className="mb-1 block text-slate-700 font-medium">
-            {channel === 'email' ? 'Email address' : 'WhatsApp number'}
-          </span>
+          <span className="mb-1 block text-slate-700 font-medium">Email address</span>
           <Input
-            type={channel === 'email' ? 'email' : 'tel'}
-            inputMode={channel === 'email' ? 'email' : 'tel'}
-            autoComplete={channel === 'email' ? 'email' : 'tel'}
-            placeholder={channel === 'email' ? 'you@example.com' : '+2348012345678'}
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="you@example.com"
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
             required
@@ -254,7 +245,7 @@ export function OtpFlow({ roleIfNew, onAuthenticated, submitLabel = 'Continue', 
           className="underline-offset-2 hover:underline"
           onClick={() => setStep('identifier')}
         >
-          Change {channel === 'email' ? 'email' : 'number'}
+          Change email
         </button>
         <button
           type="button"
@@ -285,29 +276,6 @@ function ChecklistItem({ met, text }: { met: boolean; text: string }) {
         {text}
       </span>
     </div>
-  );
-}
-
-function ChannelTab({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        'flex-1 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ' +
-        (active ? 'border-brand bg-brand/5 text-brand' : 'border-slate-300 text-slate-600 hover:bg-slate-50')
-      }
-    >
-      {children}
-    </button>
   );
 }
 

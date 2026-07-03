@@ -36,7 +36,7 @@ from app.core.exceptions import (
     UnauthorisedError,
     ValidationError,
 )
-from app.integrations.paystack import get_paystack, make_reference
+from app.integrations.paystack import get_paystack, make_reference, payment_callback_url
 from app.integrations.s3_storage import DEFAULT_GET_EXPIRY, get_storage
 from app.models._enums import (
     AgreementStatus,
@@ -328,12 +328,14 @@ async def _initiate_payments(*, agreement: Agreement, db: AsyncSession) -> None:
             amount_naira=float(landlord_total),
             email=landlord.email,
             reference=l_ref,
+            callback_url=payment_callback_url(),
             metadata={"agreement_id": str(agreement.id), "party": "landlord"},
         )
         await paystack.initialise_payment(
             amount_naira=float(seeker_total),
             email=seeker_email,
             reference=s_ref,
+            callback_url=payment_callback_url(),
             metadata={"agreement_id": str(agreement.id), "party": "seeker"},
         )
         agreement.landlord_payment_reference = l_ref
@@ -350,12 +352,14 @@ async def _initiate_payments(*, agreement: Agreement, db: AsyncSession) -> None:
             amount_naira=fees.owner_fee,
             email=landlord.email,
             reference=l_ref,
+            callback_url=payment_callback_url(),
             metadata={"agreement_id": str(agreement.id), "party": "owner"},
         )
         await paystack.initialise_payment(
             amount_naira=fees.seeker_fee,
             email=seeker_email,
             reference=s_ref,
+            callback_url=payment_callback_url(),
             metadata={"agreement_id": str(agreement.id), "party": "seeker"},
         )
         agreement.landlord_payment_reference = l_ref

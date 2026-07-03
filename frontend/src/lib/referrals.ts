@@ -65,6 +65,16 @@ export interface PayoutView {
   settled_at: string | null;
 }
 
+export interface BankOption {
+  name: string;
+  code: string;
+}
+
+export interface ResolvedAccount {
+  account_number: string;
+  account_name: string;
+}
+
 export type PartnerApplicationStatus = 'pending' | 'approved' | 'rejected';
 
 export interface PartnerApplicationView {
@@ -112,10 +122,23 @@ export const referrals = {
 
   dashboard: () => api.get<DashboardView>('/referrals/me/dashboard', { auth: true }),
 
-  withdraw: (bankAccountNumber: string, bankCode: string) =>
+  banks: () => api.get<BankOption[]>('/referrals/banks', { auth: true }),
+
+  resolveAccount: (accountNumber: string, bankCode: string) =>
+    api.post<ResolvedAccount>(
+      '/referrals/resolve-account',
+      { account_number: accountNumber, bank_code: bankCode },
+      { auth: true },
+    ),
+
+  withdraw: (bankAccountNumber: string, bankCode: string, accountName?: string) =>
     api.post<PayoutView>(
       '/referrals/payouts',
-      { bank_account_number: bankAccountNumber, bank_code: bankCode },
+      {
+        bank_account_number: bankAccountNumber,
+        bank_code: bankCode,
+        account_name: accountName,
+      },
       { auth: true },
     ),
 

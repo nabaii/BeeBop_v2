@@ -47,7 +47,7 @@ from app.core.exceptions import (
     NotFoundError,
     ValidationError,
 )
-from app.integrations.paystack import get_paystack, make_reference
+from app.integrations.paystack import get_paystack, make_reference, payment_callback_url
 from app.models._enums import BookingStatus, ListingCategory, ListingStatus, UserRole
 from app.models.booking import Booking
 from app.models.listing import Listing
@@ -233,6 +233,7 @@ async def _initialise_payment(
         amount_naira=float(booking.grand_total),
         email=seeker.email,
         reference=ref,
+        callback_url=payment_callback_url(),
         metadata={"booking_id": str(booking.id)},
     )
     booking.paystack_reference = ref

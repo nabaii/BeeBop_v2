@@ -50,6 +50,25 @@ async def test_stub_verify_marks_success() -> None:
 
 
 @pytest.mark.asyncio
+async def test_stub_list_banks_returns_curated_list() -> None:
+    client = StubPaystackClient()
+    banks = await client.list_banks()
+    assert len(banks) > 0
+    assert all(b.name and b.code for b in banks)
+    # Codes are unique so the picker can key on them.
+    codes = [b.code for b in banks]
+    assert len(codes) == len(set(codes))
+
+
+@pytest.mark.asyncio
+async def test_stub_resolve_account_soft_passes_with_name() -> None:
+    client = StubPaystackClient()
+    resolved = await client.resolve_account(account_number="0123456789", bank_code="058")
+    assert resolved.account_number == "0123456789"
+    assert resolved.account_name  # a name is shown so the confirm step works
+
+
+@pytest.mark.asyncio
 async def test_stub_transfer_recipient_returns_code() -> None:
     client = StubPaystackClient()
     code = await client.create_transfer_recipient(

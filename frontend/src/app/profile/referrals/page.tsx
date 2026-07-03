@@ -25,13 +25,15 @@ import { ApiError } from '@/lib/api';
 import { formatNaira } from '@/lib/format';
 import {
   referrals,
+  type BankOption,
   type DashboardView,
   type PayoutView,
+  type ResolvedAccount,
 } from '@/lib/referrals';
 
-// A short, curated list keeps the withdrawal flow usable without a full bank
-// directory. Codes are Paystack NIP bank codes.
-const BANKS: ReadonlyArray<{ code: string; name: string }> = [
+// The full picker is loaded from Paystack via GET /referrals/banks. This short
+// list is only a fallback if that request fails, so the flow stays usable.
+const FALLBACK_BANKS: ReadonlyArray<BankOption> = [
   { code: '044', name: 'Access Bank' },
   { code: '058', name: 'GTBank' },
   { code: '057', name: 'Zenith Bank' },
@@ -299,23 +301,81 @@ function WithdrawCard({
   data: DashboardView;
   onDone: () => void;
 }) {
+  const [banks, setBanks] = useState<ReadonlyArray<BankOption>>(FALLBACK_BANKS);
   const [accountNumber, setAccountNumber] = useState('');
-  const [bankCode, setBankCode] = useState(BANKS[0].code);
+  const [bankCode, setBankCode] = useState(FALLBACK_BANKS[0].code);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PayoutView | null>(null);
 
+  // Account-name resolution — the trust signal before any money moves.
+  const [resolving, setResolving] = useState(false);
+  const [resolved, setResolved] = useState<ResolvedAccount | null>(null);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+
   const canWithdraw = data.can_withdraw;
+
+  // Load the full bank list once; keep the fallback if it fails.
+  useEffect(() => {
+    let cancelled = false;
+    referrals
+      .banks()
+      .then((list) => {
+        if (!cancelled && list.length > 0) setBanks(list);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Resolve the holder name once a full NUBAN + bank is entered. Debounced, and
+  // cancelled if the inputs change so a stale response can't overwrite a newer.
+  useEffect(() => {
+    setResolved(null);
+    setResolveError(null);
+    if (accountNumber.length !== 10 || !bankCode) return;
+
+    let cancelled = false;
+    setResolving(true);
+    const timer = setTimeout(() => {
+      referrals
+        .resolveAccount(accountNumber, bankCode)
+        .then((r) => {
+          if (!cancelled) setResolved(r);
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setResolveError(
+              err instanceof ApiError ? err.message : 'Could not verify that account.',
+            );
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setResolving(false);
+        });
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [accountNumber, bankCode]);
 
   async function submit() {
     setBusy(true);
     setError(null);
     setResult(null);
     try {
-      const payout = await referrals.withdraw(accountNumber.trim(), bankCode);
+      const payout = await referrals.withdraw(
+        accountNumber.trim(),
+        bankCode,
+        resolved?.account_name,
+      );
       setResult(payout);
       if (payout.status !== 'failed') {
         setAccountNumber('');
+        setResolved(null);
       }
       onDone();
     } catch (err) {
@@ -324,6 +384,11 @@ function WithdrawCard({
       setBusy(false);
     }
   }
+
+  // Enable withdrawal once we've confirmed the name, or if resolution was
+  // unavailable (a transient outage shouldn't hard-block a legitimate payout).
+  const canSubmit =
+    accountNumber.length === 10 && !resolving && (resolved !== null || resolveError !== null);
 
   return (
     <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
@@ -350,7 +415,7 @@ function WithdrawCard({
               onChange={(e) => setBankCode(e.target.value)}
               className="min-h-11 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20 sm:text-sm"
             >
-              {BANKS.map((b) => (
+              {banks.map((b) => (
                 <option key={b.code} value={b.code}>
                   {b.name}
                 </option>
@@ -364,9 +429,29 @@ function WithdrawCard({
               placeholder="Account number"
               inputMode="numeric"
             />
+
+            {/* Resolution feedback — the confirm-the-name step. */}
+            {resolving && (
+              <p className="flex items-center gap-1.5 text-sm text-slate-500">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                Checking account…
+              </p>
+            )}
+            {resolved && (
+              <p className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2 py-1.5 text-sm font-medium text-emerald-700">
+                <Check className="h-4 w-4" aria-hidden />
+                {resolved.account_name}
+              </p>
+            )}
+            {resolveError && (
+              <p className="text-sm text-amber-700">
+                {resolveError} You can still continue, but double-check the number.
+              </p>
+            )}
+
             <Button
               onClick={submit}
-              disabled={busy || accountNumber.length < 10}
+              disabled={busy || !canSubmit}
               className="w-full"
             >
               {busy ? 'Processing…' : `Withdraw ${formatNaira(data.balances.available)}`}
@@ -376,9 +461,15 @@ function WithdrawCard({
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {result && result.status !== 'failed' && (
+      {result && result.status === 'success' && (
         <p className="rounded-lg bg-emerald-50 p-2 text-sm text-emerald-700">
-          Payout of <Price value={result.amount} /> is on its way to your account.
+          Payout of <Price value={result.amount} /> has been sent to your account.
+        </p>
+      )}
+      {result && result.status === 'requested' && (
+        <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-700">
+          Payout of <Price value={result.amount} /> is on its way — we&apos;ll
+          confirm here once your bank receives it.
         </p>
       )}
       {result && result.status === 'failed' && (

@@ -30,6 +30,7 @@ from app.referrals.schemas import (
     ApplyCodePayload,
     AttributionView,
     BalancesView,
+    BankOptionView,
     CashbackItemView,
     ConfigUpdatePayload,
     ConfigView,
@@ -39,6 +40,8 @@ from app.referrals.schemas import (
     PartnerApplicationView,
     PayoutView,
     RejectPayload,
+    ResolveAccountPayload,
+    ResolvedAccountView,
     SetTierPayload,
     WithdrawPayload,
 )
@@ -160,6 +163,31 @@ async def my_dashboard(
     )
 
 
+@router.get("/banks", response_model=list[BankOptionView])
+async def list_banks(
+    user: User = Depends(get_current_user),
+) -> list[BankOptionView]:
+    """Payout-eligible banks for the withdrawal picker (§7.1)."""
+    banks = await payouts.list_banks()
+    return [BankOptionView(name=b.name, code=b.code) for b in banks]
+
+
+@router.post("/resolve-account", response_model=ResolvedAccountView)
+async def resolve_account(
+    payload: ResolveAccountPayload,
+    user: User = Depends(get_current_user),
+) -> ResolvedAccountView:
+    """Verify a bank account and return the holder's name so the user can
+    confirm it before withdrawing (§7.1)."""
+    resolved = await payouts.resolve_account(
+        account_number=payload.account_number, bank_code=payload.bank_code
+    )
+    return ResolvedAccountView(
+        account_number=resolved.account_number,
+        account_name=resolved.account_name,
+    )
+
+
 @router.post("/payouts", response_model=PayoutView)
 async def request_payout(
     payload: WithdrawPayload,
@@ -174,6 +202,7 @@ async def request_payout(
         user=user,
         bank_account_number=payload.bank_account_number,
         bank_code=payload.bank_code,
+        account_name=payload.account_name,
         db=db,
     )
     await db.commit()
