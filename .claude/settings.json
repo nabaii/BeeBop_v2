@@ -48,7 +48,11 @@
       "Bash(git rev-list *)",
       "Bash(git rebase *)",
       "Bash(GIT_EDITOR=true git rebase --continue)",
-      "Bash(echo \"exit=$?\")"
+      "Bash(echo \"exit=$?\")",
+      "Bash(python -c \"import app.payments.routes, app.referrals.payouts, app.integrations.paystack; print\\('backend imports OK'\\)\")",
+      "Bash(git -C \"c:/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2\" add .claude/settings.json)",
+      "Bash(git -C \"c:/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2\" commit -m \"chore: track Claude Code permission allowlist additions\")",
+      "Bash(git -C \"c:/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2\" push origin production-publish-prep)"
     ],
     "additionalDirectories": [
       "C:\\Users\\enaic\\OneDrive\\Desktop\\miyata\\BeeBop-v2\\.git"
