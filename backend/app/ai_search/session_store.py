@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from redis.asyncio import Redis
 
 SESSION_TTL_SECONDS = 30 * 60
-MAX_TURNS = 10
+MAX_TURNS = 20
 MAX_RESULT_IDS = 100
 
 

@@ -9,10 +9,20 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.models._enums import ListingCategory
 
-Intent = Literal["search", "clarification", "information", "transactional"]
+Intent = Literal[
+    "search",
+    "clarification",
+    "information",
+    "transactional",
+    "compare_listings",
+    "ask_property_question",
+    "ask_area_question",
+]
+Confidence = Literal["high", "medium", "low"]
 VerificationTier = Literal["fully_verified", "doc_verified", "unverified"]
 ReferenceKind = Literal["ordinal", "filter", "all", "action"]
 ActionKind = Literal["make_offer", "book", "schedule_visit", "bookmark"]
+Occupancy = Literal["shared", "single", "any"]
 
 
 def default_verification_tiers() -> list[VerificationTier]:
@@ -37,6 +47,17 @@ class ExtractedParameters(BaseModel):
     verification_tiers: list[VerificationTier] = Field(default_factory=default_verification_tiers)
     duration_years: int | None = None
     urgency: Literal["immediate", "soon", "flexible"] | None = None
+    # --- New fields per conversational search spec ---
+    # Room occupancy preference (student accommodation).
+    occupancy: Occupancy | None = None
+    # Property type descriptor (e.g. "duplex", "bungalow", "terrace").
+    property_type: str | None = None
+    # Whether the seeker wants a furnished property.
+    furnished: bool | None = None
+    # Whether the seeker wants pet-friendly property.
+    pet_friendly: bool | None = None
+    # Gender preference for accommodation (female-only, male-only).
+    gender_preference: Literal["female", "male"] | None = None
 
 
 class ReferenceResolution(BaseModel):
@@ -58,6 +79,11 @@ class LLMResponse(BaseModel):
     parameters: ExtractedParameters
     missing_parameter_prompt: str | None = None
     reference_resolution: ReferenceResolution | None = None
+    # How confident the LLM is that enough information exists to search.
+    # high  → search immediately, no clarification
+    # medium → search, then ask one refining question
+    # low   → ask one clarification before searching
+    confidence: Confidence = "medium"
 
 
 class ChatTurn(BaseModel):
@@ -120,6 +146,11 @@ class ChatResponse(BaseModel):
     # turn used the deterministic template. Logged for Phase-4 attribution.
     concierge_prompt_version: str | None = None
     query_id: str
+    # Contextual follow-up suggestions based on the current search state.
+    # Rendered as quick-tap chips beneath the assistant message.
+    suggested_followups: list[str] = Field(default_factory=list)
+    property_answer: str | None = None
+    area_answer: str | None = None
 
 
 class ClickThroughPayload(BaseModel):

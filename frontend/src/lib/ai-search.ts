@@ -5,7 +5,14 @@
 import { api } from './api';
 import type { ListingCategory } from './listings';
 
-export type ChatIntent = 'search' | 'clarification' | 'information' | 'transactional';
+export type ChatIntent = 
+  | 'search' 
+  | 'clarification' 
+  | 'information' 
+  | 'transactional'
+  | 'compare_listings'
+  | 'ask_property_question'
+  | 'ask_area_question';
 export type VerificationTier = 'fully_verified' | 'doc_verified' | 'unverified';
 
 export interface ExtractedParameters {
@@ -19,6 +26,11 @@ export interface ExtractedParameters {
   verification_tiers: VerificationTier[];
   duration_years?: number | null;
   urgency?: 'immediate' | 'soon' | 'flexible' | null;
+  occupancy?: 'shared' | 'single' | 'any' | null;
+  property_type?: string | null;
+  furnished?: boolean | null;
+  pet_friendly?: boolean | null;
+  gender_preference?: 'female' | 'male' | null;
 }
 
 export interface ReferenceResolution {
@@ -62,6 +74,9 @@ export interface ChatResponse {
   prompt_version: string;
   concierge_prompt_version: string | null;
   query_id: string;
+  suggested_followups: string[];
+  property_answer?: string | null;
+  area_answer?: string | null;
 }
 
 export function sendChatQuery(args: {

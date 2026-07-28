@@ -183,10 +183,12 @@ class StubLLMClient:
                 location = location.title()
         parsed = {
             "intent": intent,
+            "confidence": "high" if category else "medium",
             "parameters": {
                 "listing_category": category,
                 "raw_query": user_message,
                 "locations": [location] if location else [],
+                "institution": None,
                 "amenities": [],
                 "min_price": None,
                 "max_price": None,
@@ -194,6 +196,11 @@ class StubLLMClient:
                 "verification_tiers": ["fully_verified", "doc_verified", "unverified"],
                 "duration_years": None,
                 "urgency": None,
+                "occupancy": None,
+                "property_type": None,
+                "furnished": None,
+                "pet_friendly": None,
+                "gender_preference": None,
             },
             "missing_parameter_prompt": None if category else "Which category should I search: off-campus, short-let, rent, or sales?",
             "reference_resolution": None,

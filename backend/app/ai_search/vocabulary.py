@@ -91,6 +91,13 @@ ABUJA_LOCATIONS: dict[str, str] = {
     "central area": "Central Area",
     "cbd": "Central Area",
     "city centre": "Central Area",
+    "idu": "Idu",
+    "mbora": "Mbora",
+    "kaura": "Kaura",
+    "wuse zone 3": "Wuse Zone 3",
+    "wuse zone 5": "Wuse Zone 5",
+    "zone 3": "Wuse Zone 3",
+    "zone 5": "Wuse Zone 5",
 }
 
 # Universities seekers reference when looking for off-campus housing. Maps a
@@ -134,6 +141,103 @@ LANDMARKS: dict[str, str] = {
     "shoprite jabi": "Shoprite Jabi",
 }
 
+# ---------------------------------------------------------------------------
+# Lifestyle-to-filter mapping
+# ---------------------------------------------------------------------------
+# Natural language phrases seekers use that map to structured filters.
+# The AI pipeline uses these both in prompt context and in heuristic
+# extraction. Each entry maps a phrase to a dict of filter fields it implies.
+
+LIFESTYLE_FILTERS: dict[str, dict[str, object]] = {
+    # Budget qualifiers
+    "cheap": {"sort_hint": "price_asc"},
+    "affordable": {"sort_hint": "price_asc"},
+    "budget": {"sort_hint": "price_asc"},
+    "luxury": {"sort_hint": "price_desc"},
+    "premium": {"sort_hint": "price_desc"},
+    "high-end": {"sort_hint": "price_desc"},
+    # Proximity
+    "walking distance": {"distance_hint": "walkable"},
+    "close to campus": {"distance_hint": "campus_near"},
+    "near campus": {"distance_hint": "campus_near"},
+    "near supermarket": {"distance_hint": "supermarket"},
+    # Environment
+    "quiet": {"environment_hint": "quiet"},
+    "peaceful": {"environment_hint": "quiet"},
+    "family friendly": {"environment_hint": "family"},
+    "family-friendly": {"environment_hint": "family"},
+    # Security → amenity mapping
+    "good security": {"amenity": "security:gated_estate"},
+    "secure": {"amenity": "security:gated_estate"},
+    "gated": {"amenity": "security:gated_estate"},
+    # Power → amenity mapping
+    "24/7 electricity": {"amenities": ["power:generator", "power:inverter"]},
+    "constant power": {"amenities": ["power:generator", "power:inverter"]},
+    "no light issues": {"amenities": ["power:generator", "power:inverter"]},
+    # Internet → amenity mapping
+    "fast wi-fi": {"amenity": "internet:wifi_included"},
+    "fast wifi": {"amenity": "internet:wifi_included"},
+    "good internet": {"amenity": "internet:fibre_available"},
+    # Occupancy
+    "shared room": {"occupancy": "shared"},
+    "private room": {"occupancy": "single"},
+    "single room": {"occupancy": "single"},
+    # Furnishing
+    "furnished": {"furnished": True},
+    "unfurnished": {"furnished": False},
+    "fully furnished": {"furnished": True},
+    # Gender
+    "female only": {"gender_preference": "female"},
+    "male only": {"gender_preference": "male"},
+    "girls only": {"gender_preference": "female"},
+    "boys only": {"gender_preference": "male"},
+    # Pet
+    "pet friendly": {"pet_friendly": True},
+    "pet-friendly": {"pet_friendly": True},
+    "allows pets": {"pet_friendly": True},
+    # Availability
+    "available immediately": {"urgency": "immediate"},
+    "available now": {"urgency": "immediate"},
+    "move in immediately": {"urgency": "immediate"},
+    "move in now": {"urgency": "immediate"},
+}
+
+# District adjacency map — used for "nearby area" suggestions when a search
+# returns zero results. Each key maps to its neighbouring districts.
+DISTRICT_ADJACENCY: dict[str, list[str]] = {
+    "Jabi": ["Utako", "Life Camp", "Kado", "Mabuchi"],
+    "Utako": ["Jabi", "Wuse 2", "Mabuchi", "Gudu"],
+    "Wuse 2": ["Wuse 1", "Utako", "Maitama", "Garki 1"],
+    "Wuse 1": ["Wuse 2", "Garki 1"],
+    "Maitama": ["Wuse 2", "Asokoro", "Jabi"],
+    "Asokoro": ["Maitama", "Garki 2", "Guzape"],
+    "Gwarinpa": ["Life Camp", "Dawaki", "Kado"],
+    "Life Camp": ["Gwarinpa", "Jabi", "Kado", "Katampe"],
+    "Katampe": ["Life Camp", "Katampe Extension", "Mabuchi"],
+    "Katampe Extension": ["Katampe", "Jabi", "Mabuchi"],
+    "Jahi": ["Kado", "Life Camp", "Gwarinpa"],
+    "Kado": ["Jahi", "Life Camp", "Jabi", "Gwarinpa"],
+    "Guzape": ["Asokoro", "Mabuchi", "Garki 2"],
+    "Lokogoma": ["Galadimawa", "Apo", "Gudu"],
+    "Galadimawa": ["Lokogoma", "Gudu"],
+    "Gudu": ["Galadimawa", "Utako", "Lokogoma", "Apo"],
+    "Apo": ["Lokogoma", "Gudu", "Durumi"],
+    "Kubwa": ["Dawaki"],
+    "Lugbe": ["Idu", "Karu"],
+    "Karu": ["Lugbe", "Nyanya"],
+    "Nyanya": ["Karu", "Mararaba"],
+    "Mararaba": ["Nyanya"],
+    "Durumi": ["Gudu", "Apo", "Garki 2"],
+    "Wuye": ["Wuse 2", "Maitama"],
+    "Mabuchi": ["Jabi", "Utako", "Katampe Extension"],
+    "Dawaki": ["Gwarinpa", "Kubwa"],
+    "Karmo": ["Life Camp", "Gwarinpa"],
+    "Central Area": ["Garki 1", "Garki 2", "Wuse 1"],
+    "Garki 1": ["Wuse 1", "Wuse 2", "Central Area", "Garki 2"],
+    "Garki 2": ["Garki 1", "Asokoro", "Central Area", "Durumi"],
+    "Idu": ["Lugbe"],
+}
+
 
 def vocabulary_lines() -> list[str]:
     """Compact lines for inclusion in the system prompt."""
@@ -158,6 +262,10 @@ def vocabulary_lines() -> list[str]:
     out.append("LANDMARKS (treat as proximity hints, not exact locations):")
     for raw, canon in sorted(LANDMARKS.items()):
         out.append(f'  • "{raw}" → {canon}')
+    out.append("")
+    out.append("LIFESTYLE PHRASES (map to structured filters):")
+    for phrase in sorted(LIFESTYLE_FILTERS.keys()):
+        out.append(f'  • "{phrase}"')
     return out
 
 
@@ -173,3 +281,8 @@ def normalise_location(raw: str) -> str | None:
         if synonym in cleaned:
             return canonical
     return None
+
+
+def nearby_districts(district: str, *, limit: int = 3) -> list[str]:
+    """Return neighbouring districts for zero-results expansion."""
+    return DISTRICT_ADJACENCY.get(district, [])[:limit]

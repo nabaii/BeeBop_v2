@@ -13,7 +13,7 @@ import logging
 import re
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from pydantic import ValidationError as PydanticValidationError
@@ -24,7 +24,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.ai_search import prompts
+from app.ai_search import prompts, area_knowledge
 from app.ai_search.schemas import (
     ActionKind,
     ChatRequestPayload,
@@ -128,6 +128,9 @@ class _HandledTurn:
     missing_parameter_prompt: str | None
     reference_resolution: ReferenceResolution | None
     next_result_listing_ids: list[str] | None
+    property_answer: str | None = None
+    area_answer: str | None = None
+    suggested_followups: list[str] = field(default_factory=list)
 
 
 async def run_chat_query(
@@ -179,6 +182,8 @@ async def run_chat_query(
             results=handled.results,
             session_summary=_session_summary(state),
             llm=llm_client,
+            property_answer=handled.property_answer,
+            area_answer=handled.area_answer,
         )
         if concierge_message:
             assistant_message = concierge_message
@@ -227,6 +232,7 @@ async def run_chat_query(
         prompt_version=prompts.PROMPT_VERSION,
         concierge_prompt_version=concierge_version,
         query_id=query_id,
+        suggested_followups=handled.suggested_followups,
     )
 
 
@@ -309,6 +315,30 @@ async def _handle_intent(
             db=db,
         )
 
+    if interpreted.intent == "compare_listings":
+        return await _handle_compare(
+            interpreted=interpreted,
+            parameters=parameters,
+            state=state,
+            db=db,
+        )
+
+    if interpreted.intent == "ask_property_question":
+        return await _handle_property_question(
+            interpreted=interpreted,
+            parameters=parameters,
+            state=state,
+            db=db,
+        )
+
+    if interpreted.intent == "ask_area_question":
+        return await _handle_area_question(
+            interpreted=interpreted,
+            parameters=parameters,
+            state=state,
+            db=db,
+        )
+
     if interpreted.intent == "transactional":
         return await _handle_transactional(
             interpreted=interpreted,
@@ -317,10 +347,25 @@ async def _handle_intent(
             db=db,
         )
 
-    if parameters.listing_category is None:
-        prompt = interpreted.missing_parameter_prompt or (
-            "Which category should I search: off-campus, short-let, rent, or sales?"
-        )
+    # Search confidence check
+    if interpreted.confidence == "low" or (interpreted.confidence == "medium" and interpreted.missing_parameter_prompt):
+        prompt = interpreted.missing_parameter_prompt or "Can you tell me a bit more about what you are looking for?"
+        
+        # If medium confidence, we search anyway but ask the question
+        if interpreted.confidence == "medium":
+            results, relaxed = await _execute_search_with_fallback(parameters=parameters, db=db)
+            if results:
+                message = _search_message(parameters=parameters, results=results, relaxed=relaxed)
+                return _HandledTurn(
+                    assistant_message=message,
+                    parameters=parameters,
+                    results=results,
+                    missing_parameter_prompt=prompt,
+                    reference_resolution=interpreted.reference_resolution,
+                    next_result_listing_ids=[item.id for item in results],
+                    suggested_followups=_suggest_followups(parameters, results),
+                )
+                
         return _HandledTurn(
             assistant_message=prompt,
             parameters=parameters,
@@ -339,6 +384,7 @@ async def _handle_intent(
         missing_parameter_prompt=None,
         reference_resolution=interpreted.reference_resolution,
         next_result_listing_ids=[item.id for item in results],
+        suggested_followups=_suggest_followups(parameters, results),
     )
 
 
@@ -436,6 +482,136 @@ async def _handle_clarification(
         reference_resolution=reference,
         next_result_listing_ids=None,
     )
+
+
+async def _handle_compare(
+    *,
+    interpreted: LLMResponse,
+    parameters: ExtractedParameters,
+    state: SessionStateView,
+    db: AsyncSession,
+) -> _HandledTurn:
+    parameters = _carry_forward_raw_query(parameters=parameters, state=state)
+    
+    # We want to fetch 2 or 3 listings from the current state to compare
+    listing_ids = state.last_result_listing_ids[:3]
+    if not listing_ids:
+        prompt = "I don't have any recent results to compare. Tell me what you're looking for first."
+        return _HandledTurn(
+            assistant_message=prompt,
+            parameters=parameters,
+            results=[],
+            missing_parameter_prompt=prompt,
+            reference_resolution=None,
+            next_result_listing_ids=None,
+        )
+    import uuid
+    uuids = [uuid.UUID(lid) for lid in listing_ids]
+    candidates = await _listings_by_ids(ids=uuids, db=db)
+    ratings = await _rating_map(candidates=candidates, db=db)
+    results = [
+        _result_summary(listing=listing, parameters=parameters, rating=ratings.get(str(listing.id)))
+        for listing in candidates
+    ]
+    # Sort results to match original ordering
+    id_map = {item.id: item for item in results}
+    sorted_results = [id_map[lid] for lid in listing_ids if lid in id_map]
+    
+    return _HandledTurn(
+        assistant_message="Here is a comparison of those options.",
+        parameters=parameters,
+        results=sorted_results,
+        missing_parameter_prompt=None,
+        reference_resolution=interpreted.reference_resolution,
+        next_result_listing_ids=listing_ids,
+        suggested_followups=["Which one is cheaper?", "Book inspection for the first"],
+    )
+
+
+async def _handle_property_question(
+    *,
+    interpreted: LLMResponse,
+    parameters: ExtractedParameters,
+    state: SessionStateView,
+    db: AsyncSession,
+) -> _HandledTurn:
+    parameters = _carry_forward_raw_query(parameters=parameters, state=state)
+    reference = interpreted.reference_resolution
+    
+    selected = None
+    if reference:
+        selected = await _resolve_listing_reference(reference=reference, state=state, parameters=parameters, db=db)
+    elif state.last_result_listing_ids:
+        # Default to the first listing if they didn't specify
+        selected = await _resolve_listing_reference(
+            reference=ReferenceResolution(kind="ordinal", index=1), 
+            state=state, 
+            parameters=parameters, 
+            db=db
+        )
+        
+    if not selected:
+        prompt = "Which listing are you asking about?"
+        return _HandledTurn(
+            assistant_message=prompt,
+            parameters=parameters,
+            results=[],
+            missing_parameter_prompt=prompt,
+            reference_resolution=None,
+            next_result_listing_ids=None,
+        )
+        
+    # We pass the question to the concierge along with the listing metadata
+    return _HandledTurn(
+        assistant_message="Checking the details for you...",
+        parameters=parameters,
+        results=[selected],
+        missing_parameter_prompt=None,
+        reference_resolution=reference,
+        next_result_listing_ids=[selected.id],
+        property_answer=f"Listing: {selected.title}. Type Data: {selected.rank_signals}. Amenities context in DB.",
+        suggested_followups=["Book inspection", "Show me something else"],
+    )
+
+
+async def _handle_area_question(
+    *,
+    interpreted: LLMResponse,
+    parameters: ExtractedParameters,
+    state: SessionStateView,
+    db: AsyncSession,
+) -> _HandledTurn:
+    parameters = _carry_forward_raw_query(parameters=parameters, state=state)
+    
+    answer = area_knowledge.get_area_answer(parameters.raw_query)
+    
+    return _HandledTurn(
+        assistant_message=answer,
+        parameters=parameters,
+        results=[],
+        missing_parameter_prompt=None,
+        reference_resolution=interpreted.reference_resolution,
+        next_result_listing_ids=state.last_result_listing_ids,
+        area_answer=answer,
+        suggested_followups=["Show me properties there"],
+    )
+
+
+def _suggest_followups(parameters: ExtractedParameters, results: list[ResultListingSummary]) -> list[str]:
+    """Contextual quick-tap suggestions based on search state."""
+    suggestions = []
+    if parameters.listing_category == "off_campus":
+        if "female" not in (parameters.gender_preference or ""):
+            suggestions.append("Female only")
+        suggestions.append("Under 500k")
+    elif parameters.listing_category == "rent":
+        suggestions.append("Must have a generator")
+        suggestions.append("Only verified properties")
+    else:
+        suggestions.append("Cheaper options")
+        suggestions.append("Close to campus")
+        
+    return suggestions[:3]
 
 
 async def _handle_transactional(
@@ -546,6 +722,11 @@ def _merge_parameters(
             base.duration_years,
         ),
         urgency=incoming.urgency or heuristic.urgency or base.urgency,
+        occupancy=incoming.occupancy or heuristic.occupancy or base.occupancy,
+        property_type=incoming.property_type or heuristic.property_type or base.property_type,
+        furnished=_coalesce(incoming.furnished, heuristic.furnished, base.furnished),
+        pet_friendly=_coalesce(incoming.pet_friendly, heuristic.pet_friendly, base.pet_friendly),
+        gender_preference=incoming.gender_preference or heuristic.gender_preference or base.gender_preference,
     )
 
 
@@ -689,6 +870,11 @@ def _heuristic_parameters(
         verification_tiers=verification or _DEFAULT_VERIFICATION,
         duration_years=_extract_duration_years(lower),
         urgency=_extract_urgency(lower),
+        occupancy=previous.occupancy if previous else None,
+        property_type=previous.property_type if previous else None,
+        furnished=previous.furnished if previous else None,
+        pet_friendly=previous.pet_friendly if previous else None,
+        gender_preference=previous.gender_preference if previous else None,
     )
 
 
@@ -906,10 +1092,30 @@ async def _execute_search_with_fallback(
     results = await _execute_search(parameters=parameters, db=db)
     if results:
         return results, False
+        
     if _extract_search_keywords(parameters) is not None:
         relaxed = await _execute_search(parameters=parameters, db=db, drop_keywords=True)
         if relaxed:
             return relaxed, True
+            
+    # Try budget expansion (+30%)
+    if parameters.max_price:
+        expanded_params = parameters.model_copy(update={"max_price": parameters.max_price * 1.3})
+        relaxed = await _execute_search(parameters=expanded_params, db=db, drop_keywords=True)
+        if relaxed:
+            return relaxed, True
+            
+    # Try nearby districts
+    if parameters.locations:
+        expanded_locations = list(parameters.locations)
+        for loc in parameters.locations:
+            from app.ai_search.vocabulary import nearby_districts
+            expanded_locations.extend(nearby_districts(loc))
+        expanded_params = parameters.model_copy(update={"locations": list(set(expanded_locations))})
+        relaxed = await _execute_search(parameters=expanded_params, db=db, drop_keywords=True)
+        if relaxed:
+            return relaxed, True
+            
     return [], False
 
 
@@ -919,13 +1125,19 @@ async def _fetch_candidates(
     db: AsyncSession,
     drop_keywords: bool = False,
 ) -> list[Listing]:
-    if parameters.listing_category is None:
-        return []
-
-    response = await _search_response(
-        parameters=parameters, db=db, drop_keywords=drop_keywords
-    )
-    ids = [uuid.UUID(item.id) for item in response.results]
+    categories_to_search = [parameters.listing_category] if parameters.listing_category else [
+        ListingCategory.RENT, ListingCategory.OFF_CAMPUS, ListingCategory.SALES, ListingCategory.SHORT_LET
+    ]
+    
+    all_results = []
+    for cat in categories_to_search:
+        param_copy = parameters.model_copy(update={"listing_category": cat})
+        response = await _search_response(
+            parameters=param_copy, db=db, drop_keywords=drop_keywords
+        )
+        all_results.extend(response.results)
+        
+    ids = [uuid.UUID(item.id) for item in all_results]
     if not ids:
         return []
 
@@ -937,9 +1149,9 @@ async def _fetch_candidates(
     rows = (await db.execute(stmt)).scalars().unique().all()
     by_id = {str(listing.id): listing for listing in rows}
     ordered: list[Listing] = []
-    for identifier in response.results:
+    for identifier in all_results:
         listing = by_id.get(identifier.id)
-        if listing is not None:
+        if listing is not None and listing not in ordered:
             ordered.append(listing)
     return ordered
 
@@ -1353,7 +1565,7 @@ def _should_use_concierge(*, intent: Intent, handled: _HandledTurn) -> bool:
     bespoke prose, so they stay on the template to save LLM cost. The
     deterministic difference note still ships with them.
     """
-    if intent not in ("search", "clarification", "information"):
+    if intent not in ("search", "clarification", "information", "compare_listings", "ask_property_question", "ask_area_question"):
         return False
     if handled.missing_parameter_prompt is not None:
         return False
@@ -1392,6 +1604,8 @@ async def _generate_concierge_message(
     results: list[ResultListingSummary],
     session_summary: str,
     llm: LLMClient,
+    property_answer: str | None = None,
+    area_answer: str | None = None,
 ) -> str | None:
     """Turn the deterministic facts into warm concierge prose.
 
@@ -1412,6 +1626,8 @@ async def _generate_concierge_message(
             for index, item in enumerate(narrated, start=1)
         ],
         "differentiators": _compute_differentiators(narrated),
+        "property_answer": property_answer,
+        "area_answer": area_answer,
     }
     try:
         completion = await llm.structured_completion(

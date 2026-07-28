@@ -161,7 +161,7 @@ def test_llm_response_rejects_contract_drift() -> None:
 async def test_run_chat_query_persists_session(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
     captured: list[ExtractedParameters] = []
 
-    async def fake_execute_search(*, parameters: ExtractedParameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+    async def fake_execute_search(*, parameters: ExtractedParameters, db, drop_keywords: bool = False) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
         del db
         captured.append(parameters)
         return [_result(listing_id="listing-1", title="Verified 2-bed in Wuse 2")]
@@ -205,7 +205,7 @@ async def test_run_chat_query_persists_session(fake_redis, monkeypatch: pytest.M
 async def test_clarification_reuses_previous_raw_query(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
     captured: list[ExtractedParameters] = []
 
-    async def fake_execute_search(*, parameters: ExtractedParameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+    async def fake_execute_search(*, parameters: ExtractedParameters, db, drop_keywords: bool = False) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
         del db
         captured.append(parameters)
         return [_result(listing_id="listing-1", title="Verified 2-bed in Wuse 2")]
@@ -263,7 +263,7 @@ async def test_clarification_reuses_previous_raw_query(fake_redis, monkeypatch: 
 
 @pytest.mark.asyncio
 async def test_clear_session_removes_saved_state(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
-    async def fake_execute_search(*, parameters: ExtractedParameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+    async def fake_execute_search(*, parameters: ExtractedParameters, db, drop_keywords: bool = False) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
         del parameters, db
         return [_result(listing_id="listing-1", title="Verified 2-bed in Wuse 2")]
 
@@ -427,7 +427,7 @@ async def test_run_chat_query_handles_llm_client_initialization_error(fake_redis
 
     monkeypatch.setattr(service, "get_llm_client", fake_get_llm_client)
 
-    async def fake_execute_search(*, parameters: ExtractedParameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+    async def fake_execute_search(*, parameters: ExtractedParameters, db, drop_keywords: bool = False) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
         del parameters, db
         return []
 
@@ -479,7 +479,7 @@ def test_compute_differentiators_empty_for_single_result() -> None:
 
 @pytest.mark.asyncio
 async def test_concierge_message_replaces_template(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
-    async def fake_execute_search(*, parameters: ExtractedParameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+    async def fake_execute_search(*, parameters: ExtractedParameters, db, drop_keywords: bool = False) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
         del parameters, db
         return [_result(listing_id="l1", title="Verified 2-bed in Wuse 2")]
 
@@ -504,7 +504,7 @@ async def test_generic_query_uses_template_but_keeps_result_note(fake_redis, mon
     """An unconstrained query skips the LLM concierge to save cost, yet the
     deterministic difference note still ships."""
 
-    async def fake_execute_search(*, parameters: ExtractedParameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+    async def fake_execute_search(*, parameters: ExtractedParameters, db, drop_keywords: bool = False) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
         del parameters, db
         return [
             _result(listing_id="l1", title="Doc-only flat", status="doc_verified", rating=None, review_count=0),
@@ -534,7 +534,7 @@ async def test_generic_query_uses_template_but_keeps_result_note(fake_redis, mon
 
 @pytest.mark.asyncio
 async def test_concierge_falls_back_to_template_on_failure(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
-    async def fake_execute_search(*, parameters: ExtractedParameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+    async def fake_execute_search(*, parameters: ExtractedParameters, db, drop_keywords: bool = False) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
         del parameters, db
         return [_result(listing_id="l1", title="Verified 2-bed in Wuse 2")]
 
@@ -555,7 +555,7 @@ async def test_concierge_falls_back_to_template_on_failure(fake_redis, monkeypat
 
 @pytest.mark.asyncio
 async def test_concierge_skipped_for_transactional(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
-    async def fake_execute_search(*, parameters: ExtractedParameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+    async def fake_execute_search(*, parameters: ExtractedParameters, db, drop_keywords: bool = False) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
         del parameters, db
         return [_result(listing_id="l1", title="Verified 2-bed in Wuse 2")]
 
@@ -584,3 +584,114 @@ async def test_concierge_skipped_for_transactional(fake_redis, monkeypatch: pyte
 
     assert llm.concierge_calls == 0
     assert response.assistant_message != "should not be used"
+
+
+@pytest.mark.asyncio
+async def test_compare_listings(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
+    async def fake_execute_search(*, parameters: ExtractedParameters, db, drop_keywords: bool = False) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+        del parameters, db
+        return []
+
+    async def fake_listings_by_ids(*, ids, db) -> list:  # type: ignore[no-untyped-def]
+        del db
+        class FakeListing:
+            def __init__(self, i):
+                self.id = ids[i]
+                self.title = "First" if i == 0 else "Second"
+                self.type_data = {}
+                self.status = "fully_verified"
+                self.price = None
+                self.category = "rent"
+                self.district = "Wuse 2"
+                self.photos = []
+        return [FakeListing(0), FakeListing(1)]
+
+    monkeypatch.setattr(service, "_execute_search", fake_execute_search)
+    monkeypatch.setattr(service, "_listings_by_ids", fake_listings_by_ids)
+    monkeypatch.setattr(service, "_rating_map", lambda **kwargs: {})
+
+    # First turn sets up the session history
+    await service.run_chat_query(
+        payload=ChatRequestPayload(query="a 2-bed in Wuse 2 under 4m"),
+        db=cast("object", object()),  # type: ignore[arg-type]
+        redis=cast("object", fake_redis),  # type: ignore[arg-type]
+        llm=cast("object", _FakeLLM([_llm_payload()])),  # type: ignore[arg-type]
+    )
+    
+    # Force state to have last_result_listing_ids
+    state = await service.get_session_state(session_id="test-session", redis=fake_redis)
+    state.last_result_listing_ids = ["listing-1", "listing-2"]
+    from app.ai_search.session_store import SessionStore
+    await SessionStore(fake_redis).save(state)
+
+    llm = _FakeLLM(
+        [_llm_payload(intent="compare_listings")],
+        concierge_reply="Here is a comparison.",
+    )
+    response = await service.run_chat_query(
+        payload=ChatRequestPayload(query="compare the top two", session_id="test-session"),
+        db=cast("object", object()),  # type: ignore[arg-type]
+        redis=cast("object", fake_redis),  # type: ignore[arg-type]
+        llm=cast("object", llm),  # type: ignore[arg-type]
+    )
+    assert response.intent == "compare_listings"
+    assert len(response.results) == 2
+    assert "First" in response.results[0].title
+    assert "Second" in response.results[1].title
+    assert response.assistant_message == "Here is a comparison."
+
+
+@pytest.mark.asyncio
+async def test_ask_property_question(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
+    async def fake_listings_by_ids(*, ids, db) -> list:  # type: ignore[no-untyped-def]
+        del db
+        class FakeListing:
+            id = ids[0]
+            title = "Test Property"
+            type_data = {}
+            status = "fully_verified"
+            price = None
+            category = "rent"
+            district = "Wuse 2"
+            photos = []
+        return [FakeListing()]
+
+    monkeypatch.setattr(service, "_listings_by_ids", fake_listings_by_ids)
+    monkeypatch.setattr(service, "_rating_map", lambda **kwargs: {})
+
+    llm = _FakeLLM(
+        [_llm_payload(intent="ask_property_question", reference_resolution={"kind": "ordinal", "index": 1})],
+        concierge_reply="It has a generator.",
+    )
+    
+    state = await service.get_session_state(session_id="test-session", redis=fake_redis)
+    state.last_result_listing_ids = ["listing-1"]
+    from app.ai_search.session_store import SessionStore
+    await SessionStore(fake_redis).save(state)
+
+    response = await service.run_chat_query(
+        payload=ChatRequestPayload(query="does the first one have a gen?", session_id="test-session"),
+        db=cast("object", object()),  # type: ignore[arg-type]
+        redis=cast("object", fake_redis),  # type: ignore[arg-type]
+        llm=cast("object", llm),  # type: ignore[arg-type]
+    )
+    assert response.intent == "ask_property_question"
+    assert response.assistant_message == "It has a generator."
+    assert "Listing: Test Property" in (response.model_dump().get("property_answer") or "")
+
+
+@pytest.mark.asyncio
+async def test_ask_area_question(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
+    llm = _FakeLLM(
+        [_llm_payload(intent="ask_area_question", parameters={"raw_query": "is jabi safe?"})],
+        concierge_reply="Jabi is very safe.",
+    )
+    response = await service.run_chat_query(
+        payload=ChatRequestPayload(query="is jabi safe?"),
+        db=cast("object", object()),  # type: ignore[arg-type]
+        redis=cast("object", fake_redis),  # type: ignore[arg-type]
+        llm=cast("object", llm),  # type: ignore[arg-type]
+    )
+    assert response.intent == "ask_area_question"
+    assert response.assistant_message == "Jabi is very safe."
+    assert response.model_dump().get("area_answer") is not None

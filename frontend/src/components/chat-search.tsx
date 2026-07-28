@@ -280,13 +280,48 @@ export function ChatSearchPanel() {
             <li key={entry.response.query_id} className="space-y-3">
               <UserBubble text={entry.query} />
               <BotBubble text={entry.response.assistant_message} />
+              
+              {entry.response.property_answer && (
+                <div className="motion-safe:animate-fade-up min-[380px]:ml-10 rounded-2xl bg-white border border-brand-200 p-4 mt-2">
+                  <div className="flex items-center gap-2 mb-2 text-brand-700 font-medium text-sm">
+                    <BadgeCheck className="h-4 w-4" aria-hidden />
+                    Property Details
+                  </div>
+                  <p className="text-body text-ink-soft">{entry.response.property_answer}</p>
+                </div>
+              )}
+
+              {entry.response.area_answer && (
+                <div className="motion-safe:animate-fade-up min-[380px]:ml-10 rounded-2xl bg-white border border-brand-200 p-4 mt-2">
+                  <div className="flex items-center gap-2 mb-2 text-brand-700 font-medium text-sm">
+                    <Home className="h-4 w-4" aria-hidden />
+                    Area Knowledge
+                  </div>
+                  <p className="text-body text-ink-soft">{entry.response.area_answer}</p>
+                </div>
+              )}
+
               {entry.response.results.length > 0 && (
                 <ResultsPanel
                   results={entry.response.results}
                   note={entry.response.result_note}
                   onOpenBrowse={() => openBrowse(entry.response)}
                   canOpenBrowse={Boolean(entry.response.parameters?.listing_category)}
+                  intent={entry.response.intent}
                 />
+              )}
+              {entry.response.suggested_followups && entry.response.suggested_followups.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2 min-[380px]:ml-10">
+                  {entry.response.suggested_followups.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => void submit(suggestion)}
+                      className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 transition hover:bg-brand-100"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
               )}
               {entry.response.used_fallback && process.env.NODE_ENV === 'development' && (
                 <p className="ml-12 text-caption font-medium text-amber-700">
@@ -364,17 +399,21 @@ function ResultsPanel({
   note,
   onOpenBrowse,
   canOpenBrowse,
+  intent,
 }: {
   results: ResultListingSummary[];
   note?: string | null;
   onOpenBrowse: () => void;
   canOpenBrowse: boolean;
+  intent?: string;
 }) {
+  const isComparison = intent === 'compare_listings';
+
   return (
     <div className="rounded-2xl border border-hairline bg-white p-3 min-[380px]:ml-10">
       <div className="mb-2 flex items-center justify-between">
         <p className="text-caption font-semibold uppercase tracking-[0.18em] text-ink-soft">
-          {results.length} match{results.length === 1 ? '' : 'es'}
+          {isComparison ? 'Comparison' : `${results.length} match${results.length === 1 ? '' : 'es'}`}
         </p>
         {canOpenBrowse && (
           <button
@@ -394,7 +433,7 @@ function ResultsPanel({
       )}
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
         {results.map((result) => (
-          <div key={result.id} className="w-[220px] shrink-0">
+          <div key={result.id} className={isComparison ? "w-[280px] shrink-0" : "w-[220px] shrink-0"}>
             <ListingCard data={toCardData(result)} showSave />
           </div>
         ))}

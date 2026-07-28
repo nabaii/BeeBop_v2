@@ -52,7 +52,10 @@
       "Bash(python -c \"import app.payments.routes, app.referrals.payouts, app.integrations.paystack; print\\('backend imports OK'\\)\")",
       "Bash(git -C \"c:/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2\" add .claude/settings.json)",
       "Bash(git -C \"c:/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2\" commit -m \"chore: track Claude Code permission allowlist additions\")",
-      "Bash(git -C \"c:/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2\" push origin production-publish-prep)"
+      "Bash(git -C \"c:/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2\" push origin production-publish-prep)",
+      "Bash(git -C \"c:/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2\" status -sb)",
+      "Bash(git -C \"c:/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2\" diff .claude/settings.json)",
+      "Bash(python -m pytest tests/test_ai_search.py -q)"
     ],
     "additionalDirectories": [
       "C:\\Users\\enaic\\OneDrive\\Desktop\\miyata\\BeeBop-v2\\.git"
