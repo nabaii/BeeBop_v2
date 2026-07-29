@@ -24,6 +24,8 @@ export interface PhotoView {
   room_label: string | null;
   is_cover: boolean;
   display_order: number;
+  /** Owning unit type for an off-campus room gallery; null = property gallery. */
+  unit_type_id: string | null;
 }
 
 export interface DocumentView {
@@ -52,6 +54,8 @@ export interface UnitTypeView {
   gender_tag: 'female' | 'male' | 'any';
   amenities: string[];
   rooms: RoomView[];
+  /** This unit type's own gallery, ordered by display_order. */
+  photos: PhotoView[];
 }
 
 /** Human label for a unit-type billing period, e.g. "year" / "semester". */
@@ -126,19 +130,23 @@ export async function getAmenityVocabulary(): Promise<Record<string, string[]>> 
 
 // --- Photos --------------------------------------------------------------
 
-export async function getPhotoUploadSignature(listingId: string) {
+// Photos live in one of two galleries: the property gallery (no unit type) or
+// an off-campus unit type's own gallery. Pass `unitTypeId` to target the
+// latter — cover and ordering are scoped per gallery on the server.
+export async function getPhotoUploadSignature(listingId: string, unitTypeId?: string | null) {
+  const query = unitTypeId ? `?unit_type_id=${encodeURIComponent(unitTypeId)}` : '';
   return api.post<{
     cloud_name: string;
     api_key: string;
     timestamp: number;
     signature: string;
     folder: string;
-  }>(`/listings/${listingId}/photos/signature`, undefined, { auth: true });
+  }>(`/listings/${listingId}/photos/signature${query}`, undefined, { auth: true });
 }
 
 export async function registerPhoto(
   listingId: string,
-  args: { url: string; room_label?: string | null },
+  args: { url: string; room_label?: string | null; unit_type_id?: string | null },
 ): Promise<PhotoView> {
   return api.post(`/listings/${listingId}/photos`, args, { auth: true });
 }
@@ -158,8 +166,13 @@ export async function deletePhoto(listingId: string, photoId: string): Promise<v
 export async function reorderPhotos(
   listingId: string,
   photoIds: string[],
+  unitTypeId?: string | null,
 ): Promise<PhotoView[]> {
-  return api.post(`/listings/${listingId}/photos/reorder`, { photo_ids: photoIds }, { auth: true });
+  return api.post(
+    `/listings/${listingId}/photos/reorder`,
+    { photo_ids: photoIds, unit_type_id: unitTypeId ?? null },
+    { auth: true },
+  );
 }
 
 export async function uploadPhotoToCloudinary(

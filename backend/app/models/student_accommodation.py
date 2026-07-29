@@ -7,6 +7,7 @@ Rooms are physical instances that only track bed counts.
 """
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, Enum, ForeignKey, Integer, String, Numeric
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -15,6 +16,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 from app.models._enums import BedStatus, Gender, UnitKind
 from app.models._mixins import TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from app.models.listing import ListingPhoto
 
 
 class UnitType(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -46,6 +50,18 @@ class UnitType(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     rooms: Mapped[list["Room"]] = relationship(
         back_populates="unit_type", cascade="all, delete-orphan"
+    )
+    # This unit type's own gallery. Off-campus rooms differ from one another, so
+    # a seeker comparing a self-contain against a 2-in-a-room sees the actual
+    # room, not just the building. Rows live in `listing_photos` with
+    # `unit_type_id` set — the same upload pipeline as property photos.
+    photos: Mapped[list["ListingPhoto"]] = relationship(
+        "ListingPhoto",
+        primaryjoin="UnitType.id == ListingPhoto.unit_type_id",
+        foreign_keys="ListingPhoto.unit_type_id",
+        cascade="all, delete-orphan",
+        order_by="ListingPhoto.display_order",
+        overlaps="listing,photos,all_photos",
     )
 
 

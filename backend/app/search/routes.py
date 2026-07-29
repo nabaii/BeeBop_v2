@@ -28,6 +28,7 @@ from app.search.schemas import (
     PublicListingDetail,
     PublicRoom,
     PublicUnitType,
+    PublicUnitTypePhoto,
     RentFilters,
     SalesFilters,
     SearchResponse,
@@ -208,6 +209,7 @@ async def public_listing_detail(
             selectinload(Listing.photos),
             selectinload(Listing.documents),
             selectinload(Listing.unit_types).selectinload(UnitType.rooms),
+            selectinload(Listing.unit_types).selectinload(UnitType.photos),
         )
     )
     listing = (await db.execute(stmt)).scalar_one_or_none()
@@ -300,7 +302,17 @@ async def public_listing_detail(
                         beds_available=r.beds_available,
                     )
                     for r in u.rooms
-                ]
+                ],
+                photos=[
+                    PublicUnitTypePhoto(
+                        id=str(p.id),
+                        url=p.url,
+                        room_label=p.room_label,
+                        is_cover=p.is_cover,
+                        display_order=p.display_order,
+                    )
+                    for p in sorted(u.photos, key=lambda p: p.display_order)
+                ],
             )
             # Cheapest first so the "From ₦X" headline matches the top of the list.
             for u in sorted(listing.unit_types, key=lambda u: float(u.price))

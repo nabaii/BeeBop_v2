@@ -3,6 +3,7 @@ management, and category-specific structured data."""
 
 from __future__ import annotations
 
+import uuid
 from datetime import date
 from typing import Literal
 
@@ -108,6 +109,8 @@ class ListingPhotoView(BaseModel):
     room_label: str | None = None
     is_cover: bool
     display_order: int
+    # Owning unit type for off-campus room galleries; null = property gallery.
+    unit_type_id: str | None = None
 
 
 class ListingDocumentView(BaseModel):
@@ -136,6 +139,8 @@ class UnitTypeView(BaseModel):
     gender_tag: Gender
     amenities: list[str] = Field(default_factory=list)
     rooms: list[RoomView] = Field(default_factory=list)
+    # This unit type's own gallery, ordered by display_order.
+    photos: list[ListingPhotoView] = Field(default_factory=list)
 
 
 class ListingView(BaseModel):
@@ -178,6 +183,9 @@ class PhotoRegisterPayload(BaseModel):
 
     url: str = Field(..., max_length=500)
     room_label: str | None = Field(default=None, max_length=100)
+    # Off-campus: file the photo under a unit type's gallery instead of the
+    # property gallery. Must belong to this listing.
+    unit_type_id: uuid.UUID | None = None
 
 
 class PhotoUpdatePayload(BaseModel):
@@ -186,9 +194,14 @@ class PhotoUpdatePayload(BaseModel):
 
 
 class PhotoReorderPayload(BaseModel):
-    """Ordered list of photo IDs — index == display_order."""
+    """Ordered list of photo IDs — index == display_order.
+
+    Ordering is per gallery: the list must name every photo in the targeted
+    gallery (the property gallery, or one unit type's) and nothing else.
+    """
 
     photo_ids: list[str]
+    unit_type_id: uuid.UUID | None = None
 
 
 # -----------------------------------------------------------------------------

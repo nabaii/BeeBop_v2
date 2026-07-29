@@ -31,6 +31,7 @@ erDiagram
     listings ||--o{ reviews : "reviewed_in"
 
     unit_types ||--o{ rooms : "contains"
+    unit_types ||--o{ listing_photos : "gallery"
 
     offers ||--o| agreements : "finalised_into"
     offers ||--o| visits : "triggers"
@@ -199,11 +200,18 @@ Defined in [_enums.py](file:///c:/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2/
 | Column | Type | Nullable | Notes |
 |---|---|---|---|
 | `listing_id` | `UUID → listings.id` | ✗ | FK CASCADE, indexed |
+| `unit_type_id` | `UUID → unit_types.id` | ✓ | FK CASCADE, indexed. NULL = property gallery; set = that unit type's own gallery |
 | `url` | `String(500)` | ✗ | Cloudinary / dev-assets URL |
 | `room_label` | `String(100)` | ✓ | "Living Room", "Bedroom", etc. |
-| `is_cover` | `Boolean` | ✗ | default `false` |
-| `display_order` | `Integer` | ✗ | default 0, ordered by |
+| `is_cover` | `Boolean` | ✗ | default `false` — **scoped per gallery** |
+| `display_order` | `Integer` | ✗ | default 0, ordered by — **scoped per gallery** |
 | `is_inspector_walkthrough` | `Boolean` | ✗ | default `false` |
+
+> [!IMPORTANT]
+> `Listing.photos` is mapped with `unit_type_id IS NULL` in its primaryjoin, so it
+> means *property photos only* — browse covers, dashboards, inspector and AI search
+> read it without needing to filter. Unit galleries are reached via `UnitType.photos`;
+> `Listing.all_photos` is the unfiltered read-only view for moderation.
 
 ---
 
@@ -238,7 +246,9 @@ Defined in [_enums.py](file:///c:/Users/enaic/OneDrive/Desktop/miyata/BeeBop-v2/
 | `beds_per_room` | `Integer` | ✗ | |
 | `total_units` | `Integer` | ✗ | |
 
-**Relationships**: `rooms` → `Room[]` (cascade `all, delete-orphan`)
+**Relationships**:
+- `rooms` → `Room[]` (cascade `all, delete-orphan`)
+- `photos` → `ListingPhoto[]` (cascade `all, delete-orphan`) — this unit type's own gallery. Rooms differ between unit types, so each shows its own shots; seekers see them on the unit page and as the row thumbnail.
 
 ---
 

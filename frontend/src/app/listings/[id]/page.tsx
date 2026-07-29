@@ -15,6 +15,7 @@ import {
   ChevronRight,
   FileText,
   CircleCheck,
+  ImageOff,
   MapPin,
   ScrollText,
   Share2,
@@ -396,6 +397,13 @@ function GlanceStats({ listing }: { listing: PublicListingDetail }) {
 
 function UnitTypes({ listing }: { listing: PublicListingDetail }) {
   const units = [...listing.unit_types].sort((a, b) => a.price - b.price);
+  // A row must never render a hole, so units without their own photos borrow
+  // the property cover for the thumbnail only. The unit page itself shows no
+  // photos rather than passing the building off as the room.
+  const listingCover =
+    listing.photos.find((p) => p.is_cover && !p.is_inspector_walkthrough)?.url ??
+    listing.photos.find((p) => !p.is_inspector_walkthrough)?.url ??
+    null;
   if (units.length === 0) {
     return (
       <section className="rounded-[24px] bg-white p-6 shadow-[0_14px_38px_rgba(15,23,42,0.08)]">
@@ -418,6 +426,9 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
       <ul className="mt-5 space-y-3">
         {units.map((u) => {
           const soldOut = u.beds_available <= 0;
+          const unitPhotos = u.photos ?? [];
+          const thumb =
+            unitPhotos.find((p) => p.is_cover)?.url ?? unitPhotos[0]?.url ?? listingCover;
           return (
             <li key={u.id}>
               <Link
@@ -425,6 +436,7 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
                 aria-label={`View ${u.name} details`}
                 className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 px-5 py-4 transition hover:border-brand/40 hover:bg-white hover:shadow-sm"
               >
+                <UnitThumbnail url={thumb} count={unitPhotos.length} alt={u.name} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="truncate text-base font-semibold text-slate-950">{u.name}</p>
@@ -476,6 +488,39 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
         Secure transaction support available in Beebop
       </p>
     </section>
+  );
+}
+
+/** Row thumbnail for a unit type. The badge only appears when the shots are
+ *  genuinely of that room, so a borrowed property cover never reads as one. */
+function UnitThumbnail({
+  url,
+  count,
+  alt,
+}: {
+  url: string | null;
+  count: number;
+  alt: string;
+}) {
+  if (!url) {
+    return (
+      <div
+        aria-hidden
+        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-300"
+      >
+        <ImageOff className="h-5 w-5" />
+      </div>
+    );
+  }
+  return (
+    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+      <img src={url} alt={alt} className="h-full w-full object-cover" />
+      {count > 1 && (
+        <span className="absolute bottom-1 right-1 rounded-full bg-slate-950/70 px-1.5 py-0.5 text-caption font-bold text-white">
+          {count}
+        </span>
+      )}
+    </div>
   );
 }
 

@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import { LayoutGrid, Trash2 } from 'lucide-react';
 
+import { PhotoManager } from '@/components/listing/photo-manager';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/lib/api';
@@ -16,6 +17,7 @@ import {
   addUnitType,
   deleteUnitType,
   listUnitTypes,
+  type PhotoView,
   type UnitTypeView,
 } from '@/lib/listings';
 
@@ -257,6 +259,9 @@ function UnitTypeCard({
   const [roomName, setRoomName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // This unit type's own gallery. Held locally: photo edits don't affect bed
+  // counts or pricing, so there's nothing for a full inventory refresh to do.
+  const [photos, setPhotos] = useState<PhotoView[]>(unit.photos ?? []);
 
   async function addOne() {
     if (!roomName.trim()) return;
@@ -312,6 +317,21 @@ function UnitTypeCard({
         </button>
       </header>
       
+      <div className="mt-4 bg-white rounded-xl border border-slate-200 p-3.5">
+        <PhotoManager
+          listingId={listingId}
+          unitTypeId={unit.id}
+          photos={photos}
+          onChange={setPhotos}
+          variant="inline"
+          title="Room Photos"
+          description="Shown to seekers on this unit's page. Rooms differ — show this one."
+          labelPlaceholder="Label (e.g. Bedroom)"
+          emptyTitle={`Add photos of ${unit.name}`}
+          emptyHint="Without these, seekers only see the building's photos for this room."
+        />
+      </div>
+
       <div className="mt-4 bg-white rounded-xl border border-slate-200 p-3.5 space-y-3">
         <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">Add Room Instance</div>
         <p className="text-caption text-slate-400">

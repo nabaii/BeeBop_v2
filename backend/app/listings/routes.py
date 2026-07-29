@@ -125,12 +125,31 @@ async def delete_listing(
 # -----------------------------------------------------------------------------
 
 
+def _photo_view(photo) -> dict:  # type: ignore[no-untyped-def]
+    return {
+        "id": str(photo.id),
+        "url": photo.url,
+        "room_label": photo.room_label,
+        "is_cover": photo.is_cover,
+        "display_order": photo.display_order,
+        "unit_type_id": str(photo.unit_type_id) if photo.unit_type_id else None,
+    }
+
+
 @router.post("/{listing_id}/photos/signature", response_model=PhotoUploadSignatureResponse)
 async def photo_upload_signature(
     listing_id: uuid.UUID,
+    # Off-campus unit galleries upload into their own Cloudinary folder so the
+    # asset tree mirrors the gallery the landlord is editing.
+    unit_type_id: uuid.UUID | None = None,
     user: User = Depends(get_current_user),
 ) -> PhotoUploadSignatureResponse:
-    sig = build_signed_upload_params(folder=f"listings/{listing_id}/photos")
+    folder = (
+        f"listings/{listing_id}/units/{unit_type_id}/photos"
+        if unit_type_id
+        else f"listings/{listing_id}/photos"
+    )
+    sig = build_signed_upload_params(folder=folder)
     return PhotoUploadSignatureResponse(
         cloud_name=sig.cloud_name,
         api_key=sig.api_key,
@@ -152,16 +171,11 @@ async def register_photo(
         listing_id=listing_id,
         url=payload.url,
         room_label=payload.room_label,
+        unit_type_id=payload.unit_type_id,
         db=db,
     )
     await db.commit()
-    return {
-        "id": str(photo.id),
-        "url": photo.url,
-        "room_label": photo.room_label,
-        "is_cover": photo.is_cover,
-        "display_order": photo.display_order,
-    }
+    return _photo_view(photo)
 
 
 @router.patch("/{listing_id}/photos/{photo_id}")
@@ -181,13 +195,7 @@ async def update_photo(
         db=db,
     )
     await db.commit()
-    return {
-        "id": str(photo.id),
-        "url": photo.url,
-        "room_label": photo.room_label,
-        "is_cover": photo.is_cover,
-        "display_order": photo.display_order,
-    }
+    return _photo_view(photo)
 
 
 @router.delete("/{listing_id}/photos/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -212,19 +220,11 @@ async def reorder_photos(
         user=user,
         listing_id=listing_id,
         ordered_ids=[uuid.UUID(pid) for pid in payload.photo_ids],
+        unit_type_id=payload.unit_type_id,
         db=db,
     )
     await db.commit()
-    return [
-        {
-            "id": str(p.id),
-            "url": p.url,
-            "room_label": p.room_label,
-            "is_cover": p.is_cover,
-            "display_order": p.display_order,
-        }
-        for p in photos
-    ]
+    return [_photo_view(p) for p in photos]
 
 
 # -----------------------------------------------------------------------------
@@ -322,6 +322,12 @@ def _unit_view(ut) -> UnitTypeView:  # type: ignore[no-untyped-def]
                 "beds_available": r.beds_available,
             }
             for r in getattr(ut, "rooms", []) or []
+        ],
+        photos=[
+            _photo_view(p)
+            for p in sorted(
+                getattr(ut, "photos", []) or [], key=lambda p: p.display_order
+            )
         ],
     )
 

@@ -96,6 +96,7 @@ function toCardData(r: PublicListingSummary) {
           room_label: null,
           is_cover: true,
           display_order: 0,
+          unit_type_id: null,
         }
       : null,
     rating: r.rating,

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import type { Route } from 'next';
+import { UnitGallery } from '@/components/listing/gallery';
 import { Button } from '@/components/ui/button';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 
@@ -92,6 +93,7 @@ export default function UnitTypeDetailPage({
   }
 
   const soldOut = unit.beds_available <= 0;
+  const unitPhotos = unit.photos ?? [];
 
   // Icon mapper for amenities
   const getAmenityIcon = (amenity: string) => {
@@ -130,6 +132,18 @@ export default function UnitTypeDetailPage({
         </header>
 
         <div className="space-y-6 px-6 py-6">
+          {/* This room's own photos. Rendered only when the landlord uploaded
+              them — the property's photos are never substituted here, since
+              they'd misrepresent the room being booked. */}
+          {unitPhotos.length > 0 && (
+            <section className="space-y-2.5">
+              <p className="text-caption font-bold uppercase tracking-wider text-slate-500">
+                Photos of this room
+              </p>
+              <UnitGallery photos={unitPhotos} unitName={unit.name} />
+            </section>
+          )}
+
           {/* Main Visual Title Card */}
           <section className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-brand-700 via-brand-800 to-amber-800 p-6 text-white shadow-lg">
             <div className="absolute top-0 right-0 h-40 w-40 translate-x-12 -translate-y-12 rounded-full bg-white/10 blur-xl" />

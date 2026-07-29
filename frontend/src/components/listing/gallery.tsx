@@ -6,15 +6,20 @@
  * The lightbox holds every photo grouped by room, with inspector walkthrough
  * shots surfaced as their own labelled group so the page flows straight from
  * one gallery block into the property details.
+ *
+ * `UnitGallery` below reuses the same hero + lightbox for a single off-campus
+ * unit type, so a room's photos behave exactly like the property's.
  */
 
 import { BadgeCheck, CheckCircle2, ImageOff, Images, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { cn } from '@/lib/cn';
-import type { PublicListingDetail } from '@/lib/search';
+import type { PublicListingDetail, PublicUnitTypePhoto } from '@/lib/search';
 
-type Photo = PublicListingDetail['photos'][number];
+// Both gallery sources carry the fields the hero and lightbox need. Unit
+// photos have no walkthrough flag — only the property gallery does.
+type Photo = PublicListingDetail['photos'][number] | PublicUnitTypePhoto;
 
 export function ListingGallery({ listing }: { listing: PublicListingDetail }) {
   const { listingPhotos, walkthroughPhotos } = useMemo(() => {
@@ -25,8 +30,15 @@ export function ListingGallery({ listing }: { listing: PublicListingDetail }) {
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
+  const badges = (
+    <>
+      <StatusBadge status={listing.status} />
+      {isVisited(listing.status) && <VisitedBadge />}
+    </>
+  );
+
   if (listingPhotos.length === 0 && walkthroughPhotos.length === 0) {
-    return <NoPhotoHero listing={listing} />;
+    return <NoPhotoHero badges={badges} />;
   }
 
   const totalPhotos = listingPhotos.length + walkthroughPhotos.length;
@@ -37,7 +49,7 @@ export function ListingGallery({ listing }: { listing: PublicListingDetail }) {
     <>
       <HeroGrid
         photos={heroPhotos}
-        listing={listing}
+        badges={badges}
         totalPhotos={totalPhotos}
         onOpen={() => setLightboxOpen(true)}
       />
@@ -52,14 +64,43 @@ export function ListingGallery({ listing }: { listing: PublicListingDetail }) {
   );
 }
 
+/**
+ * One off-campus unit type's gallery. Deliberately never falls back to the
+ * property's photos: showing the building where a room should be would
+ * misrepresent what the seeker is booking. Callers render nothing (or their
+ * own placeholder) when the unit has no photos.
+ */
+export function UnitGallery({ photos, unitName }: { photos: PublicUnitTypePhoto[]; unitName: string }) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  if (photos.length === 0) return null;
+
+  return (
+    <>
+      <HeroGrid
+        photos={photos}
+        totalPhotos={photos.length}
+        onOpen={() => setLightboxOpen(true)}
+      />
+      {lightboxOpen && (
+        <PhotoLightbox
+          listingPhotos={photos}
+          walkthroughPhotos={[]}
+          title={unitName}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
 function HeroGrid({
   photos,
-  listing,
+  badges,
   totalPhotos,
   onOpen,
 }: {
   photos: Photo[];
-  listing: PublicListingDetail;
+  badges?: ReactNode;
   totalPhotos: number;
   onOpen: () => void;
 }) {
@@ -85,10 +126,7 @@ function HeroGrid({
           alt={cover.room_label ?? 'Listing cover'}
           className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
         />
-        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-          <StatusBadge status={listing.status} />
-          {isVisited(listing.status) && <VisitedBadge />}
-        </div>
+        {badges && <div className="absolute left-3 top-3 flex flex-wrap gap-2">{badges}</div>}
         {hasMore && (
           <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-2 text-xs font-semibold text-slate-900 shadow-sm backdrop-blur">
             <Images className="h-4 w-4" aria-hidden />
@@ -122,10 +160,12 @@ function HeroGrid({
 function PhotoLightbox({
   listingPhotos,
   walkthroughPhotos,
+  title,
   onClose,
 }: {
   listingPhotos: Photo[];
   walkthroughPhotos: Photo[];
+  title?: string;
   onClose: () => void;
 }) {
   // Esc to close + lock the page behind the full-screen viewer.
@@ -149,11 +189,12 @@ function PhotoLightbox({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Photo gallery"
+      aria-label={title ? `${title} photo gallery` : 'Photo gallery'}
       className="fixed inset-0 z-50 flex flex-col bg-slate-950/95 backdrop-blur"
     >
       <header className="flex h-14 shrink-0 items-center justify-between px-4 text-white">
         <p className="text-sm font-semibold">
+          {title ? `${title} · ` : ''}
           {total} photo{total === 1 ? '' : 's'}
         </p>
         <button
@@ -228,17 +269,14 @@ function useGroupedByRoom(photos: Photo[]): [string, Photo[]][] {
   }, [photos]);
 }
 
-function NoPhotoHero({ listing }: { listing: PublicListingDetail }) {
+function NoPhotoHero({ badges }: { badges?: ReactNode }) {
   return (
     <div className="relative aspect-[4/3] overflow-hidden rounded-[16px] bg-slate-100 shadow-sm min-[380px]:aspect-square">
       <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-slate-400">
         <ImageOff className="h-8 w-8" aria-hidden />
         <span className="text-xs font-medium">No photos yet</span>
       </div>
-      <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-        <StatusBadge status={listing.status} />
-        {isVisited(listing.status) && <VisitedBadge />}
-      </div>
+      {badges && <div className="absolute left-3 top-3 flex flex-wrap gap-2">{badges}</div>}
     </div>
   );
 }

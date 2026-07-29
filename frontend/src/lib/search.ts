@@ -100,6 +100,14 @@ export interface PublicRoom {
   beds_available: number;
 }
 
+export interface PublicUnitTypePhoto {
+  id: string;
+  url: string;
+  room_label: string | null;
+  is_cover: boolean;
+  display_order: number;
+}
+
 export interface PublicUnitType {
   id: string;
   name: string;
@@ -113,6 +121,9 @@ export interface PublicUnitType {
   beds_total: number;
   beds_available: number;
   rooms: PublicRoom[];
+  // This unit type's own gallery. Empty when the landlord hasn't uploaded any —
+  // list thumbnails fall back to the property cover, the unit page shows none.
+  photos: PublicUnitTypePhoto[];
 }
 
 export interface PublicListingDetail {

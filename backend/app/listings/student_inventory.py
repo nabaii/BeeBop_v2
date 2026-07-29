@@ -50,7 +50,7 @@ async def list_unit_types(
     stmt = (
         select(UnitType)
         .where(UnitType.listing_id == listing_id)
-        .options(selectinload(UnitType.rooms))
+        .options(selectinload(UnitType.rooms), selectinload(UnitType.photos))
         .order_by(UnitType.created_at)
     )
     return list((await db.execute(stmt)).scalars().all())
@@ -88,6 +88,9 @@ async def add_unit_type(
         # raises MissingGreenlet inside the async session. A new unit type
         # has no rooms yet, so an empty list is both correct and load-free.
         rooms=[],
+        # Same reasoning for the unit's gallery — empty until the landlord
+        # uploads into it.
+        photos=[],
     )
     db.add(ut)
     await db.flush()

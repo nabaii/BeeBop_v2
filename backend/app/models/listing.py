@@ -83,10 +83,30 @@ class Listing(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     # Relationships
     owner: Mapped["User"] = relationship(back_populates="listings", foreign_keys=[owner_id])
+    # Property-level photos only. Photos owned by a unit type (off-campus room
+    # galleries) are deliberately excluded by the primaryjoin so every existing
+    # reader — browse covers, dashboards, inspector, AI search — keeps showing
+    # the property gallery without having to remember to filter. Unit galleries
+    # are reached through `UnitType.photos`; `all_photos` below is the unfiltered
+    # view for moderation.
     photos: Mapped[list["ListingPhoto"]] = relationship(
-        back_populates="listing",
+        "ListingPhoto",
+        primaryjoin=(
+            "and_(Listing.id == ListingPhoto.listing_id,"
+            " ListingPhoto.unit_type_id.is_(None))"
+        ),
         cascade="all, delete-orphan",
         order_by="ListingPhoto.display_order",
+        overlaps="listing,all_photos",
+    )
+    # Every photo on the listing regardless of gallery. Read-only — writes go
+    # through `photos` or `UnitType.photos` so ownership stays unambiguous.
+    all_photos: Mapped[list["ListingPhoto"]] = relationship(
+        "ListingPhoto",
+        primaryjoin="Listing.id == ListingPhoto.listing_id",
+        viewonly=True,
+        order_by="ListingPhoto.display_order",
+        overlaps="listing,photos",
     )
     documents: Mapped[list["ListingDocument"]] = relationship(
         back_populates="listing",
@@ -111,6 +131,19 @@ class ListingPhoto(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     listing_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("listings.id", ondelete="CASCADE"), index=True, nullable=False
     )
+    # Owning unit type, for off-campus room galleries. NULL = a property-level
+    # photo (the listing gallery). `is_cover` and `display_order` are scoped to
+    # one gallery, so each unit type has its own cover and its own ordering.
+    #
+    # Photos are created inside a gallery and stay there: moving one between
+    # galleries by reassigning this column would read as a removal from
+    # `Listing.photos` and trip its delete-orphan cascade.
+    unit_type_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("unit_types.id", ondelete="CASCADE"),
+        index=True,
+        nullable=True,
+    )
     url: Mapped[str] = mapped_column(String(500), nullable=False)
     room_label: Mapped[str | None] = mapped_column(String(100))    # Living Room, Bedroom, etc.
     is_cover: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -119,7 +152,11 @@ class ListingPhoto(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     # rendered as "Beebop Verified Walkthrough" on the listing page.
     is_inspector_walkthrough: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    listing: Mapped[Listing] = relationship(back_populates="photos")
+    listing: Mapped[Listing] = relationship(
+        "Listing",
+        foreign_keys=[listing_id],
+        overlaps="photos,all_photos",
+    )
 
 
 class ListingDocument(Base, UUIDPrimaryKeyMixin, TimestampMixin):

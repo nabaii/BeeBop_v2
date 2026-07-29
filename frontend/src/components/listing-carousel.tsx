@@ -86,6 +86,7 @@ export function toCardData(r: PublicListingSummary): ListingCardData {
           room_label: null,
           is_cover: true,
           display_order: 0,
+          unit_type_id: null,
         }
       : null,
     secondary_url: r.secondary_url,

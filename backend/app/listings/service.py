@@ -69,6 +69,8 @@ def _view(listing: Listing) -> ListingView:
         amenities=listing.amenities or {},
         price=float(listing.price) if listing.price is not None else None,
         type_data=listing.type_data or {},
+        # `Listing.photos` is the property gallery only — unit-type galleries
+        # are served through the unit-types endpoints.
         photos=[
             {
                 "id": str(p.id),
@@ -76,6 +78,7 @@ def _view(listing: Listing) -> ListingView:
                 "room_label": p.room_label,
                 "is_cover": p.is_cover,
                 "display_order": p.display_order,
+                "unit_type_id": None,
             }
             for p in sorted(listing.photos, key=lambda p: p.display_order)
             if not p.is_inspector_walkthrough
@@ -345,31 +348,79 @@ async def submit_listing(
 # ----------------------------------------------------------------------------
 
 
+async def _ensure_unit_type(
+    db: AsyncSession, listing: Listing, unit_type_id: uuid.UUID | None
+) -> uuid.UUID | None:
+    """Validate a photo's target gallery. None means the property gallery."""
+    if unit_type_id is None:
+        return None
+    unit = await db.get(UnitType, unit_type_id)
+    if unit is None or unit.listing_id != listing.id:
+        raise NotFoundError(
+            "Unit type not found on this listing.", code="unit_type_not_found"
+        )
+    return unit_type_id
+
+
+async def _gallery_photos(
+    db: AsyncSession, listing_id: uuid.UUID, unit_type_id: uuid.UUID | None
+) -> list[ListingPhoto]:
+    """Every photo in one gallery, ordered.
+
+    Cover and display_order are per-gallery, so all of the photo operations
+    below work against this slice rather than the listing as a whole.
+    """
+    stmt = select(ListingPhoto).where(ListingPhoto.listing_id == listing_id)
+    stmt = stmt.where(
+        ListingPhoto.unit_type_id.is_(None)
+        if unit_type_id is None
+        else ListingPhoto.unit_type_id == unit_type_id
+    )
+    rows = (await db.execute(stmt.order_by(ListingPhoto.display_order))).scalars().all()
+    return list(rows)
+
+
 async def register_photo(
     *,
     user: User,
     listing_id: uuid.UUID,
     url: str,
     room_label: str | None,
+    unit_type_id: uuid.UUID | None = None,
     db: AsyncSession,
 ) -> ListingPhoto:
     listing = await _load(db, listing_id)
     _ensure_owner(user, listing)
+    unit_type_id = await _ensure_unit_type(db, listing, unit_type_id)
 
     # display_order = current max + 1. Keeps new uploads at the end of the
     # gallery; landlords reorder explicitly via the reorder endpoint.
-    current = listing.photos or []
+    current = await _gallery_photos(db, listing.id, unit_type_id)
     next_order = (max((p.display_order for p in current), default=-1) + 1)
 
     photo = ListingPhoto(
         listing_id=listing.id,
+        unit_type_id=unit_type_id,
         url=url,
         room_label=room_label,
         display_order=next_order,
-        is_cover=not current,   # first photo uploaded becomes the cover
+        is_cover=not current,   # first photo in this gallery becomes its cover
     )
     db.add(photo)
     await db.flush()
+    return photo
+
+
+async def _load_photo(
+    db: AsyncSession, listing: Listing, photo_id: uuid.UUID
+) -> ListingPhoto:
+    """Fetch one photo from any of the listing's galleries."""
+    stmt = select(ListingPhoto).where(
+        ListingPhoto.id == photo_id, ListingPhoto.listing_id == listing.id
+    )
+    photo = (await db.execute(stmt)).scalar_one_or_none()
+    if photo is None:
+        raise NotFoundError("Photo not found.", code="photo_not_found")
     return photo
 
 
@@ -385,14 +436,14 @@ async def update_photo(
     listing = await _load(db, listing_id)
     _ensure_owner(user, listing)
 
-    target = next((p for p in listing.photos if p.id == photo_id), None)
-    if target is None:
-        raise NotFoundError("Photo not found.", code="photo_not_found")
+    target = await _load_photo(db, listing, photo_id)
 
     if room_label is not None:
         target.room_label = room_label
     if is_cover is True:
-        for p in listing.photos:
+        # Cover is per gallery — promoting a unit photo must not unset the
+        # property cover, or vice versa.
+        for p in await _gallery_photos(db, listing.id, target.unit_type_id):
             p.is_cover = p.id == photo_id
     await db.flush()
     return target
@@ -407,18 +458,16 @@ async def delete_photo(
 ) -> None:
     listing = await _load(db, listing_id)
     _ensure_owner(user, listing)
-    target = next((p for p in listing.photos if p.id == photo_id), None)
-    if target is None:
-        raise NotFoundError("Photo not found.", code="photo_not_found")
+    target = await _load_photo(db, listing, photo_id)
     was_cover = target.is_cover
+    unit_type_id = target.unit_type_id
     await db.delete(target)
     await db.flush()
 
     if was_cover:
-        # Promote the next photo by display_order.
-        remaining = [p for p in listing.photos if p.id != photo_id]
+        # Promote the next photo in the same gallery by display_order.
+        remaining = await _gallery_photos(db, listing.id, unit_type_id)
         if remaining:
-            remaining.sort(key=lambda p: p.display_order)
             remaining[0].is_cover = True
             await db.flush()
 
@@ -428,12 +477,14 @@ async def reorder_photos(
     user: User,
     listing_id: uuid.UUID,
     ordered_ids: list[uuid.UUID],
+    unit_type_id: uuid.UUID | None = None,
     db: AsyncSession,
 ) -> list[ListingPhoto]:
     listing = await _load(db, listing_id)
     _ensure_owner(user, listing)
+    unit_type_id = await _ensure_unit_type(db, listing, unit_type_id)
 
-    existing = {p.id: p for p in listing.photos}
+    existing = {p.id: p for p in await _gallery_photos(db, listing.id, unit_type_id)}
     if set(existing.keys()) != set(ordered_ids):
         raise ValidationError(
             "Reorder list must contain every existing photo id exactly once.",
@@ -442,7 +493,7 @@ async def reorder_photos(
     for index, pid in enumerate(ordered_ids):
         existing[pid].display_order = index
     await db.flush()
-    return sorted(listing.photos, key=lambda p: p.display_order)
+    return sorted(existing.values(), key=lambda p: p.display_order)
 
 
 # ----------------------------------------------------------------------------

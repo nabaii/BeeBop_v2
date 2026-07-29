@@ -112,6 +112,14 @@ class PublicRoom(BaseModel):
     beds_available: int
 
 
+class PublicUnitTypePhoto(BaseModel):
+    id: str
+    url: str
+    room_label: str | None = None
+    is_cover: bool
+    display_order: int
+
+
 class PublicUnitType(BaseModel):
     """A student-accommodation unit type as shown to seekers — per-unit price,
     the sex it serves, its amenities, and aggregated bed availability across
@@ -129,6 +137,10 @@ class PublicUnitType(BaseModel):
     beds_total: int
     beds_available: int
     rooms: list[PublicRoom] = Field(default_factory=list)
+    # This unit type's own gallery. Rooms differ between unit types, so seekers
+    # compare the actual room rather than the building. Empty when the landlord
+    # has not uploaded any — clients fall back to the property cover.
+    photos: list[PublicUnitTypePhoto] = Field(default_factory=list)
 
 
 class PublicListingDetail(BaseModel):
