@@ -592,23 +592,13 @@ async def test_compare_listings(fake_redis, monkeypatch: pytest.MonkeyPatch) -> 
         del parameters, db
         return []
 
-    async def fake_listings_by_ids(*, ids, db) -> list:  # type: ignore[no-untyped-def]
-        del db
-        class FakeListing:
-            def __init__(self, i):
-                self.id = ids[i]
-                self.title = "First" if i == 0 else "Second"
-                self.type_data = {}
-                self.status = "fully_verified"
-                self.price = None
-                self.category = "rent"
-                self.district = "Wuse 2"
-                self.photos = []
-        return [FakeListing(0), FakeListing(1)]
+    async def fake_summaries_for_ids(*, ids, parameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+        del parameters, db
+        titles = {"listing-1": "First", "listing-2": "Second"}
+        return [_result(listing_id=lid, title=titles[lid]) for lid in ids]
 
     monkeypatch.setattr(service, "_execute_search", fake_execute_search)
-    monkeypatch.setattr(service, "_listings_by_ids", fake_listings_by_ids)
-    monkeypatch.setattr(service, "_rating_map", lambda **kwargs: {})
+    monkeypatch.setattr(service, "_summaries_for_ids", fake_summaries_for_ids)
 
     # First turn sets up the session history
     await service.run_chat_query(
@@ -643,21 +633,11 @@ async def test_compare_listings(fake_redis, monkeypatch: pytest.MonkeyPatch) -> 
 
 @pytest.mark.asyncio
 async def test_ask_property_question(fake_redis, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
-    async def fake_listings_by_ids(*, ids, db) -> list:  # type: ignore[no-untyped-def]
-        del db
-        class FakeListing:
-            id = ids[0]
-            title = "Test Property"
-            type_data = {}
-            status = "fully_verified"
-            price = None
-            category = "rent"
-            district = "Wuse 2"
-            photos = []
-        return [FakeListing()]
+    async def fake_summaries_for_ids(*, ids, parameters, db) -> list[ResultListingSummary]:  # type: ignore[no-untyped-def]
+        del parameters, db
+        return [_result(listing_id=ids[0], title="Test Property")]
 
-    monkeypatch.setattr(service, "_listings_by_ids", fake_listings_by_ids)
-    monkeypatch.setattr(service, "_rating_map", lambda **kwargs: {})
+    monkeypatch.setattr(service, "_summaries_for_ids", fake_summaries_for_ids)
 
     llm = _FakeLLM(
         [_llm_payload(intent="ask_property_question", reference_resolution={"kind": "ordinal", "index": 1})],

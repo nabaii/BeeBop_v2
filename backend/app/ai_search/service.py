@@ -233,6 +233,8 @@ async def run_chat_query(
         concierge_prompt_version=concierge_version,
         query_id=query_id,
         suggested_followups=handled.suggested_followups,
+        property_answer=handled.property_answer,
+        area_answer=handled.area_answer,
     )
 
 
@@ -492,10 +494,15 @@ async def _handle_compare(
     db: AsyncSession,
 ) -> _HandledTurn:
     parameters = _carry_forward_raw_query(parameters=parameters, state=state)
-    
-    # We want to fetch 2 or 3 listings from the current state to compare
+
+    # Compare the top of what the seeker last saw, in the order they saw it.
     listing_ids = state.last_result_listing_ids[:3]
-    if not listing_ids:
+    results = (
+        await _summaries_for_ids(ids=listing_ids, parameters=parameters, db=db)
+        if listing_ids
+        else []
+    )
+    if not results:
         prompt = "I don't have any recent results to compare. Tell me what you're looking for first."
         return _HandledTurn(
             assistant_message=prompt,
@@ -505,25 +512,14 @@ async def _handle_compare(
             reference_resolution=None,
             next_result_listing_ids=None,
         )
-    import uuid
-    uuids = [uuid.UUID(lid) for lid in listing_ids]
-    candidates = await _listings_by_ids(ids=uuids, db=db)
-    ratings = await _rating_map(candidates=candidates, db=db)
-    results = [
-        _result_summary(listing=listing, parameters=parameters, rating=ratings.get(str(listing.id)))
-        for listing in candidates
-    ]
-    # Sort results to match original ordering
-    id_map = {item.id: item for item in results}
-    sorted_results = [id_map[lid] for lid in listing_ids if lid in id_map]
-    
+
     return _HandledTurn(
         assistant_message="Here is a comparison of those options.",
         parameters=parameters,
-        results=sorted_results,
+        results=results,
         missing_parameter_prompt=None,
         reference_resolution=interpreted.reference_resolution,
-        next_result_listing_ids=listing_ids,
+        next_result_listing_ids=[item.id for item in results],
         suggested_followups=["Which one is cheaper?", "Book inspection for the first"],
     )
 
@@ -1503,15 +1499,10 @@ async def _resolve_listing_reference(
         if zero_based < 0 or zero_based >= len(state.last_result_listing_ids):
             return None
         identifier = state.last_result_listing_ids[zero_based]
-        rows = await _listings_by_ids(ids=[uuid.UUID(identifier)], db=db)
-        if not rows:
-            return None
-        ratings = await _rating_map(candidates=rows, db=db)
-        return _result_summary(
-            listing=rows[0],
-            parameters=parameters,
-            rating=ratings.get(str(rows[0].id)),
+        summaries = await _summaries_for_ids(
+            ids=[identifier], parameters=parameters, db=db
         )
+        return summaries[0] if summaries else None
 
     if reference.kind == "filter" and reference.amenity:
         token = _normalise_amenity(reference.amenity)
@@ -1523,17 +1514,54 @@ async def _resolve_listing_reference(
     return None
 
 
-async def _listings_by_ids(*, ids: list[uuid.UUID], db: AsyncSession) -> list[Listing]:
-    if not ids:
+async def _summaries_for_ids(
+    *,
+    ids: list[str],
+    parameters: ExtractedParameters,
+    db: AsyncSession,
+) -> list[ResultListingSummary]:
+    """Rank a set of known listing ids into result summaries.
+
+    Order follows `ids`, so the ordinals the seeker saw ("the first one")
+    keep pointing at the same listing across turns.
+    """
+    listings = await _listings_by_ids(ids=ids, db=db)
+    if not listings:
+        return []
+    ratings = await _rating_map(candidates=listings, db=db)
+    return [
+        _result_summary(
+            listing=listing,
+            parameters=parameters,
+            rating=ratings.get(str(listing.id)),
+        )
+        for listing in listings
+    ]
+
+
+async def _listings_by_ids(*, ids: list[str], db: AsyncSession) -> list[Listing]:
+    """Load listings for caller-supplied ids, preserving the caller's order.
+
+    Ids reach here from session state, which can outlive a listing or hold a
+    value the current schema no longer produces, so anything that is not a
+    UUID is skipped rather than raising.
+    """
+    parsed: list[uuid.UUID] = []
+    for identifier in ids:
+        try:
+            parsed.append(uuid.UUID(str(identifier)))
+        except ValueError:
+            continue
+    if not parsed:
         return []
     stmt = (
         select(Listing)
-        .where(Listing.id.in_(ids))
+        .where(Listing.id.in_(parsed))
         .options(selectinload(Listing.photos), selectinload(Listing.unit_types))
     )
     rows = (await db.execute(stmt)).scalars().unique().all()
-    by_id = {listing.id: listing for listing in rows}
-    return [by_id[identifier] for identifier in ids if identifier in by_id]
+    by_id = {str(listing.id): listing for listing in rows}
+    return [by_id[str(identifier)] for identifier in ids if str(identifier) in by_id]
 
 
 def _normalise_amenity(raw: str) -> str | None:
@@ -1569,8 +1597,9 @@ def _should_use_concierge(*, intent: Intent, handled: _HandledTurn) -> bool:
         return False
     if handled.missing_parameter_prompt is not None:
         return False
-    # Information answers benefit from natural phrasing regardless of filters.
-    if intent == "information":
+    # Answers benefit from natural phrasing regardless of filters — and the
+    # property/area handlers hand over raw facts, not seeker-ready prose.
+    if intent in ("information", "ask_property_question", "ask_area_question"):
         return True
     return not _is_generic_query(handled.parameters)
 
