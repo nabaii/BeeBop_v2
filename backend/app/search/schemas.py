@@ -19,6 +19,10 @@ SortOption = Literal[
     "highest_rated",
 ]
 
+# The explore surface can search across every lane at once. "all" is a search
+# scope, not a listing category — no listing is ever stored with it.
+SearchScope = ListingCategory | Literal["all"]
+
 
 class SharedFilters(BaseModel):
     """Every category shares these."""
@@ -68,6 +72,29 @@ class SalesFilters(SharedFilters):
     title_types: list[str] = Field(default_factory=list)
 
 
+class AllFilters(SharedFilters):
+    """Cross-category explore search.
+
+    Only the category-agnostic filters apply. ``min_price``/``max_price`` are
+    inherited but deliberately ignored by the service: rent prices annually,
+    short-let nightly, and sales outright, so one range spanning all three
+    would silently mean three different things. The client hides the price
+    control until a single category is chosen.
+    """
+
+
+class LocationOption(BaseModel):
+    """A district that actually has visible inventory, with its listing count.
+
+    Powers the location typeahead. Sourced from live listings rather than the
+    static vocabulary so the picker can never offer a district that returns
+    zero results.
+    """
+
+    district: str
+    count: int
+
+
 class PublicListingSummary(BaseModel):
     """Shape used on browse grids and map pins."""
 
@@ -98,7 +125,9 @@ class PublicListingSummary(BaseModel):
 
 
 class SearchResponse(BaseModel):
-    category: ListingCategory
+    # "all" when the cross-category explore search produced these rows; each
+    # result still carries its own concrete category.
+    category: SearchScope
     total: int
     page: int
     page_size: int

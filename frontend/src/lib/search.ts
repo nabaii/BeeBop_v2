@@ -8,6 +8,10 @@ import type { ListingCategory, ListingStatus } from './listings';
 export type VerificationTier = 'fully_verified' | 'doc_verified' | 'unverified';
 export type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'newest' | 'highest_rated';
 
+/** Explore can search one lane or every lane at once. "all" is a scope, not a
+ *  category — each result still carries its own concrete category. */
+export type SearchScope = ListingCategory | 'all';
+
 export interface SharedFilters {
   q?: string;
   locations?: string[];
@@ -52,6 +56,16 @@ export interface SalesFilters extends SharedFilters {
   title_types?: string[];
 }
 
+/** Every filter any scope understands. Explore holds one of these and sends
+ *  only the keys the active scope's endpoint accepts. */
+export type AnyFilters = SharedFilters &
+  Partial<OffCampusFilters & ShortLetFilters & RentFilters & SalesFilters>;
+
+export interface LocationOption {
+  district: string;
+  count: number;
+}
+
 export interface PublicListingSummary {
   id: string;
   category: ListingCategory;
@@ -74,7 +88,7 @@ export interface PublicListingSummary {
 }
 
 export interface SearchResponse {
-  category: ListingCategory;
+  category: SearchScope;
   total: number;
   page: number;
   page_size: number;
@@ -179,6 +193,8 @@ function toQueryString(filters: Record<string, unknown>): string {
 }
 
 export const search = {
+  all: (f: SharedFilters) =>
+    api.get<SearchResponse>(`/search/all${toQueryString(f as Record<string, unknown>)}`, { auth: true }),
   offCampus: (f: OffCampusFilters) =>
     api.get<SearchResponse>(`/search/off-campus${toQueryString(f as Record<string, unknown>)}`, { auth: true }),
   shortLet: (f: ShortLetFilters) =>
@@ -188,6 +204,101 @@ export const search = {
   sales: (f: SalesFilters) =>
     api.get<SearchResponse>(`/search/sales${toQueryString(f as Record<string, unknown>)}`, { auth: true }),
 };
+
+/** Runs the search for a scope, sending only the keys that scope accepts.
+ *  Extra keys are dropped rather than passed through: FastAPI ignores unknown
+ *  query params, but leaking `bedroom_counts` into a short-let URL would make
+ *  shared links look like they filter something they don't. */
+export function searchScope(scope: SearchScope, filters: AnyFilters): Promise<SearchResponse> {
+  const shared = pick(filters, SHARED_KEYS);
+  const scoped = (keys: readonly string[]) => ({ ...shared, ...pick(filters, keys) });
+  switch (scope) {
+    case 'off_campus':
+      return search.offCampus(scoped(OFF_CAMPUS_KEYS) as OffCampusFilters);
+    case 'short_let':
+      return search.shortLet(scoped(SHORT_LET_KEYS) as ShortLetFilters);
+    case 'rent':
+      return search.rent(scoped(RENT_KEYS) as RentFilters);
+    case 'sales':
+      return search.sales(scoped(SALES_KEYS) as SalesFilters);
+    default:
+      // "All" has no price range — see the AllFilters docstring on the server.
+      return search.all(omit(shared, ['min_price', 'max_price']) as SharedFilters);
+  }
+}
+
+export const SHARED_KEYS = [
+  'q',
+  'locations',
+  'verification',
+  'amenities',
+  'min_price',
+  'max_price',
+  'sort',
+  'page',
+  'page_size',
+] as const;
+
+export const OFF_CAMPUS_KEYS = [
+  'use_profile_filters',
+  'institution',
+  'gender',
+  'unit_kinds',
+  'available_now',
+] as const;
+
+export const SHORT_LET_KEYS = [
+  'check_in',
+  'check_out',
+  'guests',
+  'min_stay',
+  'instant_booking',
+  'min_rating',
+] as const;
+
+export const RENT_KEYS = [
+  'bedroom_counts',
+  'property_types',
+  'furnishing',
+  'payment_structure',
+  'available_from',
+] as const;
+
+export const SALES_KEYS = [
+  'bedroom_counts',
+  'property_types',
+  'development_status',
+  'title_types',
+] as const;
+
+/** The category-specific keys each scope understands, for URL round-tripping
+ *  and for clearing filters that stop applying when the scope changes. */
+export const SCOPE_KEYS: Record<SearchScope, readonly string[]> = {
+  all: [],
+  off_campus: OFF_CAMPUS_KEYS,
+  short_let: SHORT_LET_KEYS,
+  rent: RENT_KEYS,
+  sales: SALES_KEYS,
+};
+
+function pick<T extends object>(source: T, keys: readonly string[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of keys) {
+    const value = (source as Record<string, unknown>)[key];
+    if (value !== undefined) out[key] = value;
+  }
+  return out;
+}
+
+function omit(source: Record<string, unknown>, keys: readonly string[]): Record<string, unknown> {
+  const out = { ...source };
+  for (const key of keys) delete out[key];
+  return out;
+}
+
+export function getSearchLocations(scope: SearchScope = 'all'): Promise<LocationOption[]> {
+  return api.get(`/search/locations?category=${encodeURIComponent(scope)}`);
+}
 
 export function getPublicListing(id: string): Promise<PublicListingDetail> {
   return api.get(`/public/listings/${id}`, { auth: true });

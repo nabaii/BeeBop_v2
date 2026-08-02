@@ -1,37 +1,16 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import { useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { categoryRedirect, type CategorySearchParams } from '@/lib/browse-redirect';
 
-import { CategoryBrowse } from '@/components/browse/category-browse';
-import { OffCampusFilterFields } from '@/components/browse/category/off-campus-filters';
-import { search, type OffCampusFilters } from '@/lib/search';
-import { useSearch } from '@/stores/search';
-
-const DEFAULTS: OffCampusFilters = {
-  verification: ['fully_verified', 'doc_verified', 'unverified'],
-  sort: 'relevance',
-  page: 1,
-  page_size: 24,
-};
-
-export default function OffCampusBrowsePage() {
-  const router = useRouter();
-  const seed = useSearch((state) => (state.category === 'off_campus' ? state.filters : null));
-  const initialFilters = useMemo(
-    () => ({ ...DEFAULTS, ...(seed ?? {}) } as OffCampusFilters),
-    [seed],
-  );
-  return (
-    <CategoryBrowse<OffCampusFilters>
-      title="Off-campus accommodation"
-      emptyHint="Try widening the location or unit-type filters."
-      initialFilters={initialFilters}
-      search={search.offCampus}
-      renderCategoryFilters={(value, onChange) => (
-        <OffCampusFilterFields value={value} onChange={onChange} />
-      )}
-      onPinSelect={(l) => router.push(`/listings/${l.id}`)}
-    />
-  );
+/**
+ * Off-campus is a scope of the explore surface, not a page of its own.
+ * Redirecting rather than rendering keeps one filter implementation while every
+ * existing link into this route keeps working.
+ */
+export default async function OffCampusBrowsePage({
+  searchParams,
+}: {
+  searchParams: Promise<CategorySearchParams>;
+}) {
+  redirect(categoryRedirect('off_campus', await searchParams));
 }

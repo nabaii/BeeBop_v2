@@ -12,11 +12,14 @@ from app.models._enums import Gender, ListingCategory, ListingStatus
 from app.models.listing import Listing
 from app.models.student_accommodation import Room, UnitType
 from app.search.schemas import (
+    AllFilters,
+    LocationOption,
     OffCampusFilters,
     PublicListingSummary,
     RentFilters,
     SalesFilters,
     SearchResponse,
+    SearchScope,
     SharedFilters,
     ShortLetFilters,
 )
@@ -78,7 +81,31 @@ def _verification_clause(tiers: list[str]):  # type: ignore[no-untyped-def]
     return or_(*clauses)
 
 
-def _apply_shared(stmt, filters: SharedFilters):  # type: ignore[no-untyped-def]
+def _off_campus_price():  # type: ignore[no-untyped-def]
+    """The price an off-campus listing is actually filtered and sorted on.
+
+    Off-campus listings leave ``Listing.price`` null and price per unit type
+    instead, so the shared price filter would exclude every one of them. This
+    correlated subquery mirrors ``off_campus_starting_unit`` — the cheapest
+    priced unit, which is the figure the card and detail headline both show.
+    """
+    return (
+        select(func.min(UnitType.price))
+        .where(UnitType.listing_id == Listing.id)
+        .correlate(Listing)
+        .scalar_subquery()
+    )
+
+
+def _apply_shared(stmt, filters: SharedFilters, *, price_col=None, apply_price: bool = True):  # type: ignore[no-untyped-def]
+    """Apply the filters every category shares.
+
+    ``price_col`` overrides the column the price range is compared against
+    (off-campus prices per unit type, not on the listing row). ``apply_price``
+    is False for the cross-category explore search, where one range cannot
+    span nightly, annual, and outright prices.
+    """
+    price_col = Listing.price if price_col is None else price_col
     stmt = stmt.where(_verification_clause(filters.verification))
     if filters.q:
         # Per-word ILIKE matching.  Each keyword must match in at least one
@@ -96,11 +123,17 @@ def _apply_shared(stmt, filters: SharedFilters):  # type: ignore[no-untyped-def]
                 )
             )
     if filters.locations:
-        stmt = stmt.where(Listing.district.in_(filters.locations))
-    if filters.min_price is not None:
-        stmt = stmt.where(Listing.price >= filters.min_price)
-    if filters.max_price is not None:
-        stmt = stmt.where(Listing.price <= filters.max_price)
+        # Case- and whitespace-insensitive: the location tokens arrive from a
+        # text box and from the conversational parser, neither of which can
+        # guarantee the exact casing stored on the listing row.
+        tokens = [loc.strip().lower() for loc in filters.locations if loc.strip()]
+        if tokens:
+            stmt = stmt.where(func.lower(Listing.district).in_(tokens))
+    if apply_price:
+        if filters.min_price is not None:
+            stmt = stmt.where(price_col >= filters.min_price)
+        if filters.max_price is not None:
+            stmt = stmt.where(price_col <= filters.max_price)
     for token in filters.amenities:
         if ":" not in token:
             continue
@@ -111,11 +144,12 @@ def _apply_shared(stmt, filters: SharedFilters):  # type: ignore[no-untyped-def]
     return stmt
 
 
-def _sort(stmt, sort: str):  # type: ignore[no-untyped-def]
+def _sort(stmt, sort: str, *, price_col=None):  # type: ignore[no-untyped-def]
+    price_col = Listing.price if price_col is None else price_col
     if sort == "price_asc":
-        return stmt.order_by(Listing.price.asc().nulls_last())
+        return stmt.order_by(price_col.asc().nulls_last())
     if sort == "price_desc":
-        return stmt.order_by(Listing.price.desc().nulls_last())
+        return stmt.order_by(price_col.desc().nulls_last())
     if sort == "newest":
         return stmt.order_by(Listing.created_at.desc())
     # relevance and highest_rated share the default ordering in Sprint 3;
@@ -177,7 +211,7 @@ def _summarise(listing: Listing) -> PublicListingSummary:
 
 
 async def _paginate(
-    db: AsyncSession, stmt, *, category: ListingCategory, page: int, page_size: int
+    db: AsyncSession, stmt, *, category: SearchScope, page: int, page_size: int
 ) -> SearchResponse:  # type: ignore[no-untyped-def]
     total_stmt = select(func.count()).select_from(stmt.subquery())
     total = int((await db.execute(total_stmt)).scalar_one())
@@ -203,7 +237,10 @@ async def search_off_campus(
     stmt = _base_visibility_stmt().where(Listing.category == ListingCategory.OFF_CAMPUS)
     # _summarise derives the card price from unit types for off-campus.
     stmt = stmt.options(selectinload(Listing.unit_types))
-    stmt = _apply_shared(stmt, filters)
+    # Same reason the card price comes from unit types: Listing.price is null
+    # here, so the shared range must compare against the cheapest unit.
+    unit_price = _off_campus_price()
+    stmt = _apply_shared(stmt, filters, price_col=unit_price)
 
     # Institution and gender are explicit filters when supplied. Gender
     # filtering is enforced at the room level: we join through UnitType/Room
@@ -238,7 +275,7 @@ async def search_off_campus(
         ).subquery()
         stmt = stmt.where(Listing.id.in_(select(subq.c.listing_id)))
 
-    stmt = _sort(stmt, filters.sort)
+    stmt = _sort(stmt, filters.sort, price_col=unit_price)
     return await _paginate(
         db, stmt, category=ListingCategory.OFF_CAMPUS, page=filters.page, page_size=filters.page_size
     )
@@ -323,3 +360,49 @@ async def search_sales(filters: SalesFilters, *, db: AsyncSession) -> SearchResp
     return await _paginate(
         db, stmt, category=ListingCategory.SALES, page=filters.page, page_size=filters.page_size
     )
+
+
+async def search_all(filters: AllFilters, *, db: AsyncSession) -> SearchResponse:
+    """Cross-category search behind the explore page's "All" scope.
+
+    Only the category-agnostic filters apply. A price range is not one of them:
+    rent quotes annually, short-let nightly, and sales outright, so a single
+    range would silently mean something different in each lane — see
+    ``AllFilters``. Price sorting is likewise dropped to the default ordering.
+    """
+    stmt = _base_visibility_stmt()
+    # Off-campus rows can appear here and _summarise reads their unit types to
+    # derive a "from" price.
+    stmt = stmt.options(selectinload(Listing.unit_types))
+    stmt = _apply_shared(stmt, filters, apply_price=False)
+
+    sort = filters.sort
+    if sort in ("price_asc", "price_desc"):
+        sort = "relevance"
+    stmt = _sort(stmt, sort)
+    return await _paginate(
+        db, stmt, category="all", page=filters.page, page_size=filters.page_size
+    )
+
+
+async def list_locations(
+    *, db: AsyncSession, category: SearchScope = "all"
+) -> list[LocationOption]:
+    """Districts that currently hold visible listings, most inventory first.
+
+    Backs the location typeahead. Reading it from live listings rather than the
+    static Abuja vocabulary means the picker can only ever offer a district
+    that returns results.
+    """
+    stmt = (
+        select(Listing.district, func.count().label("count"))
+        .where(Listing.status.not_in(_HIDDEN_STATUSES))
+        .where(Listing.district.is_not(None))
+        .where(func.trim(Listing.district) != "")
+        .group_by(Listing.district)
+        .order_by(func.count().desc(), Listing.district.asc())
+    )
+    if category != "all":
+        stmt = stmt.where(Listing.category == category)
+    rows = (await db.execute(stmt)).all()
+    return [LocationOption(district=row[0], count=int(row[1])) for row in rows]

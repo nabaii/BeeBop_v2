@@ -6,8 +6,13 @@ container in CI — this module keeps the pure-Python logic tightly covered.
 
 from __future__ import annotations
 
+from sqlalchemy import select
+
 from app.models._enums import ListingCategory, ListingStatus
+from app.models.listing import Listing
 from app.search.schemas import (
+    AllFilters,
+    LocationOption,
     OffCampusFilters,
     RentFilters,
     SalesFilters,
@@ -15,8 +20,23 @@ from app.search.schemas import (
     SharedFilters,
     ShortLetFilters,
 )
-from app.search.routes import _off_campus_filters, _rent_filters, _shared_filter_kwargs
-from app.search.service import _verification_clause
+from app.search.routes import (
+    _all_filters,
+    _off_campus_filters,
+    _rent_filters,
+    _shared_filter_kwargs,
+)
+from app.search.service import (
+    _apply_shared,
+    _base_visibility_stmt,
+    _off_campus_price,
+    _sort,
+    _verification_clause,
+)
+
+
+def _sql(stmt) -> str:  # type: ignore[no-untyped-def]
+    return str(stmt.compile(compile_kwargs={"literal_binds": True})).lower()
 
 
 def test_shared_filters_default_to_test_phase_visibility() -> None:
@@ -133,3 +153,95 @@ def test_search_response_validates_empty() -> None:
     assert resp.category == ListingCategory.RENT
     assert resp.total == 0
     assert resp.results == []
+
+
+# ---------------------------------------------------------------------------
+# Explore: cross-category scope
+# ---------------------------------------------------------------------------
+
+
+def test_search_response_accepts_the_all_scope() -> None:
+    """Explore's cross-category search reports scope "all"; each result still
+    carries its own concrete category."""
+    resp = SearchResponse(category="all", total=0, page=1, page_size=24, results=[])
+    assert resp.category == "all"
+
+
+def test_all_filters_inherit_shared_defaults() -> None:
+    f = AllFilters()
+    assert f.verification == ["fully_verified", "doc_verified", "unverified"]
+    assert f.sort == "relevance"
+    assert f.page == 1
+
+
+def test_all_scope_route_helper_builds_from_shared_only() -> None:
+    shared = _shared_filter_kwargs(q="duplex", locations=["Jabi"])
+    f = _all_filters(shared=shared)
+    assert isinstance(f, AllFilters)
+    assert f.q == "duplex"
+    assert f.locations == ["Jabi"]
+
+
+def test_all_scope_ignores_the_price_range() -> None:
+    """Rent quotes annually, short-let nightly, and sales outright, so one
+    range across every lane would silently mean three different things. The
+    cross-category search drops it rather than applying it to one meaning."""
+    f = AllFilters(min_price=100_000, max_price=900_000)
+    sql = _sql(_apply_shared(_base_visibility_stmt(), f, apply_price=False))
+    assert "100000" not in sql
+    assert "900000" not in sql
+
+
+def test_single_category_still_applies_the_price_range() -> None:
+    f = RentFilters(min_price=100_000, max_price=900_000)
+    sql = _sql(_apply_shared(_base_visibility_stmt(), f))
+    assert "listings.price >= 100000" in sql
+    assert "listings.price <= 900000" in sql
+
+
+# ---------------------------------------------------------------------------
+# Regressions: filters that silently matched nothing
+# ---------------------------------------------------------------------------
+
+
+def test_location_filter_is_case_insensitive() -> None:
+    """Location tokens arrive from a text box and from the conversational
+    parser; neither can guarantee the casing stored on the listing row, so
+    `jabi` must not be a dead end."""
+    f = SharedFilters(locations=["jabi", "  WUSE 2  "])
+    sql = _sql(_apply_shared(_base_visibility_stmt(), f))
+    assert "lower(listings.district) in ('jabi', 'wuse 2')" in sql
+
+
+def test_blank_location_tokens_do_not_filter() -> None:
+    f = SharedFilters(locations=["   "])
+    sql = _sql(_apply_shared(_base_visibility_stmt(), f))
+    assert "lower(listings.district)" not in sql
+
+
+def test_off_campus_price_filter_targets_unit_types_not_listing_price() -> None:
+    """Off-campus listings leave `Listing.price` null and price per unit type,
+    so comparing the range against the listing row excluded every one of them."""
+    price = _off_campus_price()
+    f = OffCampusFilters(min_price=250_000)
+    sql = _sql(_apply_shared(_base_visibility_stmt(), f, price_col=price))
+    assert "min(unit_types.price)" in sql
+    assert "listings.price >=" not in sql
+
+
+def test_off_campus_price_sort_uses_the_cheapest_unit() -> None:
+    price = _off_campus_price()
+    sql = _sql(_sort(select(Listing), "price_asc", price_col=price))
+    assert "min(unit_types.price)" in sql
+    assert "order by (select min(unit_types.price)" in sql
+
+
+def test_default_sort_still_orders_on_the_listing_row() -> None:
+    sql = _sql(_sort(select(Listing), "price_desc"))
+    assert "order by listings.price desc" in sql
+
+
+def test_location_option_shape() -> None:
+    option = LocationOption(district="Jabi", count=7)
+    assert option.district == "Jabi"
+    assert option.count == 7

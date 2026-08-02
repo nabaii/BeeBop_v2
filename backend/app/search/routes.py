@@ -23,6 +23,8 @@ from app.models.student_accommodation import UnitType
 from app.models.user import User
 from app.search import service as search_service
 from app.search.schemas import (
+    AllFilters,
+    LocationOption,
     OffCampusFilters,
     PublicAreaScore,
     PublicListingDetail,
@@ -32,6 +34,7 @@ from app.search.schemas import (
     RentFilters,
     SalesFilters,
     SearchResponse,
+    SearchScope,
     ShortLetFilters,
     SortOption,
     ValuationReport,
@@ -74,6 +77,12 @@ def _shared_filter_kwargs(
         "page": page,
         "page_size": page_size,
     }
+
+
+def _all_filters(
+    shared: Annotated[dict[str, object], Depends(_shared_filter_kwargs)],
+) -> AllFilters:
+    return AllFilters(**shared)
 
 
 def _off_campus_filters(
@@ -146,6 +155,26 @@ def _sales_filters(
         development_status=development_status or [],
         title_types=title_types or [],
     )
+
+
+@router.get("/search/all", response_model=SearchResponse)
+async def search_all(
+    filters: AllFilters = Depends(_all_filters),
+    db: AsyncSession = Depends(get_db),
+) -> SearchResponse:
+    """Explore's default scope — every lane at once, category-agnostic filters
+    only. `min_price`/`max_price` are accepted but not applied here; see
+    `AllFilters`."""
+    return await search_service.search_all(filters, db=db)
+
+
+@router.get("/search/locations", response_model=list[LocationOption])
+async def search_locations(
+    category: Annotated[SearchScope, Query()] = "all",
+    db: AsyncSession = Depends(get_db),
+) -> list[LocationOption]:
+    """Districts with visible inventory, for the location typeahead."""
+    return await search_service.list_locations(db=db, category=category)
 
 
 @router.get("/search/off-campus", response_model=SearchResponse)
