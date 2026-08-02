@@ -8,6 +8,7 @@ and browse pages stay aligned.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import re
@@ -24,7 +25,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.ai_search import prompts, area_knowledge
+from app.ai_search import prompts, area_knowledge, history
 from app.ai_search.schemas import (
     ActionKind,
     ChatRequestPayload,
@@ -53,6 +54,7 @@ from app.listings.schemas import AMENITY_GROUPS
 from app.models._enums import ListingCategory, ListingStatus
 from app.models.listing import Listing
 from app.models.review import Review
+from app.models.user import User
 from app.search import service as public_search
 from app.search.schemas import (
     OffCampusFilters,
@@ -139,6 +141,7 @@ async def run_chat_query(
     db: AsyncSession,
     redis: Redis,
     llm: LLMClient | None = None,
+    user: User | None = None,
 ) -> ChatResponse:
     store = SessionStore(redis)
     session_id = payload.session_id or new_session_id()
@@ -208,6 +211,19 @@ async def run_chat_query(
     )
     await store.save(state)
 
+    # Signed-in seekers get the turn written to their durable history, which is
+    # what the profile's "Recent queries" card reads. Anonymous visitors keep
+    # the Redis session only — there is no account to attach the row to.
+    if user is not None:
+        await _record_history(
+            db=db,
+            user=user,
+            query=payload.query,
+            intent=interpreted.intent,
+            parameters=handled.parameters,
+            result_count=len(handled.results),
+        )
+
     query_id = uuid.uuid4().hex
     # Phase-4 attribution: tie behaviour shifts to the exact prompt revisions.
     logger.info(
@@ -236,6 +252,43 @@ async def run_chat_query(
         property_answer=handled.property_answer,
         area_answer=handled.area_answer,
     )
+
+
+async def _record_history(
+    *,
+    db: AsyncSession,
+    user: User,
+    query: str,
+    intent: str,
+    parameters: ExtractedParameters | None,
+    result_count: int,
+) -> None:
+    """Write the turn to the seeker's history.
+
+    History is a convenience, never a reason to fail a search the user already
+    paid for in latency — every failure mode here is swallowed and logged.
+    """
+    if not history.is_recordable(
+        intent=intent,
+        has_parameters=parameters is not None,
+        result_count=result_count,
+    ):
+        return
+    try:
+        await history.record_query(
+            db=db,
+            user_id=user.id,
+            query=query,
+            intent=intent,
+            listing_category=parameters.listing_category if parameters else None,
+            parameters=parameters.model_dump(mode="json") if parameters else None,
+            result_count=result_count,
+        )
+    except Exception:
+        logger.exception("[ai-search] failed to record query history")
+        # Leave the session usable for whatever the request does next.
+        with contextlib.suppress(Exception):
+            await db.rollback()
 
 
 async def get_session_state(*, session_id: str, redis: Redis) -> SessionStateView:

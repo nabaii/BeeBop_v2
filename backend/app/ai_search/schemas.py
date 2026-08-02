@@ -156,3 +156,21 @@ class ChatResponse(BaseModel):
 class ClickThroughPayload(BaseModel):
     query_id: str
     listing_id: str
+
+
+class RecentQueryView(BaseModel):
+    """One row of a seeker's stored search history.
+
+    Distinct from `ChatTurn`, which is session-scoped Redis state: this survives
+    the session and is bound to an account.
+    """
+
+    id: str
+    query: str
+    intent: str
+    listing_category: ListingCategory | None = None
+    result_count: int = 0
+    # Parameter snapshot from the turn that produced this row. Not rendered —
+    # kept so a stored query can seed browse filters without a fresh LLM call.
+    parameters: dict[str, object] | None = None
+    created_at: datetime

@@ -110,6 +110,19 @@ export function ChatSearchPanel() {
     if (node) node.scrollTop = node.scrollHeight;
   }, [entries.length, loading]);
 
+  // Replay a query the user tapped in their profile history. Read from the
+  // store rather than a prop so the profile only has to set-and-navigate, and
+  // cleared *before* submitting so a StrictMode double-mount (or a later
+  // remount) can't fire the same search twice.
+  useEffect(() => {
+    const pending = useSearch.getState().pendingQuery;
+    if (!pending) return;
+    useSearch.getState().setPendingQuery(null);
+    void submit(pending);
+    // Mount-only: this is a one-shot handoff, not a subscription.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function submit(nextQuery: string): Promise<void> {
     const query = nextQuery.trim();
     if (!query) return;

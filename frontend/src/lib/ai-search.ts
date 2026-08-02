@@ -89,3 +89,30 @@ export function sendChatQuery(args: {
 export async function clearChatSession(sessionId: string): Promise<void> {
   await api.delete<void>(`/ai-search/sessions/${sessionId}`);
 }
+
+/**
+ * A saved search from the seeker's durable history — what the profile's
+ * "Recent queries" card lists. Unlike the chat session (Redis, 30-minute TTL,
+ * not account-bound), these persist and follow the user across devices.
+ */
+export interface RecentQuery {
+  id: string;
+  query: string;
+  intent: ChatIntent;
+  listing_category: ListingCategory | null;
+  result_count: number;
+  parameters: ExtractedParameters | null;
+  created_at: string;
+}
+
+export function listRecentQueries(): Promise<RecentQuery[]> {
+  return api.get<RecentQuery[]>('/ai-search/history', { auth: true });
+}
+
+export async function deleteRecentQuery(id: string): Promise<void> {
+  await api.delete<void>(`/ai-search/history/${id}`, { auth: true });
+}
+
+export async function clearRecentQueries(): Promise<void> {
+  await api.delete<void>('/ai-search/history', { auth: true });
+}

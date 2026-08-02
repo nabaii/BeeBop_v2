@@ -9,13 +9,16 @@ import {
   ChevronRight,
   CreditCard,
   Gift,
+  History,
   LogOut,
   MapPin,
   MessageSquare,
   Pencil,
   PlusCircle,
+  Search,
   Settings,
   ShieldCheck,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -23,17 +26,26 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { ListingCard } from '@/components/listing/listing-card';
+import {
+  clearRecentQueries,
+  deleteRecentQuery,
+  listRecentQueries,
+  type RecentQuery,
+} from '@/lib/ai-search';
 import { logout } from '@/lib/auth';
 import { listSavedListings } from '@/lib/bookmarks';
 import { dashboards, type SeekerOverview } from '@/lib/dashboards';
 import type { PublicListingSummary } from '@/lib/search';
+import { useSearch } from '@/stores/search';
 import { useSession } from '@/stores/session';
 
 export default function ProfilePage() {
   const router = useRouter();
   const user = useSession((s) => s.user);
+  const setPendingQuery = useSearch((s) => s.setPendingQuery);
   const [overview, setOverview] = useState<SeekerOverview | null>(null);
   const [saved, setSaved] = useState<PublicListingSummary[] | null>(null);
+  const [queries, setQueries] = useState<RecentQuery[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +70,50 @@ export default function ProfilePage() {
       cancelled = true;
     };
   }, []);
+
+  // Fetched separately from the overview above: history is the least important
+  // thing on the page, so a failure here renders an empty card rather than
+  // taking the saved listings and stat tiles down with it.
+  useEffect(() => {
+    let cancelled = false;
+    listRecentQueries()
+      .then((rows) => {
+        if (!cancelled) setQueries(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setQueries([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Hand the text to the homepage chat and let it run the search fresh —
+  // results move, so replaying the question beats replaying stale results.
+  function handleReplayQuery(query: string): void {
+    setPendingQuery(query);
+    router.push('/');
+  }
+
+  async function handleDeleteQuery(id: string): Promise<void> {
+    const previous = queries;
+    setQueries((current) => current?.filter((q) => q.id !== id) ?? current);
+    try {
+      await deleteRecentQuery(id);
+    } catch {
+      setQueries(previous ?? null);
+    }
+  }
+
+  async function handleClearQueries(): Promise<void> {
+    const previous = queries;
+    setQueries([]);
+    try {
+      await clearRecentQueries();
+    } catch {
+      setQueries(previous ?? null);
+    }
+  }
 
   const fullName =
     [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
@@ -101,25 +157,17 @@ export default function ProfilePage() {
 
       <SavedSection items={saved} />
 
-      <ComingSoonCard
-        title="Recent queries"
-        hint="Your most recent Beebop search will appear here."
+      <RecentQueriesSection
+        items={queries}
+        onReplay={handleReplayQuery}
+        onDelete={handleDeleteQuery}
+        onClear={handleClearQueries}
       />
 
       <ComingSoonCard
         icon={CalendarCheck}
         title="Upcoming visits"
         hint="Scheduled property tours will show up here."
-      />
-
-      <ComingSoonCard
-        title="Recommended for you"
-        hint="Personalised picks based on your activity."
-      />
-
-      <ComingSoonCard
-        title="Lifestyle profile"
-        hint="Tags and matching are coming soon."
       />
 
       <ComingSoonCard
@@ -281,6 +329,111 @@ function ComingSoonCard({
       <p className="mt-2 text-xs text-slate-500">{hint}</p>
     </section>
   );
+}
+
+// Shown on the profile card. The full history the API returns is longer; the
+// card is a glance, not an archive.
+const VISIBLE_QUERY_COUNT = 5;
+
+function RecentQueriesSection({
+  items,
+  onReplay,
+  onDelete,
+  onClear,
+}: {
+  items: RecentQuery[] | null;
+  onReplay: (query: string) => void;
+  onDelete: (id: string) => void;
+  onClear: () => void;
+}) {
+  const visible = items?.slice(0, VISIBLE_QUERY_COUNT) ?? [];
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="flex items-center gap-2">
+        <History className="h-4 w-4 text-slate-400" aria-hidden />
+        <h3 className="text-sm font-semibold text-slate-700">Recent queries</h3>
+        {visible.length > 0 && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="ml-auto rounded-full px-2 py-0.5 text-caption font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-600"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
+
+      {items === null ? (
+        <p className="mt-2 text-xs text-slate-500">Loading…</p>
+      ) : visible.length === 0 ? (
+        <p className="mt-2 text-xs text-slate-500">
+          Your Beebop searches will show up here. Ask for somewhere to live and
+          we&apos;ll keep the question handy.
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-1.5">
+          {visible.map((entry) => (
+            <li
+              key={entry.id}
+              className="flex items-center gap-1 rounded-xl border border-slate-100 transition hover:border-brand-200 hover:bg-brand-50/40"
+            >
+              {/* Two sibling buttons rather than a nested one — a delete
+                  control inside the replay button would be invalid markup and
+                  unreachable by keyboard. */}
+              <button
+                type="button"
+                onClick={() => onReplay(entry.query)}
+                className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 py-2.5 text-left"
+              >
+                <Search className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm text-slate-800">
+                    {entry.query}
+                  </span>
+                  <span className="mt-0.5 block text-caption text-slate-500">
+                    {describeQuery(entry)}
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onDelete(entry.id)}
+                aria-label={`Remove "${entry.query}" from recent queries`}
+                className="mr-1.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** Meta line under a stored query: how it went, and how long ago. */
+function describeQuery(entry: RecentQuery): string {
+  const when = formatRelativeTime(entry.created_at);
+  if (entry.result_count === 0) return when;
+  const matches = `${entry.result_count} match${entry.result_count === 1 ? '' : 'es'}`;
+  return `${matches} · ${when}`;
+}
+
+function formatRelativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+  // Clamped at zero: a server clock marginally ahead of the browser's should
+  // read "just now", never "in 3 seconds".
+  const seconds = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (seconds < 60) return 'Just now';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 
 function SavedSection({ items }: { items: PublicListingSummary[] | null }) {
