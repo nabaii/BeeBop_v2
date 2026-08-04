@@ -12,6 +12,7 @@ import {
   CheckRow,
   FilterSection,
   NairaInput,
+  RangeSlider,
   ToggleChip,
 } from '@/components/browse/filter-controls';
 import { ALL_TIERS } from '@/lib/browse-url';
@@ -19,9 +20,11 @@ import { cn } from '@/lib/cn';
 import { formatNaira } from '@/lib/format';
 import { getAmenityVocabulary } from '@/lib/listings';
 import {
+  getPriceRange,
   getSearchLocations,
   type AnyFilters,
   type LocationOption,
+  type PriceRangeBounds,
   type SearchScope,
   type VerificationTier,
 } from '@/lib/search';
@@ -60,6 +63,20 @@ const PRICE_BANDS: Record<SearchScope, readonly number[]> = {
 
 const MAX_LOCATION_SUGGESTIONS = 6;
 
+/**
+ * A step that divides the span into roughly 40 stops and lands on a round
+ * number, so dragging produces figures a person would say out loud
+ * (₦1,250,000) rather than ₦1,237,431.
+ */
+function niceStep(span: number): number {
+  const rough = span / 40;
+  const magnitude = 10 ** Math.floor(Math.log10(Math.max(rough, 1)));
+  for (const multiple of [1, 2, 2.5, 5, 10]) {
+    if (magnitude * multiple >= rough) return magnitude * multiple;
+  }
+  return magnitude * 10;
+}
+
 /** Compact naira for band labels: 1_500_000 -> "₦1.5m". */
 function compactNaira(value: number): string {
   if (value >= 1_000_000) {
@@ -74,6 +91,7 @@ export function FilterPanel({ value, onChange, scope, children, className }: Pro
   const [locationInput, setLocationInput] = useState('');
   const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
   const [vocab, setVocab] = useState<Record<string, string[]>>({});
+  const [bounds, setBounds] = useState<PriceRangeBounds | null>(null);
 
   useEffect(() => {
     void getAmenityVocabulary().then(setVocab).catch(() => setVocab({}));
@@ -95,6 +113,26 @@ export function FilterPanel({ value, onChange, scope, children, className }: Pro
     };
   }, [scope]);
 
+  // Slider bounds come from the lane's real inventory, so the track always
+  // spans prices a seeker can actually reach.
+  useEffect(() => {
+    if (scope === 'all') {
+      setBounds(null);
+      return;
+    }
+    let live = true;
+    void getPriceRange(scope)
+      .then((range) => {
+        if (live) setBounds(range);
+      })
+      .catch(() => {
+        if (live) setBounds(null);
+      });
+    return () => {
+      live = false;
+    };
+  }, [scope]);
+
   const selectedLocations = useMemo(() => value.locations ?? [], [value.locations]);
 
   const suggestions = useMemo(() => {
@@ -107,6 +145,23 @@ export function FilterPanel({ value, onChange, scope, children, className }: Pro
   }, [locationInput, locationOptions, selectedLocations]);
 
   const bands = PRICE_BANDS[scope];
+
+  /**
+   * Slider domain, rounded outward to a clean step so the thumbs land on
+   * readable figures. Null when the lane has no priced inventory (or the
+   * bounds haven't loaded) — the band chips and the manual fields still work,
+   * so the section degrades rather than disappears.
+   */
+  const slider = useMemo(() => {
+    if (!bounds || bounds.min == null || bounds.max == null) return null;
+    if (bounds.max <= bounds.min) return null;
+    const step = niceStep(bounds.max - bounds.min);
+    return {
+      min: Math.floor(bounds.min / step) * step,
+      max: Math.ceil(bounds.max / step) * step,
+      step,
+    };
+  }, [bounds]);
 
   function toggleTier(tier: VerificationTier) {
     const current = value.verification ?? [...ALL_TIERS];
@@ -234,6 +289,26 @@ export function FilterPanel({ value, onChange, scope, children, className }: Pro
           rather than shown carrying three meanings. */}
       {scope !== 'all' ? (
         <FilterSection title="Price">
+          {slider && (
+            <RangeSlider
+              label="Price"
+              min={slider.min}
+              max={slider.max}
+              step={slider.step}
+              value={[value.min_price ?? slider.min, value.max_price ?? slider.max]}
+              format={compactNaira}
+              onChange={([low, high]) =>
+                onChange({
+                  ...value,
+                  // A thumb parked on its bound means "no limit this side" —
+                  // it drops out of the URL and the active-filter count rather
+                  // than pinning a redundant constraint.
+                  min_price: low <= slider.min ? undefined : low,
+                  max_price: high >= slider.max ? undefined : high,
+                })
+              }
+            />
+          )}
           <div className="flex flex-wrap gap-1.5">
             {bands.map((band, i) => {
               const min = i === 0 ? undefined : bands[i - 1];

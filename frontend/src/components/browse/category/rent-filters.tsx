@@ -1,6 +1,11 @@
 'use client';
 
-import { DateField, NumberPillGroup, PillGroup } from '@/components/browse/filter-controls';
+import {
+  DateField,
+  MinCountPills,
+  NumberPillGroup,
+  PillGroup,
+} from '@/components/browse/filter-controls';
 import type { RentFilters } from '@/lib/search';
 
 const PROPERTY_TYPES = [
@@ -38,6 +43,12 @@ export function RentFilterFields({
         options={[1, 2, 3, 4, 5]}
         value={value.bedroom_counts ?? []}
         onChange={(next) => onChange({ ...value, bedroom_counts: next })}
+      />
+      <MinCountPills
+        label="Bathrooms"
+        options={[1, 2, 3, 4]}
+        value={value.min_bathrooms}
+        onChange={(next) => onChange({ ...value, min_bathrooms: next })}
       />
       <PillGroup
         label="Property type"

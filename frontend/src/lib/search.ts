@@ -24,25 +24,34 @@ export interface SharedFilters {
   page_size?: number;
 }
 
+/** The campuses BeeBop records a drive time to on off-campus listings. */
+export type Campus = 'nile' | 'baze';
+
 export interface OffCampusFilters extends SharedFilters {
   use_profile_filters?: boolean;
   institution?: string;
   gender?: 'female' | 'male';
   unit_kinds?: string[];
   available_now?: boolean;
+  campus?: Campus;
+  max_drive_min?: number;
+  /** House rules to avoid — exclusion only; every rule is a restriction. */
+  exclude_house_rules?: string[];
 }
 
 export interface ShortLetFilters extends SharedFilters {
   check_in?: string;  // ISO date
   check_out?: string;
-  guests?: number;
   min_stay?: number;
   instant_booking?: boolean;
   min_rating?: number;
+  // No `guests`: nothing on a listing records guest capacity, so the control
+  // it used to drive could never filter anything.
 }
 
 export interface RentFilters extends SharedFilters {
   bedroom_counts?: number[];
+  min_bathrooms?: number;
   property_types?: string[];
   furnishing?: string[];
   payment_structure?: string[];
@@ -51,6 +60,7 @@ export interface RentFilters extends SharedFilters {
 
 export interface SalesFilters extends SharedFilters {
   bedroom_counts?: number[];
+  min_bathrooms?: number;
   property_types?: string[];
   development_status?: string[];
   title_types?: string[];
@@ -245,12 +255,14 @@ export const OFF_CAMPUS_KEYS = [
   'gender',
   'unit_kinds',
   'available_now',
+  'campus',
+  'max_drive_min',
+  'exclude_house_rules',
 ] as const;
 
 export const SHORT_LET_KEYS = [
   'check_in',
   'check_out',
-  'guests',
   'min_stay',
   'instant_booking',
   'min_rating',
@@ -258,6 +270,7 @@ export const SHORT_LET_KEYS = [
 
 export const RENT_KEYS = [
   'bedroom_counts',
+  'min_bathrooms',
   'property_types',
   'furnishing',
   'payment_structure',
@@ -266,6 +279,7 @@ export const RENT_KEYS = [
 
 export const SALES_KEYS = [
   'bedroom_counts',
+  'min_bathrooms',
   'property_types',
   'development_status',
   'title_types',
@@ -298,6 +312,16 @@ function omit(source: Record<string, unknown>, keys: readonly string[]): Record<
 
 export function getSearchLocations(scope: SearchScope = 'all'): Promise<LocationOption[]> {
   return api.get(`/search/locations?category=${encodeURIComponent(scope)}`);
+}
+
+export interface PriceRangeBounds {
+  min: number | null;
+  max: number | null;
+}
+
+/** Real price bounds for a lane, so the slider spans actual inventory. */
+export function getPriceRange(scope: SearchScope): Promise<PriceRangeBounds> {
+  return api.get(`/search/price-range?category=${encodeURIComponent(scope)}`);
 }
 
 export function getPublicListing(id: string): Promise<PublicListingDetail> {

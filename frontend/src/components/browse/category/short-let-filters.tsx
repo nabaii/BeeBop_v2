@@ -31,20 +31,17 @@ export function ShortLetFilterFields({
           onChange={(next) => onChange({ ...value, check_out: next })}
         />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <CountField
-          label="Guests"
-          placeholder="Any"
-          value={value.guests}
-          onChange={(next) => onChange({ ...value, guests: next })}
-        />
-        <CountField
-          label="Min stay (nights)"
-          placeholder="Any"
-          value={value.min_stay}
-          onChange={(next) => onChange({ ...value, min_stay: next })}
-        />
-      </div>
+      <p className="-mt-1 text-caption text-ink-soft">
+        Both dates hide places already booked for those nights.
+      </p>
+      {/* No guests field: nothing on a short-let listing records capacity, so
+          the control could only ever look like it filtered. */}
+      <CountField
+        label="Min stay (nights)"
+        placeholder="Any"
+        value={value.min_stay}
+        onChange={(next) => onChange({ ...value, min_stay: next })}
+      />
       <CheckRow
         checked={value.instant_booking === true}
         onChange={() =>

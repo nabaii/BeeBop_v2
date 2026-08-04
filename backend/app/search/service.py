@@ -4,17 +4,22 @@ from __future__ import annotations
 
 from typing import Any, TypeVar
 
-from sqlalchemy import Boolean, Integer, String, and_, cast, func, or_, select
+import uuid
+
+from sqlalchemy import Boolean, Integer, Numeric, cast, func, not_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models._enums import Gender, ListingCategory, ListingStatus
+from app.models._enums import BookingStatus, Gender, ListingCategory, ListingStatus
+from app.models.booking import Booking
 from app.models.listing import Listing
+from app.models.review import Review
 from app.models.student_accommodation import Room, UnitType
 from app.search.schemas import (
     AllFilters,
     LocationOption,
     OffCampusFilters,
+    PriceRange,
     PublicListingSummary,
     RentFilters,
     SalesFilters,
@@ -97,6 +102,53 @@ def _off_campus_price():  # type: ignore[no-untyped-def]
     )
 
 
+def _min_bathrooms_clause(minimum: int):  # type: ignore[no-untyped-def]
+    """Bathrooms are stored as a number that may be fractional (2.5), so the
+    filter is a floor rather than an exact match — "2+" includes 2.5."""
+    return cast(Listing.type_data["bathroom_count"].astext, Numeric) >= minimum  # type: ignore[index]
+
+
+def _avg_rating():  # type: ignore[no-untyped-def]
+    """Mean review score for a listing, as a correlated subquery.
+
+    Reviews were modelled long before anything read them: search hardcoded
+    `rating=None`, so no card ever showed a score, the "Highest rated" sort was
+    a no-op, and the short-let minimum-rating filter matched nothing. This one
+    expression backs all three.
+    """
+    return (
+        select(func.avg(Review.overall_rating))
+        .where(Review.listing_id == Listing.id)
+        .correlate(Listing)
+        .scalar_subquery()
+    )
+
+
+def _booking_conflict_exists(check_in, check_out):  # type: ignore[no-untyped-def]
+    """EXISTS clause matching listings blocked for the requested nights.
+
+    Mirrors `app.bookings.availability.has_conflict` — REQUESTED and CONFIRMED
+    bookings block, and each booking's window extends by the listing's
+    `turnaround_days` — but as set-based SQL, because search filters thousands
+    of rows where the booking flow checks one.
+    """
+    turnaround = func.coalesce(
+        cast(Listing.type_data["turnaround_days"].astext, Integer), 0  # type: ignore[index]
+    )
+    return (
+        select(Booking.id)
+        .where(
+            Booking.listing_id == Listing.id,
+            Booking.status.in_((BookingStatus.REQUESTED, BookingStatus.CONFIRMED)),
+            # Overlap iff requested_start < booked_end AND requested_end > booked_start.
+            check_in < Booking.check_out + turnaround,
+            check_out > Booking.check_in,
+        )
+        .correlate(Listing)
+        .exists()
+    )
+
+
 def _apply_shared(stmt, filters: SharedFilters, *, price_col=None, apply_price: bool = True):  # type: ignore[no-untyped-def]
     """Apply the filters every category shares.
 
@@ -152,9 +204,11 @@ def _sort(stmt, sort: str, *, price_col=None):  # type: ignore[no-untyped-def]
         return stmt.order_by(price_col.desc().nulls_last())
     if sort == "newest":
         return stmt.order_by(Listing.created_at.desc())
-    # relevance and highest_rated share the default ordering in Sprint 3;
-    # rating is layered in Sprint 4 (when the Review model is populated).
-    # Default: verified first (derived from status), then most recent.
+    if sort == "highest_rated":
+        # Unreviewed listings sort last rather than first — a listing with no
+        # score is not a five-star listing.
+        return stmt.order_by(_avg_rating().desc().nulls_last(), Listing.created_at.desc())
+    # Relevance: verified first (derived from status), then most recent.
     return stmt.order_by(
         Listing.status.desc(),       # enum lexicographic order happens to put verified > unverified
         Listing.created_at.desc(),
@@ -176,7 +230,32 @@ def off_campus_starting_unit(listing: Listing) -> tuple[float | None, str | None
     return float(cheapest.price), cheapest.price_period
 
 
-def _summarise(listing: Listing) -> PublicListingSummary:
+async def _rating_map(
+    db: AsyncSession, listing_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, tuple[float, int]]:
+    """Mean score and review count for a page of listings, in one query.
+
+    Aggregated per page rather than per listing so a 24-card grid costs one
+    extra round trip, not 24.
+    """
+    if not listing_ids:
+        return {}
+    stmt = (
+        select(
+            Review.listing_id,
+            func.avg(Review.overall_rating),
+            func.count(Review.id),
+        )
+        .where(Review.listing_id.in_(listing_ids))
+        .group_by(Review.listing_id)
+    )
+    rows = (await db.execute(stmt)).all()
+    return {row[0]: (round(float(row[1]), 2), int(row[2])) for row in rows}
+
+
+def _summarise(
+    listing: Listing, ratings: dict[uuid.UUID, tuple[float, int]] | None = None
+) -> PublicListingSummary:
     photos = sorted(listing.photos, key=lambda p: p.display_order)
     cover = next((p for p in photos if p.is_cover), None) or (photos[0] if photos else None)
     secondary = next((p for p in photos if p is not cover), None)
@@ -188,6 +267,7 @@ def _summarise(listing: Listing) -> PublicListingSummary:
     else:
         price = float(listing.price) if listing.price is not None else None
         price_period = None
+    rating, review_count = (ratings or {}).get(listing.id, (None, 0))
     type_data = listing.type_data or {}
     return PublicListingSummary(
         id=str(listing.id),
@@ -202,8 +282,8 @@ def _summarise(listing: Listing) -> PublicListingSummary:
         gps_lng=listing.gps_lng,
         cover_url=cover.url if cover else None,
         secondary_url=secondary.url if secondary else None,
-        rating=None,        # populated from Review aggregations in Sprint 4
-        review_count=0,
+        rating=rating,
+        review_count=review_count,
         bedroom_count=_as_int(type_data.get("bedroom_count")),
         bathroom_count=_as_float(type_data.get("bathroom_count")),
         drive_min_nile=_as_int(type_data.get("drive_min_nile")),
@@ -217,12 +297,13 @@ async def _paginate(
     total = int((await db.execute(total_stmt)).scalar_one())
     offset = (page - 1) * page_size
     rows = (await db.execute(stmt.offset(offset).limit(page_size))).scalars().unique().all()
+    ratings = await _rating_map(db, [r.id for r in rows])
     return SearchResponse(
         category=category,
         total=total,
         page=page,
         page_size=page_size,
-        results=[_summarise(r) for r in rows],
+        results=[_summarise(r, ratings) for r in rows],
     )
 
 
@@ -275,6 +356,28 @@ async def search_off_campus(
         ).subquery()
         stmt = stmt.where(Listing.id.in_(select(subq.c.listing_id)))
 
+    # Drive time to the chosen campus. Landlords record these per campus in
+    # type_data; a listing with no recorded time for that campus is excluded,
+    # since an unknown commute can't be shown as being within the cap.
+    if filters.campus and filters.max_drive_min is not None:
+        column = f"drive_min_{filters.campus}"
+        stmt = stmt.where(
+            cast(Listing.type_data[column].astext, Integer) <= filters.max_drive_min  # type: ignore[index]
+        )
+
+    # House rules are all restrictions, so this filter only ever excludes.
+    # `IS TRUE` (rather than `= true`) keeps listings whose type_data has no
+    # house_rules object at all — a missing rule is an absent rule.
+    for rule in filters.exclude_house_rules:
+        stmt = stmt.where(
+            not_(
+                cast(
+                    Listing.type_data["house_rules"][rule]["present"].astext,  # type: ignore[index]
+                    Boolean,
+                ).is_(True)
+            )
+        )
+
     stmt = _sort(stmt, filters.sort, price_col=unit_price)
     return await _paginate(
         db, stmt, category=ListingCategory.OFF_CAMPUS, page=filters.page, page_size=filters.page_size
@@ -298,9 +401,17 @@ async def search_short_let(
             cast(Listing.type_data["min_stay_nights"].astext, Integer)   # type: ignore[index]
             <= filters.min_stay
         )
-    # Date-range availability enforcement lands with the Bookings table
-    # (Sprint 11) — a listing has a date conflict only when a booking exists.
-    # For Sprint 3 the date range is accepted but not applied to filtering.
+
+    # Date availability. Accepted since Sprint 3 but never applied; the Bookings
+    # table landed in Sprint 11, so the range is now enforced — a listing drops
+    # out when a REQUESTED/CONFIRMED booking (plus its turnaround) overlaps.
+    # Both ends are required: half a range can't describe a stay.
+    if filters.check_in and filters.check_out and filters.check_out > filters.check_in:
+        stmt = stmt.where(not_(_booking_conflict_exists(filters.check_in, filters.check_out)))
+
+    if filters.min_rating is not None:
+        # Unreviewed listings fall out: an absent score can't clear a minimum.
+        stmt = stmt.where(_avg_rating() >= filters.min_rating)
 
     stmt = _sort(stmt, filters.sort)
     return await _paginate(
@@ -327,6 +438,18 @@ async def search_rent(filters: RentFilters, *, db: AsyncSession) -> SearchRespon
     if filters.payment_structure:
         stmt = stmt.where(
             Listing.type_data["payment_structure"].astext.in_(filters.payment_structure)   # type: ignore[attr-defined]
+        )
+    if filters.min_bathrooms is not None:
+        stmt = stmt.where(_min_bathrooms_clause(filters.min_bathrooms))
+
+    # Accepted since Sprint 3 but never applied. "Available from 1 Sept" means
+    # a listing free on or before that date, so the comparison is <=. Compared
+    # as text: RentTypeData validates the field as a date, which serialises to
+    # ISO-8601, and ISO dates sort lexicographically — so this orders correctly
+    # without a cast that would error on any malformed row.
+    if filters.available_from is not None:
+        stmt = stmt.where(
+            Listing.type_data["available_from"].astext <= filters.available_from.isoformat()  # type: ignore[index]
         )
 
     stmt = _sort(stmt, filters.sort)
@@ -355,6 +478,8 @@ async def search_sales(filters: SalesFilters, *, db: AsyncSession) -> SearchResp
         stmt = stmt.where(
             Listing.type_data["title_type"].astext.in_(filters.title_types)   # type: ignore[attr-defined]
         )
+    if filters.min_bathrooms is not None:
+        stmt = stmt.where(_min_bathrooms_clause(filters.min_bathrooms))
 
     stmt = _sort(stmt, filters.sort)
     return await _paginate(
@@ -382,6 +507,40 @@ async def search_all(filters: AllFilters, *, db: AsyncSession) -> SearchResponse
     stmt = _sort(stmt, sort)
     return await _paginate(
         db, stmt, category="all", page=filters.page, page_size=filters.page_size
+    )
+
+
+async def price_range(*, db: AsyncSession, category: SearchScope = "all") -> PriceRange:
+    """Cheapest and dearest visible listing in a lane, for the slider bounds.
+
+    Off-campus prices per unit type rather than on the listing row, so that
+    lane aggregates over unit prices. "All" has no meaningful range — nightly,
+    annual, and outright prices don't share an axis — and returns nulls.
+    """
+    if category == "all":
+        return PriceRange()
+
+    if category == ListingCategory.OFF_CAMPUS:
+        stmt = (
+            select(func.min(UnitType.price), func.max(UnitType.price))
+            .join(Listing, Listing.id == UnitType.listing_id)
+            .where(Listing.status.not_in(_HIDDEN_STATUSES))
+            .where(Listing.category == ListingCategory.OFF_CAMPUS)
+            .where(UnitType.price > 0)
+        )
+    else:
+        stmt = (
+            select(func.min(Listing.price), func.max(Listing.price))
+            .where(Listing.status.not_in(_HIDDEN_STATUSES))
+            .where(Listing.category == category)
+            .where(Listing.price > 0)
+        )
+
+    row = (await db.execute(stmt)).one()
+    low, high = row[0], row[1]
+    return PriceRange(
+        min=float(low) if low is not None else None,
+        max=float(high) if high is not None else None,
     )
 
 

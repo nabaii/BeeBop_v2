@@ -143,6 +143,46 @@ export function NumberPillGroup({
 }
 
 /**
+ * "N or more" pills — a single-select floor, not a set of exact counts.
+ *
+ * Bathrooms want this shape rather than the exact-match `NumberPillGroup`:
+ * nobody rules out a 3-bath house because they asked for 2, and the stored
+ * value can be fractional (2.5).
+ */
+export function MinCountPills({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: readonly number[];
+  value: number | undefined;
+  onChange: (next: number | undefined) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="mb-1.5 text-caption font-medium text-ink">{label}</legend>
+      <div className="flex flex-wrap gap-1.5">
+        <ToggleChip active={value === undefined} onClick={() => onChange(undefined)}>
+          Any
+        </ToggleChip>
+        {options.map((option) => (
+          <ToggleChip
+            key={option}
+            active={value === option}
+            onClick={() => onChange(value === option ? undefined : option)}
+            className="min-w-[2.75rem] justify-center"
+          >
+            {option}+
+          </ToggleChip>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+/**
  * A full-width selectable row.
  *
  * The checkbox stays a real `<input>` (screen readers and form semantics need
@@ -192,6 +232,150 @@ export function CheckRow({
         <span className="min-w-0 flex-1">{label}</span>
       </span>
     </label>
+  );
+}
+
+/**
+ * Dual-thumb range slider built from two native `<input type="range">`.
+ *
+ * No dependency, and keyboard + screen-reader behaviour comes free — each
+ * thumb is a real range input. The inputs are stacked; pointer events are
+ * disabled on the track and re-enabled on the thumbs so whichever thumb you
+ * grab is the one that moves, and z-order flips at the top of the range so the
+ * max thumb stays reachable when both sit together.
+ */
+export function RangeSlider({
+  min,
+  max,
+  step,
+  value,
+  onChange,
+  format,
+  label,
+}: {
+  min: number;
+  max: number;
+  step: number;
+  /** Current [low, high]. Either end may equal the bound, meaning "unset". */
+  value: [number, number];
+  onChange: (next: [number, number]) => void;
+  format: (value: number) => string;
+  label: string;
+}) {
+  const [low, high] = value;
+  const span = Math.max(1, max - min);
+  const lowPct = ((low - min) / span) * 100;
+  const highPct = ((high - min) / span) * 100;
+
+  return (
+    <div className="pt-1">
+      <div className="mb-2 flex items-center justify-between text-caption tabular-nums text-ink">
+        <span className="font-semibold">{format(low)}</span>
+        <span className="font-semibold">
+          {format(high)}
+          {high >= max ? '+' : ''}
+        </span>
+      </div>
+
+      {/* Inset by half a thumb: the inputs span the full width, so a thumb
+          parked on either bound would otherwise be sliced in half by the
+          container edge. */}
+      <div className="relative mx-[10px] h-9">
+        {/* Track */}
+        <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-hairline" />
+        {/* Selected span */}
+        <div
+          className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-brand"
+          style={{ left: `${lowPct}%`, right: `${100 - highPct}%` }}
+        />
+        <input
+          type="range"
+          aria-label={`${label} — minimum`}
+          min={min}
+          max={max}
+          step={step}
+          value={low}
+          onChange={(e) => onChange([Math.min(Number(e.target.value), high), high])}
+          className={cn(RANGE_INPUT, lowPct > 90 ? 'z-30' : 'z-20')}
+        />
+        <input
+          type="range"
+          aria-label={`${label} — maximum`}
+          min={min}
+          max={max}
+          step={step}
+          value={high}
+          onChange={(e) => onChange([low, Math.max(Number(e.target.value), low)])}
+          className={cn(RANGE_INPUT, 'z-20')}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Shared styling for the stacked range inputs: invisible track, Honey thumb. */
+const RANGE_INPUT = [
+  'pointer-events-none absolute inset-x-0 top-0 h-9 w-full appearance-none bg-transparent',
+  'focus-visible:outline-none',
+  // WebKit. `border-solid` is spelled out because Tailwind's preflight sets a
+  // default border-style on elements and pseudo-elements like ::before, but not
+  // on ::-webkit-slider-thumb — without it `border-2` has no style to draw and
+  // the Honey ring silently doesn't render.
+  '[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5',
+  '[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full',
+  '[&::-webkit-slider-thumb]:border-solid [&::-webkit-slider-thumb]:border-2',
+  '[&::-webkit-slider-thumb]:border-brand [&::-webkit-slider-thumb]:bg-white',
+  '[&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:cursor-grab',
+  'focus-visible:[&::-webkit-slider-thumb]:ring-2 focus-visible:[&::-webkit-slider-thumb]:ring-brand',
+  // Firefox
+  '[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5',
+  '[&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full',
+  '[&::-moz-range-thumb]:border-solid [&::-moz-range-thumb]:border-2',
+  '[&::-moz-range-thumb]:border-brand [&::-moz-range-thumb]:bg-white',
+  '[&::-moz-range-track]:bg-transparent',
+].join(' ');
+
+/** Single-thumb slider — a maximum, e.g. drive time to campus. */
+export function MaxSlider({
+  min,
+  max,
+  step,
+  value,
+  onChange,
+  format,
+  label,
+}: {
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  onChange: (next: number) => void;
+  format: (value: number) => string;
+  label: string;
+}) {
+  const pct = ((value - min) / Math.max(1, max - min)) * 100;
+  return (
+    <div className="pt-1">
+      <p className="mb-2 text-caption font-semibold tabular-nums text-ink">{format(value)}</p>
+      {/* Inset by half a thumb — see RangeSlider. */}
+      <div className="relative mx-[10px] h-9">
+        <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-hairline" />
+        <div
+          className="absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-brand"
+          style={{ width: `${pct}%` }}
+        />
+        <input
+          type="range"
+          aria-label={label}
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className={cn(RANGE_INPUT, 'z-20')}
+        />
+      </div>
+    </div>
   );
 }
 

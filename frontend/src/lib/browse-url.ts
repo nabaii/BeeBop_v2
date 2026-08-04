@@ -61,6 +61,7 @@ const LIST_KEYS = new Set([
   'payment_structure',
   'development_status',
   'title_types',
+  'exclude_house_rules',
 ]);
 
 const NUMBER_LIST_KEYS = new Set(['bedroom_counts']);
@@ -68,9 +69,10 @@ const NUMBER_LIST_KEYS = new Set(['bedroom_counts']);
 const NUMBER_KEYS = new Set([
   'min_price',
   'max_price',
-  'guests',
   'min_stay',
   'min_rating',
+  'min_bathrooms',
+  'max_drive_min',
   'page',
   'page_size',
 ]);
@@ -238,11 +240,11 @@ const SCOPED_LABELS: Record<string, string> = {
   available_now: 'Available now',
   check_in: 'From',
   check_out: 'Until',
-  guests: 'Guests',
   min_stay: 'Min stay',
   instant_booking: 'Instant booking',
   min_rating: 'Rating',
   bedroom_counts: 'Beds',
+  min_bathrooms: 'Baths',
   property_types: 'Type',
   furnishing: 'Furnishing',
   payment_structure: 'Payment',
@@ -251,7 +253,12 @@ const SCOPED_LABELS: Record<string, string> = {
   title_types: 'Title',
   institution: 'School',
   gender: 'Gender',
+  campus: 'Campus',
+  max_drive_min: 'Drive',
 };
+
+/** Chips whose default label would read wrong without help. */
+const CAMPUS_LABELS: Record<string, string> = { nile: 'Nile University', baze: 'Baze University' };
 
 function humanise(value: string | number): string {
   return String(value).replaceAll('_', ' ').replace(/^./, (c) => c.toUpperCase());
@@ -296,8 +303,28 @@ export function describeActiveFilters(filters: AnyFilters, scope: SearchScope): 
   for (const key of SCOPE_KEYS[scope]) {
     const value = (filters as Record<string, unknown>)[key];
     if (value === undefined || value === null || value === '') continue;
-    const name = SCOPED_LABELS[key] ?? humanise(key);
 
+    // Campus and drive time are one filter to a seeker ("within 20 min of
+    // Nile"), so they read as one chip and clear together. `campus` alone
+    // filters nothing, so it never gets a chip of its own.
+    if (key === 'campus') continue;
+    if (key === 'max_drive_min') {
+      const campus = filters.campus ? CAMPUS_LABELS[filters.campus] ?? filters.campus : 'campus';
+      chips.push({ key, label: `Within ${value} min of ${campus}` });
+      continue;
+    }
+    if (key === 'exclude_house_rules') {
+      for (const rule of value as string[]) {
+        chips.push({ key, item: rule, label: `No ${String(rule).replaceAll('_', ' ')}` });
+      }
+      continue;
+    }
+    if (key === 'min_bathrooms') {
+      chips.push({ key, label: `${value}+ baths` });
+      continue;
+    }
+
+    const name = SCOPED_LABELS[key] ?? humanise(key);
     if (Array.isArray(value)) {
       for (const item of value as (string | number)[]) {
         chips.push({ key, item, label: `${name}: ${humanise(item)}` });
@@ -323,6 +350,11 @@ export function removeFilter(filters: AnyFilters, chip: ActiveFilter): AnyFilter
     // Removing the last selected tier means "no tier preference", not "match
     // nothing" — the server treats an empty list as the latter.
     next.verification = remaining.length ? remaining : [...ALL_TIERS];
+  } else if (chip.key === 'max_drive_min') {
+    // One chip, one filter: drop the campus with the cap, or `campus` would
+    // linger in the URL doing nothing.
+    delete next.max_drive_min;
+    delete next.campus;
   } else if (chip.item !== undefined) {
     const current = (next[chip.key] as (string | number)[] | undefined) ?? [];
     const remaining = current.filter((item) => item !== chip.item);

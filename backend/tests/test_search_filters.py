@@ -6,6 +6,8 @@ container in CI — this module keeps the pure-Python logic tightly covered.
 
 from __future__ import annotations
 
+from datetime import date
+
 from sqlalchemy import select
 
 from app.models._enums import ListingCategory, ListingStatus
@@ -245,3 +247,131 @@ def test_location_option_shape() -> None:
     option = LocationOption(district="Jabi", count=7)
     assert option.district == "Jabi"
     assert option.count == 7
+
+
+# ---------------------------------------------------------------------------
+# Regressions: filters the API accepted but never applied
+#
+# Each of these was collected by the UI, carried in the URL, and then silently
+# dropped by the query builder. `_captured_sql` runs the real service with
+# pagination stubbed so we can assert the WHERE clause actually changed —
+# asserting on the schema alone is what let these rot in the first place.
+# ---------------------------------------------------------------------------
+
+
+def _captured_sql(service_fn, filters) -> str:  # type: ignore[no-untyped-def]
+    import asyncio
+
+    from app.search import service as search_service
+
+    captured: dict[str, str] = {}
+    original = search_service._paginate
+
+    async def fake_paginate(db, stmt, **_kwargs):  # type: ignore[no-untyped-def]
+        captured["sql"] = _sql(stmt)
+        return None
+
+    search_service._paginate = fake_paginate  # type: ignore[assignment]
+    try:
+        asyncio.run(service_fn(filters, db=None))
+    finally:
+        search_service._paginate = original  # type: ignore[assignment]
+    return captured["sql"]
+
+
+def test_rent_available_from_is_applied() -> None:
+    from app.search.service import search_rent
+
+    base = _captured_sql(search_rent, RentFilters())
+    filtered = _captured_sql(search_rent, RentFilters(available_from=date(2026, 9, 1)))
+    assert filtered != base
+    # Compared as ISO text so a malformed row can't raise a cast error.
+    assert "available_from" in filtered
+    assert "2026-09-01" in filtered
+
+
+def test_rent_min_bathrooms_is_a_floor_not_an_exact_match() -> None:
+    from app.search.service import search_rent
+
+    sql = _captured_sql(search_rent, RentFilters(min_bathrooms=2))
+    assert "bathroom_count" in sql
+    assert ">= 2" in sql
+
+
+def test_short_let_dates_exclude_booked_listings() -> None:
+    from app.search.service import search_short_let
+
+    sql = _captured_sql(
+        search_short_let,
+        ShortLetFilters(check_in=date(2026, 9, 1), check_out=date(2026, 9, 5)),
+    )
+    assert "bookings" in sql
+    # The booked window extends by the listing's turnaround days.
+    assert "turnaround_days" in sql
+    assert "not (exists" in sql
+
+
+def test_short_let_half_a_date_range_filters_nothing() -> None:
+    """Half a range can't describe a stay — applying it would silently hide
+    listings on an incomplete form."""
+    from app.search.service import search_short_let
+
+    base = _captured_sql(search_short_let, ShortLetFilters())
+    assert _captured_sql(search_short_let, ShortLetFilters(check_in=date(2026, 9, 1))) == base
+    assert _captured_sql(search_short_let, ShortLetFilters(check_out=date(2026, 9, 5))) == base
+
+
+def test_short_let_min_rating_aggregates_reviews() -> None:
+    from app.search.service import search_short_let
+
+    sql = _captured_sql(search_short_let, ShortLetFilters(min_rating=4))
+    assert "avg(reviews.overall_rating)" in sql
+
+
+def test_highest_rated_sort_orders_by_reviews_with_unrated_last() -> None:
+    """The sort silently fell through to the default ordering, so "Highest
+    rated" ranked nothing."""
+    from app.search.service import search_rent
+
+    sql = _captured_sql(search_rent, RentFilters(sort="highest_rated"))
+    assert "avg(reviews.overall_rating)" in sql
+    assert "nulls last" in sql
+
+
+def test_off_campus_drive_time_uses_the_selected_campus() -> None:
+    from app.search.service import search_off_campus
+
+    nile = _captured_sql(search_off_campus, OffCampusFilters(campus="nile", max_drive_min=20))
+    assert "drive_min_nile" in nile
+    assert "drive_min_baze" not in nile
+
+    baze = _captured_sql(search_off_campus, OffCampusFilters(campus="baze", max_drive_min=20))
+    assert "drive_min_baze" in baze
+
+
+def test_off_campus_drive_time_needs_both_campus_and_cap() -> None:
+    from app.search.service import search_off_campus
+
+    base = _captured_sql(search_off_campus, OffCampusFilters())
+    assert _captured_sql(search_off_campus, OffCampusFilters(campus="nile")) == base
+    assert _captured_sql(search_off_campus, OffCampusFilters(max_drive_min=20)) == base
+
+
+def test_house_rules_filter_excludes_rather_than_requires() -> None:
+    """Every rule in the vocabulary is a restriction, so the filter hides
+    listings carrying it. `IS TRUE` keeps listings with no house_rules object
+    at all — an absent rule is not a present one."""
+    from app.search.service import search_off_campus
+
+    sql = _captured_sql(
+        search_off_campus, OffCampusFilters(exclude_house_rules=["curfew", "no_pets"])
+    )
+    assert "house_rules" in sql
+    assert "curfew" in sql and "no_pets" in sql
+    assert "is not true" in sql or "not (" in sql
+
+
+def test_short_let_filters_have_no_guests_field() -> None:
+    """Nothing on a listing records guest capacity, so the filter was removed
+    rather than left collecting input it could never use."""
+    assert "guests" not in ShortLetFilters.model_fields

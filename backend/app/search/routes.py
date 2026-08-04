@@ -24,7 +24,9 @@ from app.models.user import User
 from app.search import service as search_service
 from app.search.schemas import (
     AllFilters,
+    Campus,
     LocationOption,
+    PriceRange,
     OffCampusFilters,
     PublicAreaScore,
     PublicListingDetail,
@@ -92,6 +94,9 @@ def _off_campus_filters(
     gender: Annotated[Gender | None, Query()] = None,
     unit_kinds: Annotated[list[str] | None, Query()] = None,
     available_now: Annotated[bool, Query()] = False,
+    campus: Annotated[Campus | None, Query()] = None,
+    max_drive_min: Annotated[int | None, Query(ge=1, le=600)] = None,
+    exclude_house_rules: Annotated[list[str] | None, Query()] = None,
 ) -> OffCampusFilters:
     return OffCampusFilters(
         **shared,
@@ -100,6 +105,9 @@ def _off_campus_filters(
         gender=gender,
         unit_kinds=unit_kinds or [],
         available_now=available_now,
+        campus=campus,
+        max_drive_min=max_drive_min,
+        exclude_house_rules=exclude_house_rules or [],
     )
 
 
@@ -107,7 +115,6 @@ def _short_let_filters(
     shared: Annotated[dict[str, object], Depends(_shared_filter_kwargs)],
     check_in: Annotated[date | None, Query()] = None,
     check_out: Annotated[date | None, Query()] = None,
-    guests: Annotated[int | None, Query(ge=1)] = None,
     min_stay: Annotated[int | None, Query(ge=1)] = None,
     instant_booking: Annotated[bool | None, Query()] = None,
     min_rating: Annotated[float | None, Query(ge=0, le=5)] = None,
@@ -116,7 +123,6 @@ def _short_let_filters(
         **shared,
         check_in=check_in,
         check_out=check_out,
-        guests=guests,
         min_stay=min_stay,
         instant_booking=instant_booking,
         min_rating=min_rating,
@@ -126,6 +132,7 @@ def _short_let_filters(
 def _rent_filters(
     shared: Annotated[dict[str, object], Depends(_shared_filter_kwargs)],
     bedroom_counts: Annotated[list[int] | None, Query()] = None,
+    min_bathrooms: Annotated[int | None, Query(ge=1, le=10)] = None,
     property_types: Annotated[list[str] | None, Query()] = None,
     furnishing: Annotated[list[str] | None, Query()] = None,
     payment_structure: Annotated[list[str] | None, Query()] = None,
@@ -134,6 +141,7 @@ def _rent_filters(
     return RentFilters(
         **shared,
         bedroom_counts=bedroom_counts or [],
+        min_bathrooms=min_bathrooms,
         property_types=property_types or [],
         furnishing=furnishing or [],
         payment_structure=payment_structure or [],
@@ -144,6 +152,7 @@ def _rent_filters(
 def _sales_filters(
     shared: Annotated[dict[str, object], Depends(_shared_filter_kwargs)],
     bedroom_counts: Annotated[list[int] | None, Query()] = None,
+    min_bathrooms: Annotated[int | None, Query(ge=1, le=10)] = None,
     property_types: Annotated[list[str] | None, Query()] = None,
     development_status: Annotated[list[str] | None, Query()] = None,
     title_types: Annotated[list[str] | None, Query()] = None,
@@ -151,6 +160,7 @@ def _sales_filters(
     return SalesFilters(
         **shared,
         bedroom_counts=bedroom_counts or [],
+        min_bathrooms=min_bathrooms,
         property_types=property_types or [],
         development_status=development_status or [],
         title_types=title_types or [],
@@ -175,6 +185,15 @@ async def search_locations(
 ) -> list[LocationOption]:
     """Districts with visible inventory, for the location typeahead."""
     return await search_service.list_locations(db=db, category=category)
+
+
+@router.get("/search/price-range", response_model=PriceRange)
+async def search_price_range(
+    category: Annotated[SearchScope, Query()] = "all",
+    db: AsyncSession = Depends(get_db),
+) -> PriceRange:
+    """Real price bounds for a lane, so the slider spans actual inventory."""
+    return await search_service.price_range(db=db, category=category)
 
 
 @router.get("/search/off-campus", response_model=SearchResponse)

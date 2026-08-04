@@ -40,25 +40,43 @@ class SharedFilters(BaseModel):
     page_size: int = Field(default=24, ge=1, le=60)
 
 
+Campus = Literal["nile", "baze"]
+
+
 class OffCampusFilters(SharedFilters):
     use_profile_filters: bool = False
     institution: str | None = None
     gender: Gender | None = None
     unit_kinds: list[str] = Field(default_factory=list)
     available_now: bool = False
+    # Drive-time filter. `campus` selects which recorded time to compare
+    # (type_data.drive_min_nile / drive_min_baze); `max_drive_min` is the cap.
+    # Listings with no recorded time for that campus are excluded — an unknown
+    # commute cannot be shown to satisfy "within 20 minutes".
+    campus: Campus | None = None
+    max_drive_min: int | None = Field(default=None, ge=1, le=600)
+    # House rules a seeker wants to avoid, keyed by HOUSE_RULES. Exclusion only:
+    # every rule in the vocabulary is a restriction, so the useful question is
+    # "don't show me anywhere with a curfew", never the reverse.
+    exclude_house_rules: list[str] = Field(default_factory=list)
 
 
 class ShortLetFilters(SharedFilters):
     check_in: date | None = None
     check_out: date | None = None
-    guests: int | None = Field(default=None, ge=1)
     min_stay: int | None = Field(default=None, ge=1)
     instant_booking: bool | None = None
     min_rating: float | None = Field(default=None, ge=0, le=5)
+    # NOTE: no `guests` field. Short-let type_data carries base_rate,
+    # weekend_rate, min_stay_nights, turnaround_days and instant_booking — no
+    # guest capacity is recorded anywhere on a listing, so a guests filter
+    # could only ever be decorative. Add the capacity field to
+    # ShortLetPricingPayload first if this is wanted.
 
 
 class RentFilters(SharedFilters):
     bedroom_counts: list[int] = Field(default_factory=list)
+    min_bathrooms: int | None = Field(default=None, ge=1, le=10)
     property_types: list[str] = Field(default_factory=list)
     furnishing: list[str] = Field(default_factory=list)
     payment_structure: list[str] = Field(default_factory=list)
@@ -67,6 +85,7 @@ class RentFilters(SharedFilters):
 
 class SalesFilters(SharedFilters):
     bedroom_counts: list[int] = Field(default_factory=list)
+    min_bathrooms: int | None = Field(default=None, ge=1, le=10)
     property_types: list[str] = Field(default_factory=list)
     development_status: list[str] = Field(default_factory=list)
     title_types: list[str] = Field(default_factory=list)
@@ -93,6 +112,19 @@ class LocationOption(BaseModel):
 
     district: str
     count: int
+
+
+class PriceRange(BaseModel):
+    """Cheapest and dearest visible listing in a lane.
+
+    Bounds the price slider against real inventory instead of invented limits,
+    so the track always spans something a seeker can actually reach. Both null
+    when the lane has no priced listings — the client hides the slider rather
+    than drawing an empty track.
+    """
+
+    min: float | None = None
+    max: float | None = None
 
 
 class PublicListingSummary(BaseModel):
