@@ -55,7 +55,9 @@ export function BookmarkButton({ listingId, initial = false, className }: Props)
       aria-pressed={saved}
       aria-label={saved ? 'Remove bookmark' : 'Save listing'}
       className={cn(
-        'inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-sm transition hover:bg-white disabled:opacity-70',
+        // Sits over a photo, so it keeps its soft shadow (the palette's one
+        // sanctioned exception to hairlines-over-shadows).
+        'inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-ink-muted shadow-sm transition hover:bg-white hover:text-ink disabled:opacity-70',
         saved && 'text-brand-600',
         className,
       )}

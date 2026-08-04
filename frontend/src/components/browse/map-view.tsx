@@ -67,8 +67,11 @@ function pinTier(status: PublicListingSummary['status']): PinTier {
   return 'unverified';
 }
 
+/** Pin colours = the `verification.*` palette tokens. Blue is reserved for
+ *  verification, so this must stay aligned with the badge colours the cards
+ *  and the filter sheet use. */
 function pinColour(tier: PinTier): string {
-  return tier === 'fully_verified' ? '#0d9488' : tier === 'doc_verified' ? '#2563eb' : '#94a3b8';
+  return tier === 'fully_verified' ? '#0d9488' : tier === 'doc_verified' ? '#1D4ED8' : '#94a3b8';
 }
 
 export function MapView({ data, onSelect }: Props) {
@@ -136,7 +139,7 @@ export function MapView({ data, onSelect }: Props) {
     <div className="space-y-2">
       <div
         ref={container}
-        className="h-[min(62dvh,500px)] min-h-[320px] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
+        className="h-[min(62dvh,500px)] min-h-[320px] w-full overflow-hidden rounded-2xl border border-hairline bg-hairline"
       />
       <Legend />
     </div>
@@ -145,17 +148,17 @@ export function MapView({ data, onSelect }: Props) {
 
 function FallbackList({ data, onSelect }: Props) {
   return (
-    <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+    <div className="space-y-3 rounded-2xl border border-hairline bg-white p-4">
       <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Map unavailable</h3>
-          <p className="text-xs text-slate-500">
-            Set <code className="rounded bg-slate-100 px-1 py-0.5 text-caption">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable the pin map. Results below use the same filters.
+          <h3 className="text-body font-semibold text-ink">Map unavailable</h3>
+          <p className="text-caption text-ink-muted">
+            Set <code className="rounded bg-paper px-1 py-0.5 text-caption">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable the pin map. Results below use the same filters.
           </p>
         </div>
         <Legend />
       </div>
-      <ul className="divide-y divide-slate-100">
+      <ul className="divide-y divide-hairline">
         {(data?.results ?? []).map((r) => {
           const tier = pinTier(r.status);
           return (
@@ -163,7 +166,7 @@ function FallbackList({ data, onSelect }: Props) {
               <button
                 type="button"
                 onClick={() => onSelect(r)}
-                className="flex w-full items-center gap-3 py-2 text-left hover:bg-slate-50"
+                className="flex w-full items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors hover:bg-nectar"
               >
                 <span
                   className="h-3 w-3 shrink-0 rounded-full"
@@ -171,8 +174,8 @@ function FallbackList({ data, onSelect }: Props) {
                   aria-hidden
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium text-slate-900">{r.title}</div>
-                  <div className="truncate text-xs text-slate-500">
+                  <div className="truncate text-body font-medium text-ink">{r.title}</div>
+                  <div className="truncate text-caption text-ink-muted">
                     {r.district ?? 'Abuja'} · {r.gps_lat?.toFixed(4)}, {r.gps_lng?.toFixed(4)}
                   </div>
                 </div>
@@ -187,10 +190,11 @@ function FallbackList({ data, onSelect }: Props) {
 
 function Legend() {
   return (
-    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
-      <Pill color="#0d9488" label="AGIS Verified" />
-      <Pill color="#2563eb" label="Doc Verified" />
-      <Pill color="#94a3b8" label="Unverified" />
+    // Colours come from pinColour so the legend can never drift from the pins.
+    <div className="flex flex-wrap items-center gap-3 text-caption text-ink-muted">
+      <Pill color={pinColour('fully_verified')} label="AGIS Verified" />
+      <Pill color={pinColour('doc_verified')} label="Doc Verified" />
+      <Pill color={pinColour('unverified')} label="Unverified" />
     </div>
   );
 }

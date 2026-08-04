@@ -5,12 +5,18 @@
  * plus a category-specific slot for the scope's own controls.
  */
 
-import { X } from 'lucide-react';
+import { MapPin, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
-import { Input } from '@/components/ui/input';
+import {
+  CheckRow,
+  FilterSection,
+  NairaInput,
+  ToggleChip,
+} from '@/components/browse/filter-controls';
 import { ALL_TIERS } from '@/lib/browse-url';
 import { cn } from '@/lib/cn';
+import { formatNaira } from '@/lib/format';
 import { getAmenityVocabulary } from '@/lib/listings';
 import {
   getSearchLocations,
@@ -36,7 +42,33 @@ const VERIFICATION_TIERS: { value: VerificationTier; label: string; dot: string 
   { value: 'unverified', label: 'Unverified', dot: 'bg-verification-unverified' },
 ];
 
+/**
+ * Price bands per lane, in naira.
+ *
+ * These cannot be shared: "under ₦1m" is an ordinary annual rent and an
+ * impossible sale price. Each lane gets bands matched to how it actually
+ * quotes — nightly for short-let, per session for student rooms, annual for
+ * rent, outright for sales.
+ */
+const PRICE_BANDS: Record<SearchScope, readonly number[]> = {
+  all: [],
+  off_campus: [150_000, 300_000, 600_000],
+  short_let: [15_000, 30_000, 60_000],
+  rent: [500_000, 1_500_000, 4_000_000],
+  sales: [25_000_000, 60_000_000, 150_000_000],
+};
+
 const MAX_LOCATION_SUGGESTIONS = 6;
+
+/** Compact naira for band labels: 1_500_000 -> "₦1.5m". */
+function compactNaira(value: number): string {
+  if (value >= 1_000_000) {
+    const millions = value / 1_000_000;
+    return `₦${Number.isInteger(millions) ? millions : millions.toFixed(1)}m`;
+  }
+  if (value >= 1_000) return `₦${value / 1_000}k`;
+  return formatNaira(value);
+}
 
 export function FilterPanel({ value, onChange, scope, children, className }: Props) {
   const [locationInput, setLocationInput] = useState('');
@@ -47,8 +79,8 @@ export function FilterPanel({ value, onChange, scope, children, className }: Pro
     void getAmenityVocabulary().then(setVocab).catch(() => setVocab({}));
   }, []);
 
-  // Scoped to the active lane: offering a district with no inventory in this
-  // lane would just be a slower route to an empty result set.
+  // Scoped to the active lane: offering a district with no inventory here is
+  // just a slower route to an empty result set.
   useEffect(() => {
     let live = true;
     void getSearchLocations(scope)
@@ -73,6 +105,8 @@ export function FilterPanel({ value, onChange, scope, children, className }: Pro
       .filter((option) => !query || option.district.toLowerCase().includes(query))
       .slice(0, MAX_LOCATION_SUGGESTIONS);
   }, [locationInput, locationOptions, selectedLocations]);
+
+  const bands = PRICE_BANDS[scope];
 
   function toggleTier(tier: VerificationTier) {
     const current = value.verification ?? [...ALL_TIERS];
@@ -105,21 +139,26 @@ export function FilterPanel({ value, onChange, scope, children, className }: Pro
     onChange({ ...value, amenities: next.length ? next : undefined });
   }
 
-  function setPrice(field: 'min_price' | 'max_price', raw: string) {
-    const digits = raw.replace(/[^0-9]/g, '');
-    onChange({ ...value, [field]: digits ? Number(digits) : undefined });
+  function applyBand(min: number | undefined, max: number | undefined) {
+    const same = value.min_price === min && value.max_price === max;
+    // Tapping the active band clears it — the chips behave like a radio group
+    // you can also switch off.
+    onChange({
+      ...value,
+      min_price: same ? undefined : min,
+      max_price: same ? undefined : max,
+    });
   }
 
   return (
-    <aside className={cn('space-y-5 rounded-xl border border-hairline bg-white p-4', className)}>
+    <aside className={cn('space-y-6 rounded-xl border border-hairline bg-white p-4', className)}>
       {/* No keyword field here: the explore header owns `q`. Two inputs bound
           to the same state is a race the user has to reason about. */}
-      <section>
-        <h3 className="text-caption font-semibold uppercase tracking-wide text-ink-muted">
-          Location
-        </h3>
-        <div className="mt-2">
-          <Input
+
+      <FilterSection title="Location">
+        <div className="flex min-h-11 items-center gap-2 rounded-xl border border-hairline bg-white px-3 transition-colors focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
+          <MapPin className="h-4 w-4 shrink-0 text-ink-soft" aria-hidden />
+          <input
             value={locationInput}
             placeholder="Search districts"
             aria-label="Search districts"
@@ -129,176 +168,151 @@ export function FilterPanel({ value, onChange, scope, children, className }: Pro
               if (e.key === 'Enter') {
                 e.preventDefault();
                 // Enter takes the top suggestion — free text can't match a
-                // district that isn't there.
+                // district that isn't in the inventory.
                 if (suggestions[0]) addLocation(suggestions[0].district);
               }
             }}
+            className="min-w-0 flex-1 bg-transparent py-2 text-body text-ink outline-none placeholder:text-ink-soft"
           />
         </div>
 
-        {suggestions.length > 0 && (
-          <ul className="mt-2 space-y-1">
-            {suggestions.map((option) => (
-              <li key={option.district}>
-                <button
-                  type="button"
-                  onClick={() => addLocation(option.district)}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-caption text-ink hover:bg-nectar"
-                >
-                  <span>{option.district}</span>
-                  <span className="text-ink-soft">{option.count}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {locationOptions.length > 0 && suggestions.length === 0 && locationInput.trim() && (
-          <p className="mt-2 text-caption text-ink-soft">
-            No district matches “{locationInput.trim()}”.
-          </p>
-        )}
-
         {selectedLocations.length > 0 && (
-          <ul className="mt-2 flex flex-wrap gap-1.5">
+          <ul className="flex flex-wrap gap-1.5">
             {selectedLocations.map((token) => (
-              <li
-                key={token}
-                className="flex items-center gap-1 rounded-full bg-nectar px-2 py-0.5 text-caption text-ink"
-              >
-                {token}
+              <li key={token}>
                 <button
                   type="button"
                   onClick={() => removeLocation(token)}
-                  className="text-ink-muted hover:text-ink"
                   aria-label={`Remove ${token}`}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-brand bg-brand px-3 py-1.5 text-caption font-semibold text-ink transition-colors hover:bg-brand-600"
                 >
+                  {token}
                   <X className="h-3 w-3" aria-hidden />
                 </button>
               </li>
             ))}
           </ul>
         )}
-      </section>
 
-      <section>
-        <h3 className="text-caption font-semibold uppercase tracking-wide text-ink-muted">
-          Verification
-        </h3>
-        <ul className="mt-2 space-y-1.5">
-          {VERIFICATION_TIERS.map((t) => {
-            const checked = (value.verification ?? [...ALL_TIERS]).includes(t.value);
-            return (
-              <li key={t.value}>
-                <label className="flex items-center gap-2 text-body text-ink">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleTier(t.value)}
-                    className="h-4 w-4 rounded border-ink-soft text-brand focus:ring-brand"
-                  />
-                  <span className={`h-2 w-2 rounded-full ${t.dot}`} aria-hidden />
-                  <span>{t.label}</span>
-                </label>
+        {suggestions.length > 0 && (
+          <ul className="flex flex-wrap gap-1.5">
+            {suggestions.map((option) => (
+              <li key={option.district}>
+                <ToggleChip active={false} onClick={() => addLocation(option.district)}>
+                  {option.district}
+                  <span className="tabular-nums text-ink-soft">{option.count}</span>
+                </ToggleChip>
               </li>
-            );
-          })}
+            ))}
+          </ul>
+        )}
+
+        {locationOptions.length > 0 && suggestions.length === 0 && locationInput.trim() && (
+          <p className="text-caption text-ink-soft">
+            No district matches “{locationInput.trim()}”.
+          </p>
+        )}
+      </FilterSection>
+
+      <FilterSection title="Verification">
+        <ul className="space-y-1.5">
+          {VERIFICATION_TIERS.map((t) => (
+            <li key={t.value}>
+              <CheckRow
+                checked={(value.verification ?? [...ALL_TIERS]).includes(t.value)}
+                onChange={() => toggleTier(t.value)}
+                label={t.label}
+                adornment={<span className={cn('h-2 w-2 rounded-full', t.dot)} aria-hidden />}
+              />
+            </li>
+          ))}
         </ul>
-      </section>
+      </FilterSection>
 
       {/* Price only means one thing inside a single lane: rent quotes annually,
           short-let nightly, sales outright. Across "All" the control is hidden
-          rather than shown with three meanings. */}
+          rather than shown carrying three meanings. */}
       {scope !== 'all' ? (
-        <section>
-          <h3 className="text-caption font-semibold uppercase tracking-wide text-ink-muted">
-            Price
-          </h3>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <Input
-              inputMode="numeric"
+        <FilterSection title="Price">
+          <div className="flex flex-wrap gap-1.5">
+            {bands.map((band, i) => {
+              const min = i === 0 ? undefined : bands[i - 1];
+              const label = i === 0 ? `Under ${compactNaira(band)}` : `${compactNaira(min!)}–${compactNaira(band)}`;
+              return (
+                <ToggleChip
+                  key={band}
+                  active={value.min_price === min && value.max_price === band}
+                  onClick={() => applyBand(min, band)}
+                >
+                  {label}
+                </ToggleChip>
+              );
+            })}
+            {bands.length > 0 && (
+              <ToggleChip
+                active={value.min_price === bands[bands.length - 1] && value.max_price === undefined}
+                onClick={() => applyBand(bands[bands.length - 1], undefined)}
+              >
+                {compactNaira(bands[bands.length - 1])}+
+              </ToggleChip>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <NairaInput
+              label="Minimum price"
               placeholder="Min"
-              aria-label="Minimum price"
-              value={value.min_price?.toString() ?? ''}
-              onChange={(e) => setPrice('min_price', e.target.value)}
+              value={value.min_price}
+              onChange={(next) => onChange({ ...value, min_price: next })}
             />
-            <Input
-              inputMode="numeric"
+            <NairaInput
+              label="Maximum price"
               placeholder="Max"
-              aria-label="Maximum price"
-              value={value.max_price?.toString() ?? ''}
-              onChange={(e) => setPrice('max_price', e.target.value)}
+              value={value.max_price}
+              onChange={(next) => onChange({ ...value, max_price: next })}
             />
           </div>
-        </section>
+        </FilterSection>
       ) : (
-        <p className="rounded-lg bg-paper px-3 py-2 text-caption text-ink-muted">
+        <p className="rounded-xl border border-hairline bg-paper px-3 py-2.5 text-caption text-ink-muted">
           Pick a category to filter by price — nightly, annual, and sale prices
           aren’t comparable.
         </p>
       )}
 
-      <section>
-        <h3 className="text-caption font-semibold uppercase tracking-wide text-ink-muted">
-          Amenities
-        </h3>
-        <div className="mt-2 space-y-2">
-          {Object.entries(vocab).map(([group, items]) => {
-            const chosen = items.filter((key) =>
-              (value.amenities ?? []).includes(`${group}:${key}`),
-            ).length;
-            return (
-              <details key={group} className="rounded-lg border border-hairline p-2">
-                <summary className="flex cursor-pointer items-center justify-between text-caption font-medium capitalize text-ink">
-                  <span>{group}</span>
-                  {chosen > 0 && (
-                    <span className="rounded-full bg-brand px-1.5 text-caption font-semibold text-ink">
-                      {chosen}
-                    </span>
-                  )}
-                </summary>
-                <ul className="mt-2 space-y-1">
+      {Object.keys(vocab).length > 0 && (
+        <FilterSection title="Amenities">
+          <div className="space-y-3">
+            {Object.entries(vocab).map(([group, items]) => (
+              <div key={group}>
+                <p className="mb-1.5 text-caption font-medium capitalize text-ink">{group}</p>
+                <div className="flex flex-wrap gap-1.5">
                   {items.map((key) => {
                     const token = `${group}:${key}`;
-                    const checked = (value.amenities ?? []).includes(token);
                     return (
-                      <li key={key}>
-                        <label className="flex items-center gap-2 text-caption text-ink">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleAmenity(group, key)}
-                            className="h-3.5 w-3.5 rounded border-ink-soft text-brand focus:ring-brand"
-                          />
-                          <span className="capitalize">{key.replaceAll('_', ' ')}</span>
-                        </label>
-                      </li>
+                      <ToggleChip
+                        key={key}
+                        active={(value.amenities ?? []).includes(token)}
+                        onClick={() => toggleAmenity(group, key)}
+                        className="capitalize"
+                      >
+                        {key.replaceAll('_', ' ')}
+                      </ToggleChip>
                     );
                   })}
-                </ul>
-              </details>
-            );
-          })}
-        </div>
-      </section>
-
-      {children && (
-        <section>
-          <h3 className="text-caption font-semibold uppercase tracking-wide text-ink-muted">
-            More filters
-          </h3>
-          <div className="mt-2 space-y-3">{children}</div>
-        </section>
+                </div>
+              </div>
+            ))}
+          </div>
+        </FilterSection>
       )}
 
-      <section>
-        <h3 className="text-caption font-semibold uppercase tracking-wide text-ink-muted">
-          Sort
-        </h3>
+      {children && <FilterSection title="More filters">{children}</FilterSection>}
+
+      <FilterSection title="Sort">
         <select
           value={value.sort ?? 'relevance'}
           onChange={(e) => onChange({ ...value, sort: e.target.value as AnyFilters['sort'] })}
-          className="mt-2 min-h-11 w-full rounded-lg border border-hairline bg-white px-3 py-2 text-body text-ink"
+          className="min-h-11 w-full rounded-xl border border-hairline bg-white px-3 py-2 text-body text-ink outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
         >
           <option value="relevance">Relevance</option>
           {/* Sorting by price across lanes would rank a nightly rate against a
@@ -308,7 +322,7 @@ export function FilterPanel({ value, onChange, scope, children, className }: Pro
           <option value="newest">Newest first</option>
           <option value="highest_rated">Highest rated</option>
         </select>
-      </section>
+      </FilterSection>
     </aside>
   );
 }

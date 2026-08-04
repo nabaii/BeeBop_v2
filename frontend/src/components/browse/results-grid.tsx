@@ -1,11 +1,19 @@
 'use client';
 
 /**
- * Paginated results grid shared across all four category browse pages.
+ * Paginated results grid for the explore surface.
+ *
+ * Cards enter with a short staggered fade-up — capped, and `motion-safe` only,
+ * so reduced-motion users get the static end state and a full page doesn't
+ * turn into a slow wave.
  */
 
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+import { BeebopMark } from '@/components/brand/beebop-logo';
 import { ListingCard } from '@/components/listing/listing-card';
 import { ListingCardSkeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/cn';
 import type { PublicListingSummary, SearchResponse } from '@/lib/search';
 
 interface Props {
@@ -13,9 +21,24 @@ interface Props {
   loading: boolean;
   onPageChange: (page: number) => void;
   emptyHint: string;
+  /** The empty state's escape hatch — only offered when filters are applied. */
+  onClearFilters?: () => void;
+  hasFilters?: boolean;
 }
 
-export function ResultsGrid({ data, loading, onPageChange, emptyHint }: Props) {
+/** Past this many cards the stagger stops growing, so the last card on a full
+ *  page doesn't wait most of a second to appear. */
+const MAX_STAGGER = 8;
+const STAGGER_STEP_MS = 40;
+
+export function ResultsGrid({
+  data,
+  loading,
+  onPageChange,
+  emptyHint,
+  onClearFilters,
+  hasFilters = false,
+}: Props) {
   if (loading && !data) {
     return (
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
@@ -33,51 +56,105 @@ export function ResultsGrid({ data, loading, onPageChange, emptyHint }: Props) {
 
   if (data.results.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center sm:p-12">
-        <p className="text-sm text-slate-600">No listings match those filters yet.</p>
-        <p className="mt-1 text-xs text-slate-500">{emptyHint}</p>
+      <div className="rounded-2xl border border-hairline bg-white px-6 py-10 text-center motion-safe:animate-fade-up">
+        <BeebopMark size={32} className="mx-auto text-ink-soft" decorative />
+        <p className="mt-3 font-display text-title font-semibold text-ink">Nothing matches yet</p>
+        <p className="mx-auto mt-1.5 max-w-xs text-body text-ink-muted">{emptyHint}</p>
+        {hasFilters && onClearFilters && (
+          <button
+            type="button"
+            onClick={onClearFilters}
+            className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-5 text-body font-semibold text-ink transition hover:bg-brand-600 active:scale-95 motion-safe:transition-transform"
+          >
+            Clear all filters
+          </button>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">
-          {data.total.toLocaleString()} result{data.total === 1 ? '' : 's'}
+    <div className="space-y-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-caption text-ink-muted">
+          <span className="font-semibold tabular-nums text-ink">
+            {data.total.toLocaleString()}
+          </span>{' '}
+          {data.total === 1 ? 'home' : 'homes'}
         </p>
+        {totalPages > 1 && (
+          <p className="text-caption tabular-nums text-ink-soft">
+            Page {data.page} of {totalPages}
+          </p>
+        )}
       </div>
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {data.results.map((r) => (
-          <li key={r.id}>
+
+      <ul
+        className={cn(
+          'grid grid-cols-1 gap-4 transition-opacity sm:grid-cols-2 lg:grid-cols-3',
+          // Dim the outgoing set while the next loads rather than blanking the
+          // screen — the layout holds and the change reads as a refresh.
+          loading && 'opacity-60',
+        )}
+      >
+        {data.results.map((r, i) => (
+          <li
+            key={r.id}
+            className="motion-safe:animate-fade-up"
+            style={{ animationDelay: `${Math.min(i, MAX_STAGGER) * STAGGER_STEP_MS}ms` }}
+          >
             <ListingCard data={toCardData(r)} showSave />
           </li>
         ))}
       </ul>
+
       {totalPages > 1 && (
-        <nav className="flex flex-wrap items-center justify-center gap-2">
-          <button
-            type="button"
+        <nav
+          className="flex items-center justify-between gap-2 pt-1"
+          aria-label="Results pagination"
+        >
+          <PageButton
+            direction="previous"
             disabled={data.page <= 1 || loading}
             onClick={() => onPageChange(data.page - 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-40"
-          >
-            Previous
-          </button>
-          <span className="text-xs text-slate-500">
-            Page {data.page} of {totalPages}
+          />
+          <span className="text-caption tabular-nums text-ink-muted">
+            {data.page} / {totalPages}
           </span>
-          <button
-            type="button"
+          <PageButton
+            direction="next"
             disabled={data.page >= totalPages || loading}
             onClick={() => onPageChange(data.page + 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-40"
-          >
-            Next
-          </button>
+          />
         </nav>
       )}
     </div>
+  );
+}
+
+function PageButton({
+  direction,
+  disabled,
+  onClick,
+}: {
+  direction: 'previous' | 'next';
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  const previous = direction === 'previous';
+  const Icon = previous ? ChevronLeft : ChevronRight;
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={`${previous ? 'Previous' : 'Next'} page`}
+      className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-hairline bg-white px-4 text-body font-medium text-ink transition-colors hover:bg-nectar disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white"
+    >
+      {previous && <Icon className="h-4 w-4" aria-hidden />}
+      {previous ? 'Previous' : 'Next'}
+      {!previous && <Icon className="h-4 w-4" aria-hidden />}
+    </button>
   );
 }
 
@@ -99,6 +176,9 @@ function toCardData(r: PublicListingSummary) {
           unit_type_id: null,
         }
       : null,
+    // Enables the card's hover crossfade to the second photo; the old mapping
+    // dropped this, so browse cards silently lost the effect.
+    secondary_url: r.secondary_url,
     rating: r.rating,
     review_count: r.review_count,
     bedroom_count: r.bedroom_count,

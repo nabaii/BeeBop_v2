@@ -13,7 +13,20 @@
  * carrying their own filter UI — one code path, so the lanes can't drift.
  */
 
-import { LayoutGrid, Map, Search, SlidersHorizontal, X } from 'lucide-react';
+import {
+  Building2,
+  GraduationCap,
+  House,
+  LayoutGrid,
+  Loader2,
+  Map,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  Waves,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import type { Route } from 'next';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -54,12 +67,14 @@ import {
 } from '@/lib/search';
 import { useSearch } from '@/stores/search';
 
-const SCOPE_TABS: { value: SearchScope; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'off_campus', label: 'Off-campus' },
-  { value: 'short_let', label: 'Short-let' },
-  { value: 'rent', label: 'Rent' },
-  { value: 'sales', label: 'For sale' },
+// Icons match the sidebar and the old hub cards, so a lane keeps one identity
+// wherever it appears.
+const SCOPE_TABS: { value: SearchScope; label: string; icon: LucideIcon }[] = [
+  { value: 'all', label: 'All', icon: Sparkles },
+  { value: 'off_campus', label: 'Off-campus', icon: GraduationCap },
+  { value: 'short_let', label: 'Short-let', icon: Waves },
+  { value: 'rent', label: 'Rent', icon: House },
+  { value: 'sales', label: 'For sale', icon: Building2 },
 ];
 
 const EMPTY_HINTS: Record<SearchScope, string> = {
@@ -190,42 +205,53 @@ export function ExploreBrowse() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] bg-slate-100">
+    <div className="flex min-h-[100dvh] bg-paper">
       <MainSidebar />
       <div className="mx-auto flex h-[100dvh] w-full max-w-[480px] flex-col bg-paper shadow-xl">
-        <main ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-4 pb-6 sm:p-6">
-          <header className="mb-4 space-y-3">
-            <div>
-              <p className="text-caption font-semibold uppercase tracking-[0.22em] text-brand-700">
-                Explore
-              </p>
-              <h1 className="font-display text-section font-semibold text-ink">
-                Find your next place
-              </h1>
-            </div>
+        <main ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto pb-6">
+          {/* The decorative title scrolls away; search, lanes, and the filter
+              row pin. Sticky beats a scroll-linked collapse here — no scroll
+              listener, no layout thrash inside a nested scroll container. */}
+          <div className="px-4 pt-4 sm:px-6">
+            <p className="text-caption font-semibold uppercase tracking-[0.22em] text-brand-700">
+              Explore
+            </p>
+            <h1 className="font-display text-section font-semibold text-ink">
+              Find your next place
+            </h1>
+          </div>
 
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft"
-                aria-hidden
-              />
+          <header className="sticky top-0 z-30 space-y-2.5 border-b border-hairline bg-paper/95 px-4 pb-3 pt-3 backdrop-blur sm:px-6">
+            <div className="flex h-12 items-center gap-2 rounded-full border border-hairline bg-white pl-3.5 pr-2 transition-shadow focus-within:border-brand focus-within:shadow-[0_4px_24px_rgba(240,152,15,0.18)] focus-within:ring-2 focus-within:ring-brand">
+              <Search className="h-4 w-4 shrink-0 text-ink-soft" aria-hidden />
               <input
                 type="search"
                 value={queryText}
                 onChange={(e) => setQueryText(e.target.value)}
                 placeholder="Search by area, title, or feature"
                 aria-label="Search listings"
-                className="min-h-11 w-full rounded-full border border-hairline bg-white pl-9 pr-3 text-body text-ink outline-none transition-colors placeholder:text-ink-soft focus:border-brand focus:ring-2 focus:ring-brand/20"
+                className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-ink-soft [&::-webkit-search-cancel-button]:hidden"
               />
+              {queryText && (
+                <button
+                  type="button"
+                  onClick={() => setQueryText('')}
+                  aria-label="Clear search"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-muted transition hover:bg-nectar hover:text-ink"
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                </button>
+              )}
             </div>
 
             <div
-              className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+              className="scrollbar-hide -mx-4 flex gap-1.5 overflow-x-auto px-4 sm:-mx-6 sm:px-6"
               role="tablist"
               aria-label="Listing category"
             >
               {SCOPE_TABS.map((tab) => {
                 const active = tab.value === scope;
+                const Icon = tab.icon;
                 return (
                   <button
                     key={tab.value}
@@ -234,12 +260,14 @@ export function ExploreBrowse() {
                     aria-selected={active}
                     onClick={() => handleScopeChange(tab.value)}
                     className={cn(
-                      'shrink-0 rounded-full border px-3 py-1.5 text-caption font-semibold transition-colors',
+                      'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-caption transition-colors',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1',
                       active
-                        ? 'border-brand bg-brand text-ink'
-                        : 'border-hairline bg-white text-ink-muted hover:bg-nectar',
+                        ? 'border-brand bg-brand font-semibold text-ink'
+                        : 'border-hairline bg-white text-ink-muted hover:border-brand/40 hover:bg-nectar hover:text-ink',
                     )}
                   >
+                    <Icon className="h-3.5 w-3.5" aria-hidden />
                     {tab.label}
                   </button>
                 );
@@ -250,7 +278,12 @@ export function ExploreBrowse() {
               <button
                 type="button"
                 onClick={() => setFilterOpen(true)}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-hairline bg-white px-3 text-body font-medium text-ink hover:bg-nectar"
+                className={cn(
+                  'inline-flex min-h-9 items-center justify-center gap-2 rounded-full border px-3 text-caption font-semibold transition-colors',
+                  filterCount > 0
+                    ? 'border-brand bg-nectar text-ink'
+                    : 'border-hairline bg-white text-ink-muted hover:bg-nectar hover:text-ink',
+                )}
                 aria-label={
                   filterCount > 0 ? `Open filters, ${filterCount} applied` : 'Open filters'
                 }
@@ -258,71 +291,71 @@ export function ExploreBrowse() {
                 <SlidersHorizontal className="h-4 w-4" aria-hidden />
                 Filters
                 {filterCount > 0 && (
-                  <span className="rounded-full bg-brand px-1.5 text-caption font-semibold text-ink">
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 tabular-nums text-caption font-semibold text-ink">
                     {filterCount}
                   </span>
                 )}
               </button>
 
-              <div className="inline-grid grid-cols-2 overflow-hidden rounded-xl border border-hairline bg-white p-1 text-body">
-                <button
-                  type="button"
-                  onClick={() => setView('grid')}
-                  aria-pressed={view === 'grid'}
-                  className={cn(
-                    'inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5',
-                    view === 'grid' ? 'bg-brand text-ink' : 'text-ink-muted hover:bg-nectar',
-                  )}
-                >
-                  <LayoutGrid className="h-4 w-4" aria-hidden />
-                  Grid
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView('map')}
-                  aria-pressed={view === 'map'}
-                  className={cn(
-                    'inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5',
-                    view === 'map' ? 'bg-brand text-ink' : 'text-ink-muted hover:bg-nectar',
-                  )}
-                >
-                  <Map className="h-4 w-4" aria-hidden />
-                  Map
-                </button>
+              <div className="inline-flex rounded-full border border-hairline bg-white p-0.5">
+                {(
+                  [
+                    ['grid', LayoutGrid, 'Grid'],
+                    ['map', Map, 'Map'],
+                  ] as const
+                ).map(([mode, Icon, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setView(mode)}
+                    aria-pressed={view === mode}
+                    className={cn(
+                      'inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full px-3 text-caption font-semibold transition-colors',
+                      view === mode ? 'bg-brand text-ink' : 'text-ink-muted hover:text-ink',
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" aria-hidden />
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
           </header>
 
-          <ActiveFilters
-            chips={chips}
-            onRemove={handleRemoveChip}
-            onClearAll={handleClearAll}
-          />
-
-          {error && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-body text-red-700">
-              {error}
-            </div>
-          )}
-
-          {/* Featured only earns its space before the seeker has told us
-              anything — once a filter is on, results own the screen. */}
-          {isPristine && (
-            <section className="mb-6">
-              <FeaturedCarousel showBrowseLink={false} />
-            </section>
-          )}
-
-          {view === 'grid' ? (
-            <ResultsGrid
-              data={data}
-              loading={loading}
-              onPageChange={handlePageChange}
-              emptyHint={EMPTY_HINTS[scope]}
+          <div className="px-4 pt-4 sm:px-6">
+            <ActiveFilters
+              chips={chips}
+              onRemove={handleRemoveChip}
+              onClearAll={handleClearAll}
             />
-          ) : (
-            <MapView data={data} onSelect={(l) => router.push(`/listings/${l.id}` as Route)} />
-          )}
+
+            {error && (
+              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-body text-red-700">
+                {error}
+              </div>
+            )}
+
+            {/* Featured only earns its space before the seeker has told us
+                anything — once a filter is on, results own the screen. */}
+            {isPristine && (
+              <section className="mb-6">
+                <FeaturedCarousel showBrowseLink={false} />
+              </section>
+            )}
+
+            {view === 'grid' ? (
+              <ResultsGrid
+                data={data}
+                loading={loading}
+                onPageChange={handlePageChange}
+                emptyHint={EMPTY_HINTS[scope]}
+                hasFilters={chips.length > 0}
+                onClearFilters={handleClearAll}
+              />
+            ) : (
+              <MapView data={data} onSelect={(l) => router.push(`/listings/${l.id}` as Route)} />
+            )}
+          </div>
         </main>
 
         {filterOpen && (
@@ -331,22 +364,29 @@ export function ExploreBrowse() {
               type="button"
               aria-label="Close filters"
               onClick={() => setFilterOpen(false)}
-              className="absolute inset-0 bg-slate-950/45"
+              // Warm scrim: a cold slate wash over Paper reads as a different app.
+              className="absolute inset-0 bg-ink/40 backdrop-blur-[2px] motion-safe:animate-fade-up"
             />
-            <div className="absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-white p-4 shadow-[0_-18px_42px_rgba(15,23,42,0.2)] safe-pb">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-title font-semibold text-ink">Filters</h2>
-                  <p className="text-caption text-ink-muted">
+            <div className="absolute inset-x-0 bottom-0 flex max-h-[88dvh] flex-col rounded-t-3xl bg-white shadow-[0_-18px_42px_rgba(35,26,15,0.22)] motion-safe:animate-fade-up">
+              {/* Grab handle — the standard affordance that says "this sheet
+                  is dismissible", even though the drag itself is a tap-out. */}
+              <div className="flex shrink-0 justify-center pb-1 pt-2.5">
+                <span className="h-1 w-9 rounded-full bg-hairline" aria-hidden />
+              </div>
+
+              <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-3 pt-1">
+                <div className="min-w-0">
+                  <h2 className="font-display text-title font-semibold text-ink">Filters</h2>
+                  <p className="truncate text-caption text-ink-muted">
                     {SCOPE_TABS.find((t) => t.value === scope)?.label}
                   </p>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex shrink-0 items-center gap-1">
                   {filterCount > 0 && (
                     <button
                       type="button"
                       onClick={handleClearAll}
-                      className="rounded-full px-3 py-1.5 text-caption font-semibold text-brand-700 hover:bg-nectar"
+                      className="rounded-full px-3 py-1.5 text-caption font-semibold text-brand-700 transition-colors hover:bg-nectar"
                     >
                       Clear all
                     </button>
@@ -354,7 +394,7 @@ export function ExploreBrowse() {
                   <button
                     type="button"
                     onClick={() => setFilterOpen(false)}
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-nectar"
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-nectar hover:text-ink"
                     aria-label="Close filters"
                   >
                     <X className="h-5 w-5" aria-hidden />
@@ -362,28 +402,44 @@ export function ExploreBrowse() {
                 </div>
               </div>
 
-              <FilterPanel
-                value={filters}
-                scope={scope}
-                onChange={handleFilterChange}
-                className="rounded-none border-0 bg-transparent p-0"
-              >
-                {/* Passed conditionally: an element that renders null is still
-                    truthy, which would leave an empty "More filters" heading. */}
-                {scope !== 'all' && (
-                  <ScopeFilterFields scope={scope} value={filters} onChange={handleFilterChange} />
-                )}
-              </FilterPanel>
+              {/* Only the controls scroll — the header and the apply button stay
+                  put, so the live result count is always in view while you
+                  tighten filters. */}
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+                <FilterPanel
+                  value={filters}
+                  scope={scope}
+                  onChange={handleFilterChange}
+                  className="rounded-none border-0 bg-transparent p-0"
+                >
+                  {/* Passed conditionally: an element that renders null is still
+                      truthy, which would leave an empty "More filters" heading. */}
+                  {scope !== 'all' && (
+                    <ScopeFilterFields
+                      scope={scope}
+                      value={filters}
+                      onChange={handleFilterChange}
+                    />
+                  )}
+                </FilterPanel>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => setFilterOpen(false)}
-                className="mt-5 flex min-h-11 w-full items-center justify-center rounded-xl bg-brand px-4 py-2 text-body font-semibold text-ink"
-              >
-                {loading
-                  ? 'Searching...'
-                  : `View ${data?.total.toLocaleString() ?? 0} result${data?.total === 1 ? '' : 's'}`}
-              </button>
+              <div className="shrink-0 border-t border-hairline bg-white px-4 pb-2 pt-3 safe-pb">
+                <button
+                  type="button"
+                  onClick={() => setFilterOpen(false)}
+                  className="flex min-h-11 w-full items-center justify-center rounded-full bg-brand px-4 text-body font-semibold text-ink transition hover:bg-brand-600 active:scale-[0.99] motion-safe:transition-transform"
+                >
+                  {loading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      Searching…
+                    </span>
+                  ) : (
+                    `Show ${(data?.total ?? 0).toLocaleString()} ${data?.total === 1 ? 'home' : 'homes'}`
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}

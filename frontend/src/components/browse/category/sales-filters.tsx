@@ -1,28 +1,29 @@
 'use client';
 
+import { NumberPillGroup, PillGroup } from '@/components/browse/filter-controls';
 import type { SalesFilters } from '@/lib/search';
 
-const PROPERTY_TYPES: [string, string][] = [
+const PROPERTY_TYPES = [
   ['flat', 'Flat'],
   ['detached', 'Detached'],
   ['semi_detached', 'Semi-detached'],
   ['terraced', 'Terraced'],
   ['land_only', 'Land only'],
   ['commercial', 'Commercial'],
-];
+] as const;
 
-const DEV_STATUS: [string, string][] = [
+const DEV_STATUS = [
   ['ready', 'Ready'],
   ['off_plan', 'Off-plan'],
   ['under_construction', 'Under construction'],
-];
+] as const;
 
-const TITLES: [string, string][] = [
+const TITLES = [
   ['c_of_o', 'C of O'],
   ['governors_consent', "Gov's Consent"],
   ['deed_of_assignment', 'Deed of Assignment'],
   ['leasehold', 'Leasehold'],
-];
+] as const;
 
 export function SalesFilterFields({
   value,
@@ -31,92 +32,32 @@ export function SalesFilterFields({
   value: SalesFilters;
   onChange: (next: SalesFilters) => void;
 }) {
-  function toggleNum(list: number[] | undefined, n: number): number[] {
-    const current = list ?? [];
-    return current.includes(n) ? current.filter((i) => i !== n) : [...current, n];
-  }
   return (
     <>
-      <fieldset>
-        <legend className="mb-1.5 text-xs font-medium text-slate-700">Bedrooms</legend>
-        <div className="flex flex-wrap gap-1.5">
-          {[1, 2, 3, 4, 5].map((n) => {
-            const active = (value.bedroom_counts ?? []).includes(n);
-            return (
-              <button
-                key={n}
-                type="button"
-                onClick={() =>
-                  onChange({ ...value, bedroom_counts: toggleNum(value.bedroom_counts, n) })
-                }
-                className={
-                  'rounded-full px-3 py-1 text-xs ' +
-                  (active ? 'bg-brand text-slate-900' : 'bg-slate-100 text-slate-700 hover:bg-slate-200')
-                }
-              >
-                {n === 5 ? '5+' : n}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
-      <PillSet
+      <NumberPillGroup
+        label="Bedrooms"
+        options={[1, 2, 3, 4, 5]}
+        value={value.bedroom_counts ?? []}
+        onChange={(next) => onChange({ ...value, bedroom_counts: next })}
+      />
+      <PillGroup
         label="Property type"
         options={PROPERTY_TYPES}
         value={value.property_types ?? []}
         onChange={(next) => onChange({ ...value, property_types: next })}
       />
-      <PillSet
+      <PillGroup
         label="Development status"
         options={DEV_STATUS}
         value={value.development_status ?? []}
         onChange={(next) => onChange({ ...value, development_status: next })}
       />
-      <PillSet
+      <PillGroup
         label="Title type"
         options={TITLES}
         value={value.title_types ?? []}
         onChange={(next) => onChange({ ...value, title_types: next })}
       />
     </>
-  );
-}
-
-function PillSet({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: [string, string][];
-  value: string[];
-  onChange: (next: string[]) => void;
-}) {
-  function toggle(v: string) {
-    onChange(value.includes(v) ? value.filter((i) => i !== v) : [...value, v]);
-  }
-  return (
-    <fieldset>
-      <legend className="mb-1.5 text-xs font-medium text-slate-700">{label}</legend>
-      <div className="flex flex-wrap gap-1.5">
-        {options.map(([v, text]) => {
-          const active = value.includes(v);
-          return (
-            <button
-              key={v}
-              type="button"
-              onClick={() => toggle(v)}
-              className={
-                'rounded-full px-3 py-1 text-xs ' +
-                (active ? 'bg-brand text-slate-900' : 'bg-slate-100 text-slate-700 hover:bg-slate-200')
-              }
-            >
-              {text}
-            </button>
-          );
-        })}
-      </div>
-    </fieldset>
   );
 }
