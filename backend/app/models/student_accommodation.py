@@ -55,13 +55,34 @@ class UnitType(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     # a seeker comparing a self-contain against a 2-in-a-room sees the actual
     # room, not just the building. Rows live in `listing_photos` with
     # `unit_type_id` set — the same upload pipeline as property photos.
+    #
+    # Images only, matching `Listing.photos`: existing readers of this
+    # collection put every row straight into an <img>.
     photos: Mapped[list["ListingPhoto"]] = relationship(
         "ListingPhoto",
-        primaryjoin="UnitType.id == ListingPhoto.unit_type_id",
+        primaryjoin=(
+            "and_(UnitType.id == ListingPhoto.unit_type_id,"
+            " ListingPhoto.media_kind == 'image')"
+        ),
         foreign_keys="ListingPhoto.unit_type_id",
         cascade="all, delete-orphan",
         order_by="ListingPhoto.display_order",
-        overlaps="listing,photos,all_photos",
+        overlaps="listing,photos,all_photos,videos",
+    )
+    # This unit type's video tour — capped at one, so a seeker gets a single
+    # walk through the actual room. Read-only for the same reason as
+    # `Listing.videos`; deleting the unit type still takes the video with it
+    # via the FK's ON DELETE CASCADE.
+    videos: Mapped[list["ListingPhoto"]] = relationship(
+        "ListingPhoto",
+        primaryjoin=(
+            "and_(UnitType.id == ListingPhoto.unit_type_id,"
+            " ListingPhoto.media_kind == 'video')"
+        ),
+        foreign_keys="ListingPhoto.unit_type_id",
+        viewonly=True,
+        order_by="ListingPhoto.display_order",
+        overlaps="listing,photos,all_photos,videos",
     )
 
 

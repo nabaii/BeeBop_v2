@@ -104,8 +104,15 @@ class ListingDraftPayload(BaseModel):
 
 
 class ListingPhotoView(BaseModel):
+    """One gallery asset. `media_kind` tells the client which element to render."""
+
     id: str
     url: str
+    media_kind: str = "image"
+    # Video only — still frame to show before playback, and the clip length
+    # used for the "Watch tour · 0:48" affordance.
+    poster_url: str | None = None
+    duration_seconds: int | None = None
     room_label: str | None = None
     is_cover: bool
     display_order: int
@@ -141,6 +148,8 @@ class UnitTypeView(BaseModel):
     rooms: list[RoomView] = Field(default_factory=list)
     # This unit type's own gallery, ordered by display_order.
     photos: list[ListingPhotoView] = Field(default_factory=list)
+    # At most one room tour — see MAX_VIDEOS_PER_UNIT_GALLERY.
+    videos: list[ListingPhotoView] = Field(default_factory=list)
 
 
 class ListingView(BaseModel):
@@ -159,6 +168,8 @@ class ListingView(BaseModel):
     price: float | None = None
     type_data: dict = Field(default_factory=dict)
     photos: list[ListingPhotoView] = Field(default_factory=list)
+    # Property-gallery video tours, managed as their own group in the editor.
+    videos: list[ListingPhotoView] = Field(default_factory=list)
     documents: list[ListingDocumentView] = Field(default_factory=list)
     unit_types: list[UnitTypeView] = Field(default_factory=list)
 
@@ -179,13 +190,28 @@ class PhotoUploadSignatureResponse(BaseModel):
 
 
 class PhotoRegisterPayload(BaseModel):
-    """Called by the browser after a successful Cloudinary upload."""
+    """Called by the browser after a successful Cloudinary upload.
+
+    The video fields are echoed straight from Cloudinary's upload response.
+    They are not trusted: `app.listings.service.register_photo` re-checks them
+    against the duration, size, format and per-gallery count caps before the
+    row is written.
+    """
 
     url: str = Field(..., max_length=500)
+    media_kind: Literal["image", "video"] = "image"
     room_label: str | None = Field(default=None, max_length=100)
     # Off-campus: file the photo under a unit type's gallery instead of the
     # property gallery. Must belong to this listing.
     unit_type_id: uuid.UUID | None = None
+
+    # Cloudinary `public_id` — kept so poster/quality transforms can be derived.
+    provider_public_id: str | None = Field(default=None, max_length=300)
+    poster_url: str | None = Field(default=None, max_length=500)
+    duration_seconds: int | None = Field(default=None, ge=0)
+    size_bytes: int | None = Field(default=None, ge=0)
+    # Cloudinary `format`, e.g. "mp4" / "mov".
+    video_format: str | None = Field(default=None, max_length=16)
 
 
 class PhotoUpdatePayload(BaseModel):
@@ -196,12 +222,15 @@ class PhotoUpdatePayload(BaseModel):
 class PhotoReorderPayload(BaseModel):
     """Ordered list of photo IDs — index == display_order.
 
-    Ordering is per gallery: the list must name every photo in the targeted
-    gallery (the property gallery, or one unit type's) and nothing else.
+    Ordering is per gallery *and* per media kind: the list must name every
+    asset of `media_kind` in the targeted gallery (the property gallery, or one
+    unit type's) and nothing else. Photos and videos render as separate groups,
+    so each drags independently.
     """
 
     photo_ids: list[str]
     unit_type_id: uuid.UUID | None = None
+    media_kind: Literal["image", "video"] = "image"
 
 
 # -----------------------------------------------------------------------------

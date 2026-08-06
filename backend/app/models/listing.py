@@ -83,30 +83,49 @@ class Listing(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     # Relationships
     owner: Mapped["User"] = relationship(back_populates="listings", foreign_keys=[owner_id])
-    # Property-level photos only. Photos owned by a unit type (off-campus room
-    # galleries) are deliberately excluded by the primaryjoin so every existing
-    # reader — browse covers, dashboards, inspector, AI search — keeps showing
-    # the property gallery without having to remember to filter. Unit galleries
-    # are reached through `UnitType.photos`; `all_photos` below is the unfiltered
-    # view for moderation.
+    # Property-level *images* only. Two things are deliberately excluded by the
+    # primaryjoin: photos owned by a unit type (off-campus room galleries), and
+    # videos. Both exclusions exist for the same reason — every existing reader
+    # (browse covers, dashboards, inspector, AI search) assumes each row here is
+    # a property image it can drop into an <img>, and stays correct without
+    # having to remember to filter. Unit galleries are reached through
+    # `UnitType.photos`, videos through `videos` below, and `all_photos` is the
+    # unfiltered view for moderation.
     photos: Mapped[list["ListingPhoto"]] = relationship(
         "ListingPhoto",
         primaryjoin=(
             "and_(Listing.id == ListingPhoto.listing_id,"
-            " ListingPhoto.unit_type_id.is_(None))"
+            " ListingPhoto.unit_type_id.is_(None),"
+            " ListingPhoto.media_kind == 'image')"
         ),
         cascade="all, delete-orphan",
         order_by="ListingPhoto.display_order",
-        overlaps="listing,all_photos",
+        overlaps="listing,all_photos,videos",
     )
-    # Every photo on the listing regardless of gallery. Read-only — writes go
-    # through `photos` or `UnitType.photos` so ownership stays unambiguous.
+    # The property gallery's video tour. Read-only: video rows are created and
+    # deleted explicitly in app.listings.service, so this collection never needs
+    # write cascades — and keeping it viewonly means it cannot interact with the
+    # delete-orphan cascade on `photos`.
+    videos: Mapped[list["ListingPhoto"]] = relationship(
+        "ListingPhoto",
+        primaryjoin=(
+            "and_(Listing.id == ListingPhoto.listing_id,"
+            " ListingPhoto.unit_type_id.is_(None),"
+            " ListingPhoto.media_kind == 'video')"
+        ),
+        viewonly=True,
+        order_by="ListingPhoto.display_order",
+        overlaps="listing,photos,all_photos",
+    )
+    # Every media row on the listing regardless of gallery or kind. Read-only —
+    # writes go through `photos` or `UnitType.photos` so ownership stays
+    # unambiguous. This is what moderation reads.
     all_photos: Mapped[list["ListingPhoto"]] = relationship(
         "ListingPhoto",
         primaryjoin="Listing.id == ListingPhoto.listing_id",
         viewonly=True,
         order_by="ListingPhoto.display_order",
-        overlaps="listing,photos",
+        overlaps="listing,photos,videos",
     )
     documents: Mapped[list["ListingDocument"]] = relationship(
         back_populates="listing",
@@ -126,6 +145,18 @@ class Listing(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
 
 class ListingPhoto(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """One piece of gallery media — an image or a video tour clip.
+
+    Videos share this table because they share everything that makes a gallery
+    a gallery: an owning listing, an optional owning unit type, a room label
+    and a per-gallery display order. `media_kind` is what separates them, and
+    the relationships above filter on it so no existing image reader can be
+    handed a video by accident.
+
+    A video is never a cover (enforced here in the service layer and by a CHECK
+    constraint): covers are also browse-card thumbnails and share previews.
+    """
+
     __tablename__ = "listing_photos"
 
     listing_id: Mapped[uuid.UUID] = mapped_column(
@@ -144,9 +175,28 @@ class ListingPhoto(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
         nullable=True,
     )
+    # "image" | "video". Kept as a plain string rather than a PG enum so adding
+    # a kind later is a no-op migration (same call the `price_period` column
+    # makes).
+    media_kind: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="image", server_default="image"
+    )
     url: Mapped[str] = mapped_column(String(500), nullable=False)
+    # Cloudinary public id, stored so delivery URLs can be derived rather than
+    # parsed back out of `url` — poster frames and quality/format transforms
+    # both need it. Null on rows created before video support.
+    provider_public_id: Mapped[str | None] = mapped_column(String(300))
+    # Still frame shown before playback. Video only; images are their own poster.
+    poster_url: Mapped[str | None] = mapped_column(String(500))
+    # Video only, both reported by Cloudinary at upload and re-validated on
+    # register so the duration/size caps cannot be bypassed by a crafted call.
+    duration_seconds: Mapped[int | None] = mapped_column(Integer)
+    size_bytes: Mapped[int | None] = mapped_column(Integer)
     room_label: Mapped[str | None] = mapped_column(String(100))    # Living Room, Bedroom, etc.
+    # Cover of its gallery. Images only — see the class docstring.
     is_cover: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Position within its gallery *and* its media kind: images and videos are
+    # ordered independently, because they render as two separate groups.
     display_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     # Inspector walkthrough photos are stored separately with this flag set,
     # rendered as "Beebop Verified Walkthrough" on the listing page.
@@ -155,7 +205,7 @@ class ListingPhoto(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     listing: Mapped[Listing] = relationship(
         "Listing",
         foreign_keys=[listing_id],
-        overlaps="photos,all_photos",
+        overlaps="photos,all_photos,videos",
     )
 
 

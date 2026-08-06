@@ -13,6 +13,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import set_committed_value
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.listings.schemas import RoomPayload, RoomUpdatePayload, UnitTypePayload
@@ -50,7 +51,11 @@ async def list_unit_types(
     stmt = (
         select(UnitType)
         .where(UnitType.listing_id == listing_id)
-        .options(selectinload(UnitType.rooms), selectinload(UnitType.photos))
+        .options(
+            selectinload(UnitType.rooms),
+            selectinload(UnitType.photos),
+            selectinload(UnitType.videos),
+        )
         .order_by(UnitType.created_at)
     )
     return list((await db.execute(stmt)).scalars().all())
@@ -94,6 +99,10 @@ async def add_unit_type(
     )
     db.add(ut)
     await db.flush()
+    # `videos` is viewonly, so it can't be seeded through the constructor like
+    # `photos` above. Mark it loaded-and-empty instead — same purpose: keep the
+    # serialiser from firing a lazy SELECT on a unit that provably has none.
+    set_committed_value(ut, "videos", [])
     return ut
 
 

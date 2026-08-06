@@ -129,6 +129,9 @@ def _photo_view(photo) -> dict:  # type: ignore[no-untyped-def]
     return {
         "id": str(photo.id),
         "url": photo.url,
+        "media_kind": photo.media_kind,
+        "poster_url": photo.poster_url,
+        "duration_seconds": photo.duration_seconds,
         "room_label": photo.room_label,
         "is_cover": photo.is_cover,
         "display_order": photo.display_order,
@@ -172,6 +175,12 @@ async def register_photo(
         url=payload.url,
         room_label=payload.room_label,
         unit_type_id=payload.unit_type_id,
+        media_kind=payload.media_kind,
+        provider_public_id=payload.provider_public_id,
+        poster_url=payload.poster_url,
+        duration_seconds=payload.duration_seconds,
+        size_bytes=payload.size_bytes,
+        video_format=payload.video_format,
         db=db,
     )
     await db.commit()
@@ -221,6 +230,7 @@ async def reorder_photos(
         listing_id=listing_id,
         ordered_ids=[uuid.UUID(pid) for pid in payload.photo_ids],
         unit_type_id=payload.unit_type_id,
+        media_kind=payload.media_kind,
         db=db,
     )
     await db.commit()
@@ -327,6 +337,12 @@ def _unit_view(ut) -> UnitTypeView:  # type: ignore[no-untyped-def]
             _photo_view(p)
             for p in sorted(
                 getattr(ut, "photos", []) or [], key=lambda p: p.display_order
+            )
+        ],
+        videos=[
+            _photo_view(p)
+            for p in sorted(
+                getattr(ut, "videos", []) or [], key=lambda p: p.display_order
             )
         ],
     )
