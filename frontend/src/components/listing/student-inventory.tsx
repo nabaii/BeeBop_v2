@@ -9,10 +9,12 @@ import { useEffect, useState } from 'react';
 import { LayoutGrid, Trash2 } from 'lucide-react';
 
 import { PhotoManager } from '@/components/listing/photo-manager';
+import { VideoManager } from '@/components/listing/video-manager';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/lib/api';
 import {
+  MAX_VIDEOS_PER_UNIT_GALLERY,
   addRoom,
   addUnitType,
   deleteUnitType,
@@ -262,6 +264,7 @@ function UnitTypeCard({
   // This unit type's own gallery. Held locally: photo edits don't affect bed
   // counts or pricing, so there's nothing for a full inventory refresh to do.
   const [photos, setPhotos] = useState<PhotoView[]>(unit.photos ?? []);
+  const [videos, setVideos] = useState<PhotoView[]>(unit.videos ?? []);
 
   async function addOne() {
     if (!roomName.trim()) return;
@@ -329,6 +332,22 @@ function UnitTypeCard({
           labelPlaceholder="Label (e.g. Bedroom)"
           emptyTitle={`Add photos of ${unit.name}`}
           emptyHint="Without these, seekers only see the building's photos for this room."
+        />
+      </div>
+
+      <div className="mt-4 bg-white rounded-xl border border-slate-200 p-3.5">
+        <VideoManager
+          listingId={listingId}
+          unitTypeId={unit.id}
+          videos={videos}
+          onChange={setVideos}
+          maxVideos={MAX_VIDEOS_PER_UNIT_GALLERY}
+          variant="inline"
+          title="Room Tour"
+          description="Optional. One short walkthrough of this room type."
+          labelPlaceholder="Label (e.g. Room walkthrough)"
+          emptyTitle={`Add a tour of ${unit.name}`}
+          emptyHint="A walk through the actual room seekers would be booking."
         />
       </div>
 

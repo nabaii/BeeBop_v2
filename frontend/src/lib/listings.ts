@@ -18,15 +18,37 @@ export type ListingStatus =
   | 'suspended'
   | 'delisted';
 
+export type MediaKind = 'image' | 'video';
+
 export interface PhotoView {
   id: string;
   url: string;
+  /**
+   * Which element renders this asset. Optional, and absent means image — the
+   * same default the column carries server-side. Several call sites build a
+   * PhotoView from a search result or a fixture where video is not a
+   * possibility, and shouldn't have to say so.
+   */
+  media_kind?: MediaKind;
+  /** Video only — still frame shown before playback. */
+  poster_url?: string | null;
+  /** Video only — clip length, used for the duration badge. */
+  duration_seconds?: number | null;
   room_label: string | null;
   is_cover: boolean;
   display_order: number;
   /** Owning unit type for an off-campus room gallery; null = property gallery. */
   unit_type_id: string | null;
 }
+
+// Mirrors the caps in app/listings/service.py. Checked here so a landlord
+// learns the file is too big before spending their data on the upload — the
+// server re-checks at register time, which is what actually enforces them.
+export const MAX_VIDEO_DURATION_SECONDS = 90;
+export const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+export const MAX_VIDEOS_PER_PROPERTY_GALLERY = 3;
+export const MAX_VIDEOS_PER_UNIT_GALLERY = 1;
+export const ACCEPTED_VIDEO_TYPES = 'video/mp4,video/quicktime';
 
 export interface DocumentView {
   id: string;
@@ -56,6 +78,8 @@ export interface UnitTypeView {
   rooms: RoomView[];
   /** This unit type's own gallery, ordered by display_order. */
   photos: PhotoView[];
+  /** This unit type's room tour — at most one. Absent on older responses. */
+  videos?: PhotoView[];
 }
 
 /** Human label for a unit-type billing period, e.g. "year" / "semester". */
@@ -86,6 +110,8 @@ export interface ListingView {
   price: number | null;
   type_data: Record<string, unknown>;
   photos: PhotoView[];
+  /** Property-gallery video tours, managed as their own group. */
+  videos?: PhotoView[];
   documents: DocumentView[];
   unit_types: UnitTypeView[];
 }
@@ -146,7 +172,19 @@ export async function getPhotoUploadSignature(listingId: string, unitTypeId?: st
 
 export async function registerPhoto(
   listingId: string,
-  args: { url: string; room_label?: string | null; unit_type_id?: string | null },
+  args: {
+    url: string;
+    room_label?: string | null;
+    unit_type_id?: string | null;
+    media_kind?: MediaKind;
+    // Echoed from the Cloudinary response for videos. The server re-validates
+    // all of it before writing the row.
+    provider_public_id?: string | null;
+    poster_url?: string | null;
+    duration_seconds?: number | null;
+    size_bytes?: number | null;
+    video_format?: string | null;
+  },
 ): Promise<PhotoView> {
   return api.post(`/listings/${listingId}/photos`, args, { auth: true });
 }
@@ -167,47 +205,155 @@ export async function reorderPhotos(
   listingId: string,
   photoIds: string[],
   unitTypeId?: string | null,
+  mediaKind: MediaKind = 'image',
 ): Promise<PhotoView[]> {
   return api.post(
     `/listings/${listingId}/photos/reorder`,
-    { photo_ids: photoIds, unit_type_id: unitTypeId ?? null },
+    { photo_ids: photoIds, unit_type_id: unitTypeId ?? null, media_kind: mediaKind },
     { auth: true },
   );
 }
 
-export async function uploadPhotoToCloudinary(
-  signature: Awaited<ReturnType<typeof getPhotoUploadSignature>>,
+type CloudinarySignature = Awaited<ReturnType<typeof getPhotoUploadSignature>>;
+
+export interface CloudinaryUploadResult {
+  secure_url: string;
+  public_id?: string;
+  /** Video only, in seconds — fractional, so round before sending. */
+  duration?: number;
+  bytes?: number;
+  format?: string;
+}
+
+/**
+ * POST one file to Cloudinary, reporting upload progress.
+ *
+ * XHR rather than fetch(): fetch cannot report request-body progress, and a
+ * 90-second phone video behind an indeterminate spinner is a landlord who
+ * force-quits at what they assume is a hang.
+ */
+function cloudinaryUpload(
+  signature: CloudinarySignature,
   file: File,
-): Promise<{ secure_url: string }> {
+  resourceType: 'image' | 'video' | 'auto',
+  onProgress?: (percent: number) => void,
+): Promise<CloudinaryUploadResult> {
   // Dev-stub short-circuit: if the signature comes from our local stub, skip
   // the Cloudinary POST (which would fail) and return an object URL so the
-  // browser can preview the image.
+  // browser can preview the file.
   if (signature.cloud_name === 'stub') {
-    return { secure_url: URL.createObjectURL(file) };
+    onProgress?.(100);
+    return Promise.resolve({ secure_url: URL.createObjectURL(file) });
   }
+
   const form = new FormData();
   form.append('file', file);
   form.append('api_key', signature.api_key);
   form.append('timestamp', String(signature.timestamp));
   form.append('signature', signature.signature);
   form.append('folder', signature.folder);
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${signature.cloud_name}/image/upload`,
-    { method: 'POST', body: form },
-  );
-  if (!res.ok) {
-    // Read the Cloudinary error body so callers can surface the real reason
-    // (e.g. "Invalid Signature", "Unknown cloud_name").
-    let detail = `HTTP ${res.status}`;
-    try {
-      const body = (await res.json()) as { error?: { message?: string } };
-      if (body?.error?.message) detail = body.error.message;
-    } catch {
-      /* body wasn't JSON — keep the status code */
-    }
-    throw new Error(`Cloudinary upload rejected: ${detail}`);
-  }
-  return res.json() as Promise<{ secure_url: string }>;
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(
+      'POST',
+      `https://api.cloudinary.com/v1_1/${signature.cloud_name}/${resourceType}/upload`,
+    );
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100));
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText) as CloudinaryUploadResult);
+        } catch {
+          reject(new Error('Cloudinary returned a response we could not read.'));
+        }
+        return;
+      }
+      // Surface the real reason (e.g. "Invalid Signature", "File size too
+      // large") rather than a bare status code.
+      let detail = `HTTP ${xhr.status}`;
+      try {
+        const body = JSON.parse(xhr.responseText) as { error?: { message?: string } };
+        if (body?.error?.message) detail = body.error.message;
+      } catch {
+        /* body wasn't JSON — keep the status code */
+      }
+      reject(new Error(`Cloudinary upload rejected: ${detail}`));
+    };
+
+    xhr.onerror = () =>
+      reject(new Error('Upload failed — check your connection and try again.'));
+    xhr.onabort = () => reject(new Error('Upload cancelled.'));
+
+    xhr.send(form);
+  });
+}
+
+export async function uploadPhotoToCloudinary(
+  signature: CloudinarySignature,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<CloudinaryUploadResult> {
+  return cloudinaryUpload(signature, file, 'image', onProgress);
+}
+
+export async function uploadVideoToCloudinary(
+  signature: CloudinarySignature,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<CloudinaryUploadResult> {
+  return cloudinaryUpload(signature, file, 'video', onProgress);
+}
+
+/**
+ * Read a local video's duration without uploading it.
+ *
+ * Lets us reject an over-length clip before spending the landlord's data on
+ * it. Resolves null when the browser can't read the metadata — the caller then
+ * uploads and lets the server be the judge, rather than blocking on a check
+ * that isn't working.
+ */
+export function readVideoDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    const done = (value: number | null) => {
+      URL.revokeObjectURL(url);
+      resolve(value);
+    };
+    video.preload = 'metadata';
+    video.onloadedmetadata = () =>
+      done(Number.isFinite(video.duration) ? video.duration : null);
+    video.onerror = () => done(null);
+    video.src = url;
+  });
+}
+
+/**
+ * Derive a poster frame URL from a Cloudinary video URL.
+ *
+ * Cloudinary serves any frame of a video as an image by swapping the
+ * extension; `so_0` pins it to the first frame. Returns null for anything that
+ * isn't a recognisable Cloudinary delivery URL (the dev stub's blob: URLs, for
+ * one) so callers fall back to a placeholder rather than a broken image.
+ */
+export function videoPosterUrl(secureUrl: string): string | null {
+  if (!secureUrl.includes('/upload/')) return null;
+  const withFrame = secureUrl.replace('/upload/', '/upload/so_0/');
+  const lastDot = withFrame.lastIndexOf('.');
+  if (lastDot <= withFrame.lastIndexOf('/')) return null;
+  return `${withFrame.slice(0, lastDot)}.jpg`;
+}
+
+/** Seconds → "0:48" / "1:32", for duration badges. */
+export function formatDuration(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
 // Upload a non-image file (e.g. a house-rules PDF) to Cloudinary. Reuses the
@@ -216,33 +362,11 @@ export async function uploadPhotoToCloudinary(
 // and returns a publicly-viewable secure_url — unlike the private-S3 title-doc
 // pipeline, this file is meant to be shown to seekers.
 export async function uploadRawToCloudinary(
-  signature: Awaited<ReturnType<typeof getPhotoUploadSignature>>,
+  signature: CloudinarySignature,
   file: File,
-): Promise<{ secure_url: string }> {
-  if (signature.cloud_name === 'stub') {
-    return { secure_url: URL.createObjectURL(file) };
-  }
-  const form = new FormData();
-  form.append('file', file);
-  form.append('api_key', signature.api_key);
-  form.append('timestamp', String(signature.timestamp));
-  form.append('signature', signature.signature);
-  form.append('folder', signature.folder);
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${signature.cloud_name}/auto/upload`,
-    { method: 'POST', body: form },
-  );
-  if (!res.ok) {
-    let detail = `HTTP ${res.status}`;
-    try {
-      const body = (await res.json()) as { error?: { message?: string } };
-      if (body?.error?.message) detail = body.error.message;
-    } catch {
-      /* body wasn't JSON — keep the status code */
-    }
-    throw new Error(`Cloudinary upload rejected: ${detail}`);
-  }
-  return res.json() as Promise<{ secure_url: string }>;
+  onProgress?: (percent: number) => void,
+): Promise<CloudinaryUploadResult> {
+  return cloudinaryUpload(signature, file, 'auto', onProgress);
 }
 
 // --- Documents (private S3) ---------------------------------------------

@@ -26,6 +26,7 @@ import {
   uploadPhotoToCloudinary,
   type PhotoView,
 } from '@/lib/listings';
+import { UploadProgressBar, type UploadProgress } from '@/components/listing/upload-progress';
 
 interface Props {
   listingId: string;
@@ -56,6 +57,7 @@ export function PhotoManager({
   emptyHint,
 }: Props) {
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
@@ -75,33 +77,47 @@ export function PhotoManager({
         return;
       }
 
+      const chosen = Array.from(files);
+      // Photos land one at a time so a failure part-way through keeps the ones
+      // already registered — `next` is committed on the way out.
       const next = [...photos];
-      for (const file of Array.from(files)) {
-        let result: { secure_url: string };
+      for (const [i, file] of chosen.entries()) {
+        setProgress({ index: i + 1, total: chosen.length, percent: 0, filename: file.name });
+
+        let result: Awaited<ReturnType<typeof uploadPhotoToCloudinary>>;
         try {
-          result = await uploadPhotoToCloudinary(sig, file);
+          result = await uploadPhotoToCloudinary(sig, file, (percent) =>
+            setProgress({ index: i + 1, total: chosen.length, percent, filename: file.name }),
+          );
         } catch (err) {
           console.error('[PhotoManager] Cloudinary upload failed', err);
           const detail = err instanceof Error ? err.message : 'unknown error';
           setError(`Photo upload to storage failed: ${detail}`);
-          return;
+          // Stop the batch, but keep whatever already registered — those rows
+          // exist on the server, so dropping them here would hide real photos
+          // until the landlord reloaded.
+          break;
         }
 
         try {
           const photo = await registerPhoto(listingId, {
             url: result.secure_url,
             unit_type_id: unitTypeId,
+            media_kind: 'image',
+            provider_public_id: result.public_id ?? null,
+            size_bytes: result.bytes ?? null,
           });
           next.push(photo);
         } catch (err) {
           console.error('[PhotoManager] photo registration failed', err);
           setError('Photo was uploaded but could not be saved. Please try again.');
-          return;
+          break;
         }
       }
       onChange(next);
     } finally {
       setUploading(false);
+      setProgress(null);
     }
   }
 
@@ -134,6 +150,7 @@ export function PhotoManager({
       listingId,
       next.map((p) => p.id),
       unitTypeId,
+      'image',
     );
     onChange(result);
   }
@@ -141,6 +158,7 @@ export function PhotoManager({
   const body = (
     <>
       {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+      {progress && <UploadProgressBar progress={progress} />}
       {photos.length > 0 ? (
         <ul
           className={
