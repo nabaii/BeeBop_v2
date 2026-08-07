@@ -87,7 +87,12 @@ class AdminListingDetail(BaseModel):
     price: float | None = None
     amenities: dict = Field(default_factory=dict)
     type_data: dict = Field(default_factory=dict)
+    # Every image on the listing, both the property gallery and any unit-type
+    # galleries — moderation sees more than the public detail does.
     photos: list[ListingPhotoView] = Field(default_factory=list)
+    # Video tours, split out so the UI renders them as video rather than
+    # pointing an <img> at an .mp4.
+    videos: list[ListingPhotoView] = Field(default_factory=list)
     documents: list[ListingDocumentView] = Field(default_factory=list)
     document_badge: AdminBadgeView | None = None
     physical_badge: AdminBadgeView | None = None

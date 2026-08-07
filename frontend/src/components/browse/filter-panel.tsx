@@ -34,10 +34,28 @@ interface Props {
   onChange: (next: AnyFilters) => void;
   /** Which lane is being searched — decides whether a price range is meaningful. */
   scope: SearchScope;
+  /**
+   * Switches lane from inside the sheet. Lets the "All" price section offer a
+   * way into a lane instead of only explaining why there isn't one.
+   */
+  onScopeChange?: (next: SearchScope) => void;
+  /**
+   * The scope's headline filter, rendered with Location rather than buried in
+   * "More filters" — proximity to campus for off-campus seekers.
+   */
+  priority?: React.ReactNode;
   /** Category-specific controls rendered below the shared filters. */
   children?: React.ReactNode;
   className?: string;
 }
+
+/** The lanes a budget means something in — the doors out of "All". */
+const PRICE_LANES: { value: SearchScope; label: string }[] = [
+  { value: 'off_campus', label: 'Off-campus' },
+  { value: 'short_let', label: 'Short-let' },
+  { value: 'rent', label: 'Rent' },
+  { value: 'sales', label: 'For sale' },
+];
 
 const VERIFICATION_TIERS: { value: VerificationTier; label: string; dot: string }[] = [
   { value: 'fully_verified', label: 'AGIS Verified', dot: 'bg-verification-fully' },
@@ -87,7 +105,15 @@ function compactNaira(value: number): string {
   return formatNaira(value);
 }
 
-export function FilterPanel({ value, onChange, scope, children, className }: Props) {
+export function FilterPanel({
+  value,
+  onChange,
+  scope,
+  onScopeChange,
+  priority,
+  children,
+  className,
+}: Props) {
   const [locationInput, setLocationInput] = useState('');
   const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
   const [vocab, setVocab] = useState<Record<string, string[]>>({});
@@ -269,24 +295,14 @@ export function FilterPanel({ value, onChange, scope, children, className }: Pro
         )}
       </FilterSection>
 
-      <FilterSection title="Verification">
-        <ul className="space-y-1.5">
-          {VERIFICATION_TIERS.map((t) => (
-            <li key={t.value}>
-              <CheckRow
-                checked={(value.verification ?? [...ALL_TIERS]).includes(t.value)}
-                onChange={() => toggleTier(t.value)}
-                label={t.label}
-                adornment={<span className={cn('h-2 w-2 rounded-full', t.dot)} aria-hidden />}
-              />
-            </li>
-          ))}
-        </ul>
-      </FilterSection>
+      {/* Proximity to campus sits with Location, not under "More filters":
+          for a student it is a location filter, and the sharpest one they have. */}
+      {priority && <FilterSection title="Minutes to campus">{priority}</FilterSection>}
 
       {/* Price only means one thing inside a single lane: rent quotes annually,
-          short-let nightly, sales outright. Across "All" the control is hidden
-          rather than shown carrying three meanings. */}
+          short-let nightly, sales outright. Across "All" the control can't be
+          shown carrying three meanings — but the section stays, offering a way
+          into a lane rather than a dead end that only explains itself. */}
       {scope !== 'all' ? (
         <FilterSection title="Price">
           {slider && (
@@ -348,11 +364,44 @@ export function FilterPanel({ value, onChange, scope, children, className }: Pro
           </div>
         </FilterSection>
       ) : (
-        <p className="rounded-xl border border-hairline bg-paper px-3 py-2.5 text-caption text-ink-muted">
-          Pick a category to filter by price — nightly, annual, and sale prices
-          aren’t comparable.
-        </p>
+        <FilterSection
+          title="Price"
+          hint="Nightly, per-session, annual, and sale prices aren’t comparable, so a budget lives inside a category."
+        >
+          {onScopeChange ? (
+            <div className="flex flex-wrap gap-1.5">
+              {PRICE_LANES.map((lane) => (
+                <ToggleChip
+                  key={lane.value}
+                  active={false}
+                  onClick={() => onScopeChange(lane.value)}
+                >
+                  {lane.label}
+                </ToggleChip>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-hairline bg-paper px-3 py-2.5 text-caption text-ink-muted">
+              Pick a category to filter by price.
+            </p>
+          )}
+        </FilterSection>
       )}
+
+      <FilterSection title="Verification">
+        <ul className="space-y-1.5">
+          {VERIFICATION_TIERS.map((t) => (
+            <li key={t.value}>
+              <CheckRow
+                checked={(value.verification ?? [...ALL_TIERS]).includes(t.value)}
+                onChange={() => toggleTier(t.value)}
+                label={t.label}
+                adornment={<span className={cn('h-2 w-2 rounded-full', t.dot)} aria-hidden />}
+              />
+            </li>
+          ))}
+        </ul>
+      </FilterSection>
 
       {Object.keys(vocab).length > 0 && (
         <FilterSection title="Amenities">

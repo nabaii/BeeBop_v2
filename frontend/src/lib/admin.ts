@@ -139,6 +139,18 @@ export interface AdminListingDetail {
     room_label: string | null;
     is_cover: boolean;
     display_order: number;
+    /** Owning unit type for a room gallery; null = the property gallery. */
+    unit_type_id: string | null;
+  }>;
+  /** Video tours across both galleries. Separate so they never hit an <img>. */
+  videos: Array<{
+    id: string;
+    url: string;
+    poster_url: string | null;
+    duration_seconds: number | null;
+    room_label: string | null;
+    display_order: number;
+    unit_type_id: string | null;
   }>;
   documents: Array<{
     id: string;

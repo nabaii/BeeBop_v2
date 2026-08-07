@@ -33,7 +33,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { BottomNav } from '@/components/bottom-nav';
 import { ActiveFilters } from '@/components/browse/active-filters';
-import { OffCampusFilterFields } from '@/components/browse/category/off-campus-filters';
+import {
+  CampusProximityFields,
+  OffCampusFilterFields,
+} from '@/components/browse/category/off-campus-filters';
 import { RentFilterFields } from '@/components/browse/category/rent-filters';
 import { SalesFilterFields } from '@/components/browse/category/sales-filters';
 import { ShortLetFilterFields } from '@/components/browse/category/short-let-filters';
@@ -410,7 +413,17 @@ export function ExploreBrowse() {
                   value={filters}
                   scope={scope}
                   onChange={handleFilterChange}
+                  onScopeChange={handleScopeChange}
                   className="rounded-none border-0 bg-transparent p-0"
+                  priority={
+                    scope === 'off_campus' ? (
+                      <CampusProximityFields
+                        value={filters as OffCampusFilters}
+                        onChange={(next) => handleFilterChange(next as AnyFilters)}
+                        hiddenUnknown={data?.hidden_unknown_drive ?? 0}
+                      />
+                    ) : null
+                  }
                 >
                   {/* Passed conditionally: an element that renders null is still
                       truthy, which would leave an empty "More filters" heading. */}

@@ -50,6 +50,8 @@ export interface ResultListingSummary {
   district: string | null;
   cover_url: string | null;
   secondary_url?: string | null;
+  /** Listing has at least one video tour, in any of its galleries. */
+  has_video?: boolean;
   rating: number | null;
   review_count: number;
   bedroom_count?: number | null;

@@ -565,6 +565,7 @@ function toCardData(result: ResultListingSummary) {
     district: result.district,
     cover_photo: coverPhoto,
     secondary_url: result.secondary_url,
+    has_video: result.has_video,
     rating: result.rating,
     review_count: result.review_count,
     bedroom_count: result.bedroom_count,

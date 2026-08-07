@@ -100,6 +100,37 @@ def test_missing_size_is_rejected_rather_than_waved_through() -> None:
     _raises("video_size_unknown", size_bytes=0)
 
 
+# --- moderation --------------------------------------------------------------
+
+
+def test_admin_detail_separates_videos_from_photos() -> None:
+    # Admin loads ListingPhoto directly (deliberately — it must see unit
+    # galleries too), so nothing filters videos out for it. Without a separate
+    # list the moderation UI would point an <img> at an .mp4.
+    from app.admin.schemas import AdminListingDetail
+
+    assert "videos" in AdminListingDetail.model_fields
+    assert "photos" in AdminListingDetail.model_fields
+
+
+def test_admin_media_view_carries_the_video_fields() -> None:
+    from app.listings.service import _media_view
+
+    row = ListingPhoto(
+        listing_id=uuid.uuid4(),
+        media_kind="video",
+        url="https://example.test/tour.mp4",
+        poster_url="https://example.test/tour.jpg",
+        duration_seconds=48,
+        display_order=0,
+        is_cover=False,
+    )
+    view = _media_view(row)
+    assert view["media_kind"] == "video"
+    assert view["poster_url"] == "https://example.test/tour.jpg"
+    assert view["duration_seconds"] == 48
+
+
 # --- relationship filters ----------------------------------------------------
 
 
@@ -137,6 +168,48 @@ def test_video_collections_are_viewonly() -> None:
     # means they can't interact with the delete-orphan cascade on `photos`.
     assert Listing.videos.property.viewonly
     assert UnitType.videos.property.viewonly
+
+
+# --- the browse-card flag ----------------------------------------------------
+
+
+def _video_flag_sql() -> str:
+    from app.search.service import _video_ids_stmt
+
+    return str(
+        _video_ids_stmt([uuid.uuid4()]).compile(
+            compile_kwargs={"literal_binds": True}
+        )
+    )
+
+
+def test_video_flag_counts_videos_only() -> None:
+    sql = _video_flag_sql()
+    assert "media_kind = 'video'" in sql
+
+
+def test_video_flag_excludes_inspector_clips() -> None:
+    # An inspector walkthrough is independent evidence; badging it as the
+    # host's tour would misattribute it.
+    assert "is_inspector_walkthrough IS false" in _video_flag_sql()
+
+
+def test_video_flag_counts_unit_galleries_too() -> None:
+    # No unit_type_id predicate: a room tour counts for the listing's chip.
+    assert "unit_type_id" not in _video_flag_sql()
+
+
+def test_video_flag_is_deduplicated() -> None:
+    # Three tours on one listing must not yield the listing three times.
+    assert "DISTINCT" in _video_flag_sql()
+
+
+def test_summarise_defaults_has_video_false_without_a_lookup() -> None:
+    # Callers that don't pass the set get False rather than a lazy load — the
+    # same contract `ratings` already has.
+    from app.search.schemas import PublicListingSummary
+
+    assert PublicListingSummary.model_fields["has_video"].default is False
 
 
 def test_media_kind_defaults_to_image_on_both_sides() -> None:

@@ -35,7 +35,11 @@ from app.admin.schemas import (
     SeekerInsights,
 )
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
-from app.listings.service import _validate_ready_for_submission, _validate_type_data
+from app.listings.service import (
+    _media_view,
+    _validate_ready_for_submission,
+    _validate_type_data,
+)
 from app.models._enums import BadgeStatus, BadgeType, ListingCategory, ListingStatus, UserRole
 from app.models.badge import Badge
 from app.models.inspection import InspectionReport
@@ -153,6 +157,12 @@ async def _active_badges_for_listing(
 async def _listing_media(
     *, listing_id: uuid.UUID, db: AsyncSession
 ) -> tuple[list[ListingPhoto], list[ListingDocument]]:
+    """Every media row on the listing, both galleries and both kinds.
+
+    Queries `ListingPhoto` directly rather than through `Listing.photos` so
+    moderation keeps seeing everything — unit-type galleries and videos
+    included. Callers split by `media_kind`; see `get_listing_detail`.
+    """
     photos = (
         await db.execute(
             select(ListingPhoto)
@@ -234,16 +244,11 @@ async def get_listing_detail(
         price=float(listing.price) if listing.price is not None else None,
         amenities=listing.amenities or {},
         type_data=listing.type_data or {},
-        photos=[
-            {
-                "id": str(photo.id),
-                "url": photo.url,
-                "room_label": photo.room_label,
-                "is_cover": photo.is_cover,
-                "display_order": photo.display_order,
-            }
-            for photo in photos
-        ],
+        # Split by kind so the moderation UI never puts a video URL in an
+        # <img>. `_media_view` carries media_kind, poster and duration, plus
+        # the owning unit type so a reviewer can tell which gallery a row is in.
+        photos=[_media_view(m) for m in photos if m.media_kind != "video"],
+        videos=[_media_view(m) for m in photos if m.media_kind == "video"],
         documents=[
             {
                 "id": str(doc.id),

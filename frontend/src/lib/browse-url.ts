@@ -77,7 +77,12 @@ const NUMBER_KEYS = new Set([
   'page_size',
 ]);
 
-const BOOLEAN_KEYS = new Set(['available_now', 'instant_booking', 'use_profile_filters']);
+const BOOLEAN_KEYS = new Set([
+  'available_now',
+  'instant_booking',
+  'use_profile_filters',
+  'include_unknown_drive',
+]);
 
 /** Every category-specific key across all scopes. */
 const ALL_SCOPED_KEYS: readonly string[] = Array.from(
@@ -304,13 +309,16 @@ export function describeActiveFilters(filters: AnyFilters, scope: SearchScope): 
     const value = (filters as Record<string, unknown>)[key];
     if (value === undefined || value === null || value === '') continue;
 
-    // Campus and drive time are one filter to a seeker ("within 20 min of
-    // Nile"), so they read as one chip and clear together. `campus` alone
-    // filters nothing, so it never gets a chip of its own.
-    if (key === 'campus') continue;
+    // Campus, drive time, and the unknown-drive opt-in are one filter to a
+    // seeker ("within 20 min of Nile"), so they read as one chip and clear
+    // together. Neither `campus` nor the opt-in filters anything on its own, so
+    // neither gets a chip — and the opt-in only ever widens the result set,
+    // which would make it a strange thing to offer as removable.
+    if (key === 'campus' || key === 'include_unknown_drive') continue;
     if (key === 'max_drive_min') {
       const campus = filters.campus ? CAMPUS_LABELS[filters.campus] ?? filters.campus : 'campus';
-      chips.push({ key, label: `Within ${value} min of ${campus}` });
+      const suffix = filters.include_unknown_drive ? ', or unrecorded' : '';
+      chips.push({ key, label: `Within ${value} min of ${campus}${suffix}` });
       continue;
     }
     if (key === 'exclude_house_rules') {
@@ -351,10 +359,11 @@ export function removeFilter(filters: AnyFilters, chip: ActiveFilter): AnyFilter
     // nothing" — the server treats an empty list as the latter.
     next.verification = remaining.length ? remaining : [...ALL_TIERS];
   } else if (chip.key === 'max_drive_min') {
-    // One chip, one filter: drop the campus with the cap, or `campus` would
-    // linger in the URL doing nothing.
+    // One chip, one filter: drop the campus and the unknown-drive opt-in with
+    // the cap, or both would linger in the URL doing nothing.
     delete next.max_drive_min;
     delete next.campus;
+    delete next.include_unknown_drive;
   } else if (chip.item !== undefined) {
     const current = (next[chip.key] as (string | number)[] | undefined) ?? [];
     const remaining = current.filter((item) => item !== chip.item);

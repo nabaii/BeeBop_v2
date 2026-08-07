@@ -14,6 +14,7 @@ import {
   Car,
   GraduationCap,
   House,
+  Play,
   Waves,
   type LucideIcon,
 } from 'lucide-react';
@@ -35,6 +36,7 @@ export interface ListingCardData {
   district: string | null;
   cover_photo?: PhotoView | null;
   secondary_url?: string | null; // first non-cover photo; enables hover crossfade
+  has_video?: boolean;           // shows the tour chip; playback lives on the listing page
   rating?: number | null;        // short-let / rent / student
   review_count?: number | null;
   bedroom_count?: number | null; // real specs from type_data; null = omit
@@ -93,8 +95,11 @@ export function ListingCard({
           <div className="absolute left-2 top-2">
             <VerificationBadge tier={tier} />
           </div>
-          <div className="absolute bottom-2 left-2">
+          {/* Grouped bottom-left so the video chip can't collide with the
+              off-campus drive-time chip that owns bottom-right. */}
+          <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
             <CategoryBadge category={data.category} />
+            {data.has_video && <VideoChip />}
           </div>
           {data.category === 'off_campus' && data.drive_min_nile != null && (
             // Featured on every student-accommodation card: driving time to Nile.
@@ -176,6 +181,18 @@ function CategoryBadge({ category }: { category: ListingCategory }) {
     <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-caption font-medium text-ink shadow-sm">
       <Icon className="h-3.5 w-3.5 text-ink-muted" aria-hidden />
       {label}
+    </span>
+  );
+}
+
+function VideoChip() {
+  // Inverted against the neutral glass CategoryBadge beside it — this is the
+  // one chip meant to pull the eye, since a tour is the reason to click
+  // through. Mirrors the "Watch tour" pill on the listing hero.
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-ink/85 px-2 py-0.5 text-caption font-medium text-paper shadow-sm backdrop-blur">
+      <Play className="h-3 w-3 fill-current" aria-hidden />
+      Video
     </span>
   );
 }

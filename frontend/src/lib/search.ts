@@ -35,6 +35,8 @@ export interface OffCampusFilters extends SharedFilters {
   available_now?: boolean;
   campus?: Campus;
   max_drive_min?: number;
+  /** Keep the places with no recorded drive time instead of dropping them. */
+  include_unknown_drive?: boolean;
   /** House rules to avoid — exclusion only; every rule is a restriction. */
   exclude_house_rules?: string[];
 }
@@ -88,6 +90,8 @@ export interface PublicListingSummary {
   gps_lng: number | null;
   cover_url: string | null;
   secondary_url?: string | null;
+  /** Listing has at least one video tour, in any of its galleries. */
+  has_video?: boolean;
   rating: number | null;
   review_count: number;
   price_period?: string | null;
@@ -103,6 +107,11 @@ export interface SearchResponse {
   page: number;
   page_size: number;
   results: PublicListingSummary[];
+  /**
+   * Off-campus, drive-time cap active: how many listings were dropped only
+   * because no drive time to that campus is recorded. 0 otherwise.
+   */
+  hidden_unknown_drive?: number;
 }
 
 export interface ValuationReport {
@@ -132,6 +141,16 @@ export interface PublicUnitTypePhoto {
   display_order: number;
 }
 
+/** A gallery video tour. `poster_url` can be null — render without one. */
+export interface PublicVideo {
+  id: string;
+  url: string;
+  poster_url: string | null;
+  duration_seconds: number | null;
+  room_label: string | null;
+  display_order: number;
+}
+
 export interface PublicUnitType {
   id: string;
   name: string;
@@ -148,6 +167,8 @@ export interface PublicUnitType {
   // This unit type's own gallery. Empty when the landlord hasn't uploaded any —
   // list thumbnails fall back to the property cover, the unit page shows none.
   photos: PublicUnitTypePhoto[];
+  /** This unit type's room tour — at most one. */
+  videos?: PublicVideo[];
 }
 
 export interface PublicListingDetail {
@@ -175,6 +196,8 @@ export interface PublicListingDetail {
     display_order: number;
     is_inspector_walkthrough: boolean;
   }>;
+  /** Property-gallery video tours, shown as their own group in the gallery. */
+  videos?: PublicVideo[];
   area_score: PublicAreaScore | null;
   valuation_report: ValuationReport | null;
   is_bookmarked: boolean;
@@ -257,6 +280,7 @@ export const OFF_CAMPUS_KEYS = [
   'available_now',
   'campus',
   'max_drive_min',
+  'include_unknown_drive',
   'exclude_house_rules',
 ] as const;
 

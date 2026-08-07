@@ -21,7 +21,7 @@ from app.models.bookmark import Bookmark
 from app.models.listing import Listing
 from app.models.user import User
 from app.search.schemas import PublicListingSummary
-from app.search.service import _summarise
+from app.search.service import _summarise, _video_listing_ids
 
 router = APIRouter(prefix="/bookmarks", tags=["bookmarks"])
 
@@ -68,4 +68,5 @@ async def list_saved(
         .order_by(Bookmark.created_at.desc())
     )
     rows = (await db.execute(stmt)).scalars().unique().all()
-    return [_summarise(r) for r in rows]
+    video_ids = await _video_listing_ids(db, [r.id for r in rows])
+    return [_summarise(r, None, video_ids) for r in rows]

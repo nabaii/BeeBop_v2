@@ -91,6 +91,53 @@ export function pricePeriodLabel(period?: string | null): string {
   return '';
 }
 
+/** Semesters in an academic year. Matches the backend's calendar-semester
+ *  window (Jan–Jun / Jul–Dec) in `app/referrals/service.py::_semester_bounds`. */
+export const SEMESTERS_PER_YEAR = 2;
+
+/**
+ * Annual-equivalent cost of a unit, for *comparison only* — sorting cheapest
+ * first is a lie when one unit bills per semester and another per year at the
+ * same figure. Never render this as the headline price: seekers are invoiced
+ * the landlord's actual `price`, and it is what they must recognise.
+ */
+export function annualEquivalent(price: number, period?: string | null): number {
+  return pricePeriodLabel(period) === 'semester' ? price * SEMESTERS_PER_YEAR : price;
+}
+
+// Seeker-facing names for unit kinds. The raw enum is schema language, and
+// CSS `capitalize` on it produces junk like "Bed(S)/Room" — humanise here so
+// there is one wording and the markup stays free of text transforms.
+const UNIT_KIND_LABELS: Record<UnitTypeView['kind'], string> = {
+  single_room: 'Single room',
+  two_in_a_room: 'Shared by 2',
+  three_in_a_room: 'Shared by 3',
+  self_contain: 'Self-contain',
+  custom: 'Room',
+};
+
+// `kind` is a union in the editor payload but a bare string over the public
+// API, so this takes the loose type and falls back on anything unrecognised —
+// a kind added server-side must never render as a raw enum to a seeker.
+export function unitKindLabel(kind: string, bedsPerRoom?: number): string {
+  const known = UNIT_KIND_LABELS[kind as UnitTypeView['kind']];
+  if (known && kind !== 'custom') return known;
+  if (bedsPerRoom && bedsPerRoom > 1) return `Shared by ${bedsPerRoom}`;
+  return known ?? 'Room';
+}
+
+/** Unit display name, falling back to the humanised kind — seed and
+ *  landlord-entered names are sometimes blank or a single stray character. */
+export function unitDisplayName(unit: {
+  name: string;
+  kind: string;
+  beds_per_room: number;
+}): string {
+  const name = unit.name?.trim();
+  if (!name || name.length < 2) return unitKindLabel(unit.kind, unit.beds_per_room);
+  return name;
+}
+
 export interface ListingView {
   id: string;
   owner_id: string;
@@ -349,12 +396,9 @@ export function videoPosterUrl(secureUrl: string): string | null {
   return `${withFrame.slice(0, lastDot)}.jpg`;
 }
 
-/** Seconds → "0:48" / "1:32", for duration badges. */
-export function formatDuration(totalSeconds: number): string {
-  const seconds = Math.max(0, Math.round(totalSeconds));
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
-}
+// `formatDuration` lives in lib/format — the public gallery needs it too, and
+// shouldn't pull this landlord-side module into its bundle to get it.
+export { formatDuration } from './format';
 
 // Upload a non-image file (e.g. a house-rules PDF) to Cloudinary. Reuses the
 // per-listing photo signature (it signs only folder + timestamp, so it is valid

@@ -35,11 +35,19 @@ import { AreaScorePanel } from '@/components/listing/area-score-panel';
 import { CtaBar } from '@/components/listing/cta-bar';
 import { ListingGallery } from '@/components/listing/gallery';
 import { LoadingScreen } from '@/components/ui/loading-screen';
+import { Price } from '@/components/ui/price';
 import { iconForAmenity, amenityLabel } from '@/lib/amenity-icons';
+import { cn } from '@/lib/cn';
 import { MAX_FEATURED_TILES } from '@/lib/featured';
+import { formatNairaCompact } from '@/lib/format';
 import { houseRuleDef, houseRuleLabel } from '@/lib/house-rules';
 import { ApiError } from '@/lib/api';
-import { pricePeriodLabel } from '@/lib/listings';
+import {
+  annualEquivalent,
+  pricePeriodLabel,
+  unitDisplayName,
+  unitKindLabel,
+} from '@/lib/listings';
 import { getPublicListing, type PublicListingDetail } from '@/lib/search';
 
 export default function ListingDetailPage({
@@ -92,7 +100,9 @@ export default function ListingDetailPage({
   return (
     <>
       <main className="min-h-screen bg-slate-100">
-        <div className="mx-auto min-h-screen max-w-[480px] bg-slate-50 pb-32 shadow-xl sm:max-w-5xl sm:shadow-none">
+        {/* pb-40: the off-campus CtaBar is two stacked rows (~110px) plus the
+            iOS safe-area inset, which pb-32 did not reliably clear. */}
+        <div className="mx-auto min-h-screen max-w-[480px] bg-slate-50 pb-40 shadow-xl sm:max-w-5xl sm:shadow-none">
           <ListingHeader listing={listing} />
 
           <div className="space-y-8 px-4 py-5 sm:px-8">
@@ -396,7 +406,13 @@ function GlanceStats({ listing }: { listing: PublicListingDetail }) {
 }
 
 function UnitTypes({ listing }: { listing: PublicListingDetail }) {
-  const units = [...listing.unit_types].sort((a, b) => a.price - b.price);
+  // Sorted on the annual equivalent, not the raw figure: ₦1.6m/semester and
+  // ₦1.6m/year are the same number and twice the money, so a raw sort renders
+  // a false "cheapest first".
+  const units = [...listing.unit_types].sort(
+    (a, b) =>
+      annualEquivalent(a.price, a.price_period) - annualEquivalent(b.price, b.price_period),
+  );
   // A row must never render a hole, so units without their own photos borrow
   // the property cover for the thumbnail only. The unit page itself shows no
   // photos rather than passing the building off as the room.
@@ -431,55 +447,7 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
             unitPhotos.find((p) => p.is_cover)?.url ?? unitPhotos[0]?.url ?? listingCover;
           return (
             <li key={u.id}>
-              <Link
-                href={`/listings/${listing.id}/units/${u.id}` as Route}
-                aria-label={`View ${u.name} details`}
-                className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 px-5 py-4 transition hover:border-brand/40 hover:bg-white hover:shadow-sm"
-              >
-                <UnitThumbnail url={thumb} count={unitPhotos.length} alt={u.name} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-base font-semibold text-slate-950">{u.name}</p>
-                    <UnitGenderBadge gender={u.gender_tag} />
-                  </div>
-                  <p className="mt-0.5 text-xs font-medium capitalize text-stone-600">
-                    {u.kind.replaceAll('_', ' ')} · {u.beds_per_room} bed(s)/room
-                  </p>
-                  <p className="mt-1 text-xs font-semibold">
-                    {soldOut ? (
-                      <span className="text-red-600">Fully booked</span>
-                    ) : (
-                      <span className="text-emerald-700">
-                        {u.beds_available} bed{u.beds_available > 1 ? 's' : ''} available
-                      </span>
-                    )}
-                  </p>
-                  {u.amenities.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {u.amenities.slice(0, 3).map((a) => (
-                        <span
-                          key={a}
-                          className="inline-block rounded-md bg-white px-2 py-0.5 text-caption font-medium text-stone-600 ring-1 ring-slate-200"
-                        >
-                          {a}
-                        </span>
-                      ))}
-                      {u.amenities.length > 3 && (
-                        <span className="inline-block rounded-md bg-brand-50 px-2 py-0.5 text-caption font-semibold text-brand-700 ring-1 ring-brand-100">
-                          +{u.amenities.length - 3} more
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-lg font-bold leading-none text-slate-950">{formatPrice(u.price)}</p>
-                  <p className="mt-1 text-caption font-medium uppercase tracking-[0.08em] text-stone-500">
-                    per {pricePeriodLabel(u.price_period)}
-                  </p>
-                </div>
-                <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
-              </Link>
+              <UnitCard listingId={listing.id} unit={u} thumb={thumb} soldOut={soldOut} />
             </li>
           );
         })}
@@ -491,49 +459,142 @@ function UnitTypes({ listing }: { listing: PublicListingDetail }) {
   );
 }
 
-/** Row thumbnail for a unit type. The badge only appears when the shots are
- *  genuinely of that room, so a borrowed property cover never reads as one. */
-function UnitThumbnail({
-  url,
-  count,
-  alt,
+/**
+ * One bookable room type.
+ *
+ * Layout is deliberately two different things. Below `sm` it stacks — photo
+ * full-bleed on top, then a single-column body — because the old four-column
+ * row (thumb / body / price / chevron) left the body roughly 30px of a 390px
+ * phone, so its width was decided by the longest unbreakable word rather than
+ * by us. At `sm` and up the row has the space to work, so it comes back.
+ *
+ * Within the body the reading order is fixed at both sizes: name and price
+ * share the top baseline (the one relationship that matters), then who it
+ * suits, then availability, then amenities.
+ */
+function UnitCard({
+  listingId,
+  unit,
+  thumb,
+  soldOut,
 }: {
-  url: string | null;
-  count: number;
-  alt: string;
+  listingId: string;
+  unit: PublicListingDetail['unit_types'][number];
+  thumb: string | null;
+  soldOut: boolean;
 }) {
+  const name = unitDisplayName(unit);
+  const kind = unitKindLabel(unit.kind, unit.beds_per_room);
+  const period = pricePeriodLabel(unit.price_period);
+  // Comparison aid, shown only where it adds information — annualising a
+  // per-year price would just restate the headline.
+  const annual =
+    period === 'semester'
+      ? formatNairaCompact(annualEquivalent(unit.price, unit.price_period))
+      : null;
+  const visibleAmenities = unit.amenities.slice(0, 3);
+  const extraAmenities = unit.amenities.length - visibleAmenities.length;
+  // When the name is blank the heading already falls back to the kind, so the
+  // meta line would repeat it word for word ("Shared by 2" / "Shared by 2").
+  const meta = [
+    kind.toLowerCase() === name.toLowerCase() ? null : kind,
+    unit.gender_tag === 'any'
+      ? null
+      : `${unit.gender_tag[0].toUpperCase()}${unit.gender_tag.slice(1)} only`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <Link
+      href={`/listings/${listingId}/units/${unit.id}` as Route}
+      aria-label={`View ${name} details`}
+      className={cn(
+        'group flex flex-col overflow-hidden rounded-2xl border border-hairline bg-white transition-[border-color,transform] duration-200',
+        'hover:border-ink-soft/50 motion-safe:hover:-translate-y-0.5',
+        'sm:flex-row sm:items-start sm:gap-4 sm:p-4',
+        soldOut && 'opacity-70',
+      )}
+    >
+      <UnitThumbnail url={thumb} count={unit.photos?.length ?? 0} alt={name} />
+      <div className="min-w-0 flex-1 p-4 sm:p-0">
+        {/* Name and price on one baseline — the card's primary relationship. */}
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="line-clamp-2 min-w-0 font-display text-title font-semibold text-ink">
+            {name}
+          </h3>
+          <div className="shrink-0 text-right">
+            <Price value={unit.price} className="block text-title font-bold text-ink" />
+            {period && (
+              // Half the price. Previously 13px uppercase grey, which let a
+              // per-semester unit read as the same cost as a per-year one.
+              <span className="block text-caption font-medium text-ink-muted">per {period}</span>
+            )}
+            {annual && (
+              <span className="block text-caption text-ink-soft">≈{annual}/year</span>
+            )}
+          </div>
+        </div>
+
+        {meta && <p className="mt-1 text-caption text-ink-muted">{meta}</p>}
+
+        <p className="mt-2 text-caption font-semibold">
+          {soldOut ? (
+            <span className="text-ink-muted">Fully booked</span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-growth">
+              <span className="h-1.5 w-1.5 rounded-full bg-growth" aria-hidden />
+              {unit.beds_available} bed{unit.beds_available === 1 ? '' : 's'} available
+            </span>
+          )}
+        </p>
+
+        {visibleAmenities.length > 0 && (
+          // Inline and dot-separated. As chips in the old ~60px column these
+          // stacked one per line and ate half the card.
+          <p className="mt-2 truncate text-caption text-ink-muted">
+            {visibleAmenities.join(' · ')}
+            {extraAmenities > 0 && ` · +${extraAmenities} more`}
+          </p>
+        )}
+
+        {/* Mobile gets an explicit affordance; the row's chevron is desktop-only. */}
+        <span className="mt-3 flex items-center justify-between border-t border-hairline pt-3 text-caption font-semibold text-ink sm:hidden">
+          View room
+          <ChevronRight className="h-4 w-4 text-ink-soft" aria-hidden />
+        </span>
+      </div>
+      <ChevronRight
+        className="mt-1 hidden h-5 w-5 shrink-0 self-center text-ink-soft sm:block"
+        aria-hidden
+      />
+    </Link>
+  );
+}
+
+/** Unit photo. Full-bleed 16:9 on mobile — a room photo is the highest-value
+ *  thing on the card and a 64px chip wasted it — and a compact square in the
+ *  desktop row. The count badge only appears when the shots are genuinely of
+ *  that room, so a borrowed property cover never reads as one. */
+function UnitThumbnail({ url, count, alt }: { url: string | null; count: number; alt: string }) {
+  const frame =
+    'relative aspect-[16/9] w-full shrink-0 overflow-hidden bg-hairline sm:aspect-square sm:h-20 sm:w-20 sm:rounded-xl';
   if (!url) {
     return (
-      <div
-        aria-hidden
-        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-300"
-      >
-        <ImageOff className="h-5 w-5" />
+      <div aria-hidden className={cn(frame, 'flex items-center justify-center text-ink-soft')}>
+        <ImageOff className="h-6 w-6 sm:h-5 sm:w-5" />
       </div>
     );
   }
   return (
-    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
-      <img src={url} alt={alt} className="h-full w-full object-cover" />
+    <div className={frame}>
+      <img src={url} alt={alt} loading="lazy" className="h-full w-full object-cover" />
       {count > 1 && (
-        <span className="absolute bottom-1 right-1 rounded-full bg-slate-950/70 px-1.5 py-0.5 text-caption font-bold text-white">
+        <span className="absolute bottom-2 right-2 rounded-full bg-ink/75 px-2 py-0.5 text-caption font-semibold text-paper sm:bottom-1 sm:right-1 sm:px-1.5">
           {count}
         </span>
       )}
     </div>
-  );
-}
-
-function UnitGenderBadge({ gender }: { gender: 'female' | 'male' | 'any' }) {
-  if (gender === 'any') return null;
-  return (
-    <span
-      className={`shrink-0 rounded-full px-2 py-0.5 text-caption font-bold uppercase ${
-        gender === 'female' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'
-      }`}
-    >
-      {gender}
-    </span>
   );
 }
 

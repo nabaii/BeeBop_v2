@@ -119,6 +119,8 @@ class ResultListingSummary(BaseModel):
     cover_url: str | None = None
     # First non-cover photo, when present — powers the hover crossfade on cards.
     secondary_url: str | None = None
+    # Listing has at least one video tour, in any of its galleries.
+    has_video: bool = False
     rating: float | None = None
     review_count: int = 0
     bedroom_count: int | None = None

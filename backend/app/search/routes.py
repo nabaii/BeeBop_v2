@@ -33,6 +33,7 @@ from app.search.schemas import (
     PublicRoom,
     PublicUnitType,
     PublicUnitTypePhoto,
+    PublicVideo,
     RentFilters,
     SalesFilters,
     SearchResponse,
@@ -96,6 +97,7 @@ def _off_campus_filters(
     available_now: Annotated[bool, Query()] = False,
     campus: Annotated[Campus | None, Query()] = None,
     max_drive_min: Annotated[int | None, Query(ge=1, le=600)] = None,
+    include_unknown_drive: Annotated[bool, Query()] = False,
     exclude_house_rules: Annotated[list[str] | None, Query()] = None,
 ) -> OffCampusFilters:
     return OffCampusFilters(
@@ -107,6 +109,7 @@ def _off_campus_filters(
         available_now=available_now,
         campus=campus,
         max_drive_min=max_drive_min,
+        include_unknown_drive=include_unknown_drive,
         exclude_house_rules=exclude_house_rules or [],
     )
 
@@ -243,6 +246,18 @@ _PUBLIC_STATUSES = (
 )
 
 
+def _public_video(video) -> PublicVideo:  # type: ignore[no-untyped-def]
+    """One video tour, shaped for seekers. Same for property and unit galleries."""
+    return PublicVideo(
+        id=str(video.id),
+        url=video.url,
+        poster_url=video.poster_url,
+        duration_seconds=video.duration_seconds,
+        room_label=video.room_label,
+        display_order=video.display_order,
+    )
+
+
 @router.get("/public/listings/{listing_id}", response_model=PublicListingDetail)
 async def public_listing_detail(
     listing_id: uuid.UUID,
@@ -255,9 +270,11 @@ async def public_listing_detail(
         .where(Listing.id == listing_id)
         .options(
             selectinload(Listing.photos),
+            selectinload(Listing.videos),
             selectinload(Listing.documents),
             selectinload(Listing.unit_types).selectinload(UnitType.rooms),
             selectinload(Listing.unit_types).selectinload(UnitType.photos),
+            selectinload(Listing.unit_types).selectinload(UnitType.videos),
         )
     )
     listing = (await db.execute(stmt)).scalar_one_or_none()
@@ -322,6 +339,14 @@ async def public_listing_detail(
             }
             for p in sorted(listing.photos, key=lambda p: p.display_order)
         ],
+        videos=[
+            _public_video(v)
+            for v in sorted(listing.videos, key=lambda v: v.display_order)
+            # Inspector walkthrough clips would need their own labelled group,
+            # the way walkthrough photos do. Not built yet, so keep them out
+            # rather than silently mixing them into the landlord's tour.
+            if not v.is_inspector_walkthrough
+        ],
         area_score=(
             PublicAreaScore.model_validate(area_score.model_dump())
             if area_score is not None
@@ -361,6 +386,10 @@ async def public_listing_detail(
                     )
                     for p in sorted(u.photos, key=lambda p: p.display_order)
                 ],
+                videos=[
+                    _public_video(v)
+                    for v in sorted(u.videos, key=lambda v: v.display_order)
+                ],
             )
             # Cheapest first so the "From ₦X" headline matches the top of the list.
             for u in sorted(listing.unit_types, key=lambda u: float(u.price))
@@ -389,4 +418,7 @@ async def featured_listings(
         .limit(limit)
     )
     rows = (await db.execute(stmt)).scalars().unique().all()
-    return [search_service._summarise(r).model_dump() for r in rows]
+    video_ids = await search_service._video_listing_ids(db, [r.id for r in rows])
+    return [
+        search_service._summarise(r, None, video_ids).model_dump() for r in rows
+    ]

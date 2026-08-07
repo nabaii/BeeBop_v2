@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models._enums import BookingStatus, Gender, ListingCategory, ListingStatus
 from app.models.booking import Booking
-from app.models.listing import Listing
+from app.models.listing import Listing, ListingPhoto
 from app.models.review import Review
 from app.models.student_accommodation import Room, UnitType
 from app.search.schemas import (
@@ -253,8 +253,43 @@ async def _rating_map(
     return {row[0]: (round(float(row[1]), 2), int(row[2])) for row in rows}
 
 
+def _video_ids_stmt(listing_ids: list[uuid.UUID]):  # type: ignore[no-untyped-def]
+    """The query behind `_video_listing_ids`, split out so it can be asserted
+    on without a database."""
+    return (
+        select(ListingPhoto.listing_id)
+        .where(
+            ListingPhoto.listing_id.in_(listing_ids),
+            ListingPhoto.media_kind == "video",
+            # Landlord tours only. An inspector clip is independent evidence
+            # and would need its own chip, not this one.
+            ListingPhoto.is_inspector_walkthrough.is_(False),
+        )
+        .distinct()
+    )
+
+
+async def _video_listing_ids(
+    db: AsyncSession, listing_ids: list[uuid.UUID]
+) -> set[uuid.UUID]:
+    """Which of these listings have at least one video, in one query.
+
+    Same shape as `_rating_map` and for the same reason — and deliberately not
+    read off `Listing.videos`, which most card queries don't eager-load. A
+    lazy load per row would be an N+1 at best and MissingGreenlet at worst.
+
+    Counts videos in *any* of the listing's galleries: a seeker scanning for
+    "has a tour" doesn't care whether it's of the building or of one room.
+    """
+    if not listing_ids:
+        return set()
+    return set((await db.execute(_video_ids_stmt(listing_ids))).scalars().all())
+
+
 def _summarise(
-    listing: Listing, ratings: dict[uuid.UUID, tuple[float, int]] | None = None
+    listing: Listing,
+    ratings: dict[uuid.UUID, tuple[float, int]] | None = None,
+    video_ids: set[uuid.UUID] | None = None,
 ) -> PublicListingSummary:
     photos = sorted(listing.photos, key=lambda p: p.display_order)
     cover = next((p for p in photos if p.is_cover), None) or (photos[0] if photos else None)
@@ -282,6 +317,9 @@ def _summarise(
         gps_lng=listing.gps_lng,
         cover_url=cover.url if cover else None,
         secondary_url=secondary.url if secondary else None,
+        # False when the caller didn't look them up — same contract as
+        # `ratings`. Surfaces that want the chip pass the set.
+        has_video=listing.id in video_ids if video_ids else False,
         rating=rating,
         review_count=review_count,
         bedroom_count=_as_int(type_data.get("bedroom_count")),
@@ -291,19 +329,38 @@ def _summarise(
 
 
 async def _paginate(
-    db: AsyncSession, stmt, *, category: SearchScope, page: int, page_size: int
+    db: AsyncSession,
+    stmt,
+    *,
+    category: SearchScope,
+    page: int,
+    page_size: int,
+    hidden_stmt=None,
 ) -> SearchResponse:  # type: ignore[no-untyped-def]
+    """Run the search.
+
+    Every round trip lives here, which keeps the category services pure
+    statement-builders. `hidden_stmt`, when given, is a second selectable whose
+    row count is reported alongside the results — see `search_off_campus`.
+    """
     total_stmt = select(func.count()).select_from(stmt.subquery())
     total = int((await db.execute(total_stmt)).scalar_one())
+    hidden_unknown_drive = 0
+    if hidden_stmt is not None:
+        hidden_count_stmt = select(func.count()).select_from(hidden_stmt.subquery())
+        hidden_unknown_drive = int((await db.execute(hidden_count_stmt)).scalar_one())
     offset = (page - 1) * page_size
     rows = (await db.execute(stmt.offset(offset).limit(page_size))).scalars().unique().all()
-    ratings = await _rating_map(db, [r.id for r in rows])
+    listing_ids = [r.id for r in rows]
+    ratings = await _rating_map(db, listing_ids)
+    video_ids = await _video_listing_ids(db, listing_ids)
     return SearchResponse(
         category=category,
         total=total,
         page=page,
         page_size=page_size,
-        results=[_summarise(r, ratings) for r in rows],
+        results=[_summarise(r, ratings, video_ids) for r in rows],
+        hidden_unknown_drive=hidden_unknown_drive,
     )
 
 
@@ -356,15 +413,6 @@ async def search_off_campus(
         ).subquery()
         stmt = stmt.where(Listing.id.in_(select(subq.c.listing_id)))
 
-    # Drive time to the chosen campus. Landlords record these per campus in
-    # type_data; a listing with no recorded time for that campus is excluded,
-    # since an unknown commute can't be shown as being within the cap.
-    if filters.campus and filters.max_drive_min is not None:
-        column = f"drive_min_{filters.campus}"
-        stmt = stmt.where(
-            cast(Listing.type_data[column].astext, Integer) <= filters.max_drive_min  # type: ignore[index]
-        )
-
     # House rules are all restrictions, so this filter only ever excludes.
     # `IS TRUE` (rather than `= true`) keeps listings whose type_data has no
     # house_rules object at all — a missing rule is an absent rule.
@@ -378,9 +426,39 @@ async def search_off_campus(
             )
         )
 
+    # Drive time to the chosen campus, applied last so the "hidden for want of
+    # data" count below reflects listings that passed every other filter.
+    #
+    # Landlords record these per campus in type_data and the field is optional,
+    # so a listing with an empty box has no recorded time and cannot be shown to
+    # satisfy "within 20 minutes". Excluding it is still the right default — but
+    # the count makes that visible, and `include_unknown_drive` lets the seeker
+    # overrule it.
+    hidden_stmt = None
+    if filters.campus and filters.max_drive_min is not None:
+        column = f"drive_min_{filters.campus}"
+        # Absent key and JSON null both yield SQL NULL from `->>`, so one test
+        # covers "never filled in" and "cleared".
+        unrecorded = Listing.type_data[column].astext.is_(None)  # type: ignore[index]
+        within_cap = (
+            cast(Listing.type_data[column].astext, Integer) <= filters.max_drive_min  # type: ignore[index]
+        )
+        if filters.include_unknown_drive:
+            stmt = stmt.where(or_(within_cap, unrecorded))
+        else:
+            # Branched off before the cap is applied, so it counts listings that
+            # passed every other filter and fell only to missing data.
+            hidden_stmt = stmt.where(unrecorded)
+            stmt = stmt.where(within_cap)
+
     stmt = _sort(stmt, filters.sort, price_col=unit_price)
     return await _paginate(
-        db, stmt, category=ListingCategory.OFF_CAMPUS, page=filters.page, page_size=filters.page_size
+        db,
+        stmt,
+        category=ListingCategory.OFF_CAMPUS,
+        page=filters.page,
+        page_size=filters.page_size,
+        hidden_stmt=hidden_stmt,
     )
 
 

@@ -673,6 +673,52 @@ def _add_listing_photos(listing: Listing, payload: dict, asset_base_url: str) ->
     return len(specs)
 
 
+# Public-domain sample clips, used so a seeded environment can exercise the
+# whole video path — chip on the card, pill on the hero, playback in the
+# lightbox, review in admin — without anyone uploading anything first.
+#
+# These are plain MP4 URLs, not Cloudinary ones, so `provider_public_id` and
+# `poster_url` are deliberately left null: that is also the shape of a row
+# uploaded before poster derivation existed, and it exercises the
+# render-without-a-poster path the clients have to handle anyway.
+_SAMPLE_VIDEOS = [
+    {
+        "url": "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4",
+        "room_label": "Full walkthrough",
+        "duration_seconds": 10,
+    },
+    {
+        "url": "https://test-videos.co.uk/vids/jellyfish/mp4/h264/360/Jellyfish_360_10s_1MB.mp4",
+        "room_label": "Compound and parking",
+        "duration_seconds": 10,
+    },
+]
+
+# Attached to a unit type rather than the property, so the seeded data covers
+# the per-room gallery too (capped at one video, hence a single spec).
+_ROOM_TOUR_VIDEO = {
+    "url": "https://test-videos.co.uk/vids/jellyfish/mp4/h264/360/Jellyfish_360_10s_1MB.mp4",
+    "room_label": "Room walkthrough",
+    "duration_seconds": 10,
+}
+
+
+def _video_row(
+    *, listing_id, spec: dict, display_order: int, unit_type_id=None
+) -> ListingPhoto:  # type: ignore[no-untyped-def]
+    return ListingPhoto(
+        listing_id=listing_id,
+        unit_type_id=unit_type_id,
+        media_kind="video",
+        url=spec["url"],
+        room_label=spec["room_label"],
+        duration_seconds=spec["duration_seconds"],
+        display_order=display_order,
+        # Never a cover — the DB CHECK constraint enforces this too.
+        is_cover=False,
+    )
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description="Seed dummy Beebop listings.")
     parser.add_argument("--owner-email", default=DEFAULT_OWNER_EMAIL,
@@ -695,19 +741,43 @@ async def main() -> int:
         owner = await _ensure_owner(db, email)
         wiped = await _wipe_existing_seed(db, owner)
         photo_count = 0
+        video_count = 0
 
-        for payload in rent + sales:
+        for index, payload in enumerate(rent + sales):
             listing = _build_listing(owner, payload)
             db.add(listing)
             photo_count += _add_listing_photos(listing, payload, asset_base_url)
+            # The first listing gets a two-clip tour so a seeded environment
+            # exercises the multi-video group, not just the single-video case.
+            if index == 0:
+                await db.flush()  # need listing.id for the video FK
+                for order, spec in enumerate(_SAMPLE_VIDEOS):
+                    db.add(
+                        _video_row(
+                            listing_id=listing.id, spec=spec, display_order=order
+                        )
+                    )
+                    video_count += 1
 
-        for payload in student:
+        for index, payload in enumerate(student):
             inventory = payload.pop("_inventory")
             listing = _build_listing(owner, payload)
             db.add(listing)
             photo_count += _add_listing_photos(listing, payload, asset_base_url)
             await db.flush()  # need listing.id for unit-type FK
-            for ut_payload in inventory:
+            # One off-campus listing carries both a building tour and a room
+            # tour — the only way to see the two galleries side by side.
+            first_student = index == 0
+            if first_student:
+                db.add(
+                    _video_row(
+                        listing_id=listing.id,
+                        spec=_SAMPLE_VIDEOS[0],
+                        display_order=0,
+                    )
+                )
+                video_count += 1
+            for ut_index, ut_payload in enumerate(inventory):
                 rooms = ut_payload["rooms"]
                 # Gender + amenities now live on the unit type. Derive the
                 # unit's gender from its first room; rooms inherit it.
@@ -723,6 +793,16 @@ async def main() -> int:
                 )
                 db.add(ut)
                 await db.flush()
+                if first_student and ut_index == 0:
+                    db.add(
+                        _video_row(
+                            listing_id=listing.id,
+                            unit_type_id=ut.id,
+                            spec=_ROOM_TOUR_VIDEO,
+                            display_order=0,
+                        )
+                    )
+                    video_count += 1
                 for room_payload in rooms:
                     db.add(Room(
                         unit_type_id=ut.id,
@@ -740,6 +820,7 @@ async def main() -> int:
     print(f"Created {total} listing(s): "
           f"{len(rent)} rent, {len(sales)} sales, {len(student)} off-campus.")
     print(f"Attached {photo_count} photo(s) from {asset_base_url}.")
+    print(f"Attached {video_count} video tour(s) from public sample clips.")
     return 0
 
 

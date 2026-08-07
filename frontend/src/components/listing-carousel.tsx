@@ -90,6 +90,7 @@ export function toCardData(r: PublicListingSummary): ListingCardData {
         }
       : null,
     secondary_url: r.secondary_url,
+    has_video: r.has_video,
     rating: r.rating,
     review_count: r.review_count,
     bedroom_count: r.bedroom_count,

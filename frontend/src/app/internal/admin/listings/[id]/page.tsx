@@ -9,6 +9,7 @@ import { DocumentViewer } from '@/components/admin/doc-viewer';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/lib/api';
 import { admin, type AdminListingDetail } from '@/lib/admin';
+import { formatDuration } from '@/lib/format';
 
 type ActionKind =
   | 'publish'
@@ -324,11 +325,59 @@ export default function AdminListingDetailPage() {
                         </div>
                         <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-600">
                           <span>{photo.room_label ?? 'Listing photo'}</span>
-                          {photo.is_cover && (
-                            <span className="rounded-full bg-brand/10 px-2 py-0.5 font-medium text-brand">
-                              Cover
-                            </span>
-                          )}
+                          <span className="flex items-center gap-1.5">
+                            {photo.unit_type_id && (
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600">
+                                Room
+                              </span>
+                            )}
+                            {photo.is_cover && (
+                              <span className="rounded-full bg-brand/10 px-2 py-0.5 font-medium text-brand">
+                                Cover
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Video tours ({detail.videos.length})
+                </h2>
+                {detail.videos.length === 0 ? (
+                  <p className="mt-3 text-sm text-slate-500">No videos uploaded.</p>
+                ) : (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {detail.videos.map((video) => (
+                      <div key={video.id} className="overflow-hidden rounded-xl border border-slate-200">
+                        {/* Controls, no autoplay: a moderator opens the ones
+                            they mean to review, one at a time. */}
+                        <video
+                          src={video.url}
+                          poster={video.poster_url ?? undefined}
+                          controls
+                          preload="none"
+                          playsInline
+                          className="aspect-video w-full bg-black"
+                        />
+                        <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-600">
+                          <span>{video.room_label ?? 'Video tour'}</span>
+                          <span className="flex items-center gap-1.5">
+                            {video.unit_type_id && (
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600">
+                                Room
+                              </span>
+                            )}
+                            {video.duration_seconds != null && (
+                              <span className="tabular-nums text-slate-500">
+                                {formatDuration(video.duration_seconds)}
+                              </span>
+                            )}
+                          </span>
                         </div>
                       </div>
                     ))}

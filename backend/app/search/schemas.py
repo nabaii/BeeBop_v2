@@ -55,6 +55,11 @@ class OffCampusFilters(SharedFilters):
     # commute cannot be shown to satisfy "within 20 minutes".
     campus: Campus | None = None
     max_drive_min: int | None = Field(default=None, ge=1, le=600)
+    # Opt back in to the listings the cap excludes for lack of data. The drive
+    # time is optional for landlords, so a strict cap can hide a place that is
+    # in fact next door — this lets the seeker decide, once the response has
+    # told them how many are affected (`hidden_unknown_drive`).
+    include_unknown_drive: bool = False
     # House rules a seeker wants to avoid, keyed by HOUSE_RULES. Exclusion only:
     # every rule in the vocabulary is a restriction, so the useful question is
     # "don't show me anywhere with a curfew", never the reverse.
@@ -143,6 +148,10 @@ class PublicListingSummary(BaseModel):
     # First non-cover photo, when present — lets cards crossfade on hover to
     # double photo exposure without a click. Null for single-photo listings.
     secondary_url: str | None = None
+    # Listing has at least one video tour, in any of its galleries. Drives the
+    # card chip; the video itself is only ever played on the listing page.
+    # False on surfaces that don't look it up (see `_summarise`).
+    has_video: bool = False
     rating: float | None = None
     review_count: int = 0
     # Billing period for the price (off-campus only); e.g. "year" or "semester".
@@ -164,6 +173,12 @@ class SearchResponse(BaseModel):
     page: int
     page_size: int
     results: list[PublicListingSummary]
+    # Off-campus only, and only when a drive-time cap is active: how many
+    # listings passed every other filter but were dropped because no drive time
+    # to that campus is recorded. Zero everywhere else. Surfaced so the seeker
+    # can see that a filter is hiding places for want of data rather than for
+    # being too far away.
+    hidden_unknown_drive: int = 0
 
 
 class PublicRoom(BaseModel):
@@ -178,6 +193,21 @@ class PublicUnitTypePhoto(BaseModel):
     url: str
     room_label: str | None = None
     is_cover: bool
+    display_order: int
+
+
+class PublicVideo(BaseModel):
+    """A gallery video tour as shown to seekers.
+
+    `poster_url` may be null for rows uploaded before poster derivation, so
+    clients must be able to render without one.
+    """
+
+    id: str
+    url: str
+    poster_url: str | None = None
+    duration_seconds: int | None = None
+    room_label: str | None = None
     display_order: int
 
 
@@ -202,6 +232,8 @@ class PublicUnitType(BaseModel):
     # compare the actual room rather than the building. Empty when the landlord
     # has not uploaded any — clients fall back to the property cover.
     photos: list[PublicUnitTypePhoto] = Field(default_factory=list)
+    # This unit type's room tour — at most one.
+    videos: list[PublicVideo] = Field(default_factory=list)
 
 
 class PublicListingDetail(BaseModel):
@@ -220,6 +252,8 @@ class PublicListingDetail(BaseModel):
     amenities: dict
     type_data: dict
     photos: list[dict]
+    # Property-gallery video tours, shown as their own group in the gallery.
+    videos: list[PublicVideo] = Field(default_factory=list)
     # Off-campus only: per-unit pricing and bed availability. Empty for other
     # categories, which price on `price` above.
     unit_types: list[PublicUnitType] = Field(default_factory=list)

@@ -179,6 +179,7 @@ function toCardData(r: PublicListingSummary) {
     // Enables the card's hover crossfade to the second photo; the old mapping
     // dropped this, so browse cards silently lost the effect.
     secondary_url: r.secondary_url,
+    has_video: r.has_video,
     rating: r.rating,
     review_count: r.review_count,
     bedroom_count: r.bedroom_count,

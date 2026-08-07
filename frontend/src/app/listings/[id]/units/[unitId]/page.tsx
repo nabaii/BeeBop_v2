@@ -94,6 +94,7 @@ export default function UnitTypeDetailPage({
 
   const soldOut = unit.beds_available <= 0;
   const unitPhotos = unit.photos ?? [];
+  const unitVideos = unit.videos ?? [];
 
   // Icon mapper for amenities
   const getAmenityIcon = (amenity: string) => {
@@ -132,15 +133,15 @@ export default function UnitTypeDetailPage({
         </header>
 
         <div className="space-y-6 px-6 py-6">
-          {/* This room's own photos. Rendered only when the landlord uploaded
-              them — the property's photos are never substituted here, since
-              they'd misrepresent the room being booked. */}
+          {/* This room's own photos and tour. Rendered only when the landlord
+              uploaded them — the property's photos are never substituted here,
+              since they'd misrepresent the room being booked. */}
           {unitPhotos.length > 0 && (
             <section className="space-y-2.5">
               <p className="text-caption font-bold uppercase tracking-wider text-slate-500">
-                Photos of this room
+                {unitVideos.length > 0 ? 'Photos and tour of this room' : 'Photos of this room'}
               </p>
-              <UnitGallery photos={unitPhotos} unitName={unit.name} />
+              <UnitGallery photos={unitPhotos} videos={unitVideos} unitName={unit.name} />
             </section>
           )}
 

@@ -1110,12 +1110,16 @@ async def _execute_search(
     if not candidates:
         return []
     ratings = await _rating_map(candidates=candidates, db=db)
+    video_ids = await public_search._video_listing_ids(
+        db, [listing.id for listing in candidates]
+    )
     ranked = sorted(
         (
             _result_summary(
                 listing=listing,
                 parameters=parameters,
                 rating=ratings.get(str(listing.id)),
+                video_ids=video_ids,
             )
             for listing in candidates
         ),
@@ -1390,6 +1394,7 @@ def _result_summary(
     listing: Listing,
     parameters: ExtractedParameters,
     rating: tuple[float | None, int] | None,
+    video_ids: set[uuid.UUID] | None = None,
 ) -> ResultListingSummary:
     photos = sorted(listing.photos, key=lambda photo: photo.display_order)
     cover = next((photo for photo in photos if photo.is_cover), None) or (
@@ -1423,6 +1428,7 @@ def _result_summary(
         district=listing.district,
         cover_url=cover.url if cover is not None else None,
         secondary_url=secondary.url if secondary is not None else None,
+        has_video=listing.id in video_ids if video_ids else False,
         rating=avg_rating,
         review_count=review_count,
         bedroom_count=_as_int(type_data.get("bedroom_count")),
@@ -1582,11 +1588,15 @@ async def _summaries_for_ids(
     if not listings:
         return []
     ratings = await _rating_map(candidates=listings, db=db)
+    video_ids = await public_search._video_listing_ids(
+        db, [listing.id for listing in listings]
+    )
     return [
         _result_summary(
             listing=listing,
             parameters=parameters,
             rating=ratings.get(str(listing.id)),
+            video_ids=video_ids,
         )
         for listing in listings
     ]

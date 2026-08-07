@@ -279,6 +279,28 @@ def _captured_sql(service_fn, filters) -> str:  # type: ignore[no-untyped-def]
     return captured["sql"]
 
 
+def _captured_paginate_kwargs(service_fn, filters) -> dict:  # type: ignore[no-untyped-def]
+    """What the service hands `_paginate` besides the statement — the side
+    channel the hidden-count query travels on."""
+    import asyncio
+
+    from app.search import service as search_service
+
+    captured: dict = {}
+    original = search_service._paginate
+
+    async def fake_paginate(db, stmt, **kwargs):  # type: ignore[no-untyped-def]
+        captured.update(kwargs)
+        return None
+
+    search_service._paginate = fake_paginate  # type: ignore[assignment]
+    try:
+        asyncio.run(service_fn(filters, db=None))
+    finally:
+        search_service._paginate = original  # type: ignore[assignment]
+    return captured
+
+
 def test_rent_available_from_is_applied() -> None:
     from app.search.service import search_rent
 
@@ -347,6 +369,69 @@ def test_off_campus_drive_time_uses_the_selected_campus() -> None:
 
     baze = _captured_sql(search_off_campus, OffCampusFilters(campus="baze", max_drive_min=20))
     assert "drive_min_baze" in baze
+
+
+def test_off_campus_unknown_drive_time_can_be_opted_back_in() -> None:
+    """The drive time is optional for landlords, so a strict cap hides places
+    that may be next door. Opting in has to widen the test to an OR — not drop
+    the cap, which would show places known to be too far."""
+    from app.search.service import search_off_campus
+
+    strict = _captured_sql(
+        search_off_campus, OffCampusFilters(campus="nile", max_drive_min=20)
+    )
+    assert "drive_min_nile') is null" not in strict
+
+    lenient = _captured_sql(
+        search_off_campus,
+        OffCampusFilters(campus="nile", max_drive_min=20, include_unknown_drive=True),
+    )
+    assert "drive_min_nile') as integer) <= 20" in lenient
+    assert "drive_min_nile') is null" in lenient
+
+
+def test_off_campus_counts_what_the_drive_cap_hides_for_missing_data() -> None:
+    """A cap that hides listings for want of data must say how many, or the
+    seeker reads "no results" as "nowhere is close to campus"."""
+    from app.search.service import search_off_campus
+
+    hidden = _captured_paginate_kwargs(
+        search_off_campus, OffCampusFilters(campus="nile", max_drive_min=20)
+    )["hidden_stmt"]
+    assert hidden is not None
+    sql = _sql(hidden)
+    # Counts the unrecorded ones only — never the ones legitimately too far.
+    assert "drive_min_nile') is null" in sql
+    assert "<= 20" not in sql
+
+    # Nothing is being hidden in these cases, so nothing is counted.
+    assert (
+        _captured_paginate_kwargs(
+            search_off_campus,
+            OffCampusFilters(campus="nile", max_drive_min=20, include_unknown_drive=True),
+        )["hidden_stmt"]
+        is None
+    )
+    assert (
+        _captured_paginate_kwargs(search_off_campus, OffCampusFilters())["hidden_stmt"]
+        is None
+    )
+
+
+def test_off_campus_hidden_count_survives_the_other_filters() -> None:
+    """The count is branched off after every other predicate, so it reports
+    places the seeker would otherwise have seen — not the whole catalogue."""
+    from app.search.service import search_off_campus
+
+    hidden = _captured_paginate_kwargs(
+        search_off_campus,
+        OffCampusFilters(
+            campus="nile", max_drive_min=20, unit_kinds=["single_room"], available_now=True
+        ),
+    )["hidden_stmt"]
+    sql = _sql(hidden)
+    assert "single_room" in sql
+    assert "beds_available" in sql
 
 
 def test_off_campus_drive_time_needs_both_campus_and_cap() -> None:
