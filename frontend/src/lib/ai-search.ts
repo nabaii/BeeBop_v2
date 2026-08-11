@@ -56,6 +56,10 @@ export interface ResultListingSummary {
   review_count: number;
   bedroom_count?: number | null;
   bathroom_count?: number | null;
+  drive_min_nile?: number | null;
+  /** Off-campus bed inventory; null = don't show, 0 = full. */
+  beds_available?: number | null;
+  beds_total?: number | null;
   rank_score: number;
   rank_signals: Record<string, unknown>;
 }

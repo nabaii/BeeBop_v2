@@ -125,6 +125,12 @@ class ResultListingSummary(BaseModel):
     review_count: int = 0
     bedroom_count: int | None = None
     bathroom_count: float | None = None
+    # Off-campus: drive time to Nile, and bed inventory. Same contract as the
+    # public-search summary — null beds mean "don't show" (landlord opted out,
+    # or no rooms recorded), which is distinct from 0 meaning full.
+    drive_min_nile: int | None = None
+    beds_available: int | None = None
+    beds_total: int | None = None
     rank_score: float
     rank_signals: dict[str, object]
 

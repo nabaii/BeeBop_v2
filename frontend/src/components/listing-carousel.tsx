@@ -96,5 +96,11 @@ export function toCardData(r: PublicListingSummary): ListingCardData {
     bedroom_count: r.bedroom_count,
     bathroom_count: r.bathroom_count,
     price_period: r.price_period,
+    // drive_min_nile was missing here while the browse grid passed it, so the
+    // "featured on every student-accommodation card" chip never appeared on
+    // the home rail.
+    drive_min_nile: r.drive_min_nile,
+    beds_available: r.beds_available,
+    beds_total: r.beds_total,
   };
 }

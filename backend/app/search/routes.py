@@ -419,6 +419,11 @@ async def featured_listings(
     )
     rows = (await db.execute(stmt)).scalars().unique().all()
     video_ids = await search_service._video_listing_ids(db, [r.id for r in rows])
+    # Featured mixes categories, so only the off-campus rows are counted.
+    availability = await search_service._availability_map(
+        db, [r.id for r in rows if r.category == ListingCategory.OFF_CAMPUS]
+    )
     return [
-        search_service._summarise(r, None, video_ids).model_dump() for r in rows
+        search_service._summarise(r, None, video_ids, availability).model_dump()
+        for r in rows
     ]

@@ -571,6 +571,9 @@ function toCardData(result: ResultListingSummary) {
     bedroom_count: result.bedroom_count,
     bathroom_count: result.bathroom_count,
     price_period: result.price_period,
+    drive_min_nile: result.drive_min_nile,
+    beds_available: result.beds_available,
+    beds_total: result.beds_total,
     href: `/listings/${result.id}`,
   };
 }

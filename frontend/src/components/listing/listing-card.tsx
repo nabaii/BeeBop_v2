@@ -43,6 +43,10 @@ export interface ListingCardData {
   bathroom_count?: number | null;
   price_period?: string | null;  // off-campus billing period (year/semester)
   drive_min_nile?: number | null; // off-campus: featured drive time to Nile
+  // Off-campus bed inventory. null = don't show (landlord opted out, or no
+  // rooms recorded); 0 = genuinely full. The two must not be conflated.
+  beds_available?: number | null;
+  beds_total?: number | null;
   href?: string;                 // defaults to /listings/[id]
 }
 
@@ -140,6 +144,23 @@ export function ListingCard({
                   <Bath className="h-3.5 w-3.5" aria-hidden />
                   {data.bathroom_count} bath{data.bathroom_count === 1 ? '' : 's'}
                 </span>
+              )}
+            </div>
+          )}
+          {data.beds_available != null && (
+            // The stat students judge a place on, so it sits high — in the slot
+            // the bed/bath specs use on other categories, which is always empty
+            // here (student listings record inventory per unit type, not per
+            // property). Same dot-and-count treatment as the unit rows on the
+            // listing page, so availability reads identically on both surfaces.
+            <div className="mt-2.5 text-caption font-semibold">
+              {data.beds_available > 0 ? (
+                <span className="inline-flex items-center gap-1.5 text-growth">
+                  <span className="h-1.5 w-1.5 rounded-full bg-growth" aria-hidden />
+                  {data.beds_available} bed{data.beds_available === 1 ? '' : 's'} available
+                </span>
+              ) : (
+                <span className="text-ink-muted">Fully booked</span>
               )}
             </div>
           )}

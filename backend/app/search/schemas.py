@@ -163,6 +163,14 @@ class PublicListingSummary(BaseModel):
     # Off-campus: manually-recorded driving time (minutes) to Nile University,
     # featured on every student-accommodation card. Null when not recorded.
     drive_min_nile: int | None = None
+    # Off-campus bed inventory, summed across the listing's rooms — the stat
+    # students judge a place on first. Both null means "do not show": another
+    # category, the landlord turned `show_availability` off, or no rooms are
+    # recorded yet. Null is deliberately distinct from 0, which means full.
+    # Suppression happens here rather than on the card so a landlord who opts
+    # out doesn't have the numbers sitting in the JSON payload anyway.
+    beds_available: int | None = None
+    beds_total: int | None = None
 
 
 class SearchResponse(BaseModel):

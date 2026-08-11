@@ -99,6 +99,13 @@ export interface PublicListingSummary {
   bathroom_count?: number | null;
   // Off-campus: manually-recorded driving time (minutes) to Nile University.
   drive_min_nile?: number | null;
+  /**
+   * Off-campus bed inventory. Null means "don't show" — the landlord opted out
+   * via `show_availability`, or no rooms are recorded yet. Null is distinct
+   * from 0, which means genuinely full.
+   */
+  beds_available?: number | null;
+  beds_total?: number | null;
 }
 
 export interface SearchResponse {

@@ -1113,6 +1113,14 @@ async def _execute_search(
     video_ids = await public_search._video_listing_ids(
         db, [listing.id for listing in candidates]
     )
+    availability = await public_search._availability_map(
+        db,
+        [
+            listing.id
+            for listing in candidates
+            if listing.category == ListingCategory.OFF_CAMPUS
+        ],
+    )
     ranked = sorted(
         (
             _result_summary(
@@ -1120,6 +1128,7 @@ async def _execute_search(
                 parameters=parameters,
                 rating=ratings.get(str(listing.id)),
                 video_ids=video_ids,
+                availability=availability,
             )
             for listing in candidates
         ),
@@ -1395,6 +1404,7 @@ def _result_summary(
     parameters: ExtractedParameters,
     rating: tuple[float | None, int] | None,
     video_ids: set[uuid.UUID] | None = None,
+    availability: dict[uuid.UUID, tuple[int, int]] | None = None,
 ) -> ResultListingSummary:
     photos = sorted(listing.photos, key=lambda photo: photo.display_order)
     cover = next((photo for photo in photos if photo.is_cover), None) or (
@@ -1411,6 +1421,8 @@ def _result_summary(
     else:
         price = float(listing.price) if listing.price is not None else None
         price_period = None
+
+    beds_available, beds_total = public_search._card_availability(listing, availability)
 
     signals = _rank_signals(
         listing=listing,
@@ -1433,6 +1445,11 @@ def _result_summary(
         review_count=review_count,
         bedroom_count=_as_int(type_data.get("bedroom_count")),
         bathroom_count=_as_float(type_data.get("bathroom_count")),
+        drive_min_nile=_as_int(type_data.get("drive_min_nile")),
+        # Reuses the public-search rule so chat, browse, and the home rail can
+        # never disagree about whether a place has space.
+        beds_available=beds_available,
+        beds_total=beds_total,
         rank_score=signals["score"],
         rank_signals=signals,
     )
@@ -1591,12 +1608,21 @@ async def _summaries_for_ids(
     video_ids = await public_search._video_listing_ids(
         db, [listing.id for listing in listings]
     )
+    availability = await public_search._availability_map(
+        db,
+        [
+            listing.id
+            for listing in listings
+            if listing.category == ListingCategory.OFF_CAMPUS
+        ],
+    )
     return [
         _result_summary(
             listing=listing,
             parameters=parameters,
             rating=ratings.get(str(listing.id)),
             video_ids=video_ids,
+            availability=availability,
         )
         for listing in listings
     ]

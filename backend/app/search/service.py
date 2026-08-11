@@ -253,6 +253,55 @@ async def _rating_map(
     return {row[0]: (round(float(row[1]), 2), int(row[2])) for row in rows}
 
 
+async def _availability_map(
+    db: AsyncSession, listing_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, tuple[int, int]]:
+    """Free and total beds per listing, in one query.
+
+    Same reasoning as `_rating_map`: a 24-card grid costs one extra round trip,
+    not 24. Aggregating in SQL also avoids chaining
+    ``selectinload(UnitType.rooms)`` onto the search, which would haul every
+    room row on the page across the wire just to add up two integers.
+
+    Listings with no rooms recorded don't appear in the result at all, and
+    callers must read that absence as "unknown" rather than "full" — a landlord
+    who hasn't built out inventory yet must not be advertised as sold out.
+    """
+    if not listing_ids:
+        return {}
+    stmt = (
+        select(
+            UnitType.listing_id,
+            func.sum(Room.beds_available),
+            func.sum(Room.beds_total),
+        )
+        .join(Room, Room.unit_type_id == UnitType.id)
+        .where(UnitType.listing_id.in_(listing_ids))
+        .group_by(UnitType.listing_id)
+    )
+    rows = (await db.execute(stmt)).all()
+    return {row[0]: (int(row[1] or 0), int(row[2] or 0)) for row in rows}
+
+
+def _card_availability(
+    listing: Listing, availability: dict[uuid.UUID, tuple[int, int]] | None
+) -> tuple[int | None, int | None]:
+    """Bed counts for a card, or ``(None, None)`` when they must not be shown.
+
+    Mirrors the detail page's rules: off-campus only, hidden when the landlord
+    turned `show_availability` off, and hidden when no beds are recorded (which
+    is unknown inventory, not a full house).
+    """
+    if listing.category != ListingCategory.OFF_CAMPUS or not availability:
+        return None, None
+    if (listing.type_data or {}).get("show_availability") is False:
+        return None, None
+    counts = availability.get(listing.id)
+    if counts is None or counts[1] <= 0:
+        return None, None
+    return counts[0], counts[1]
+
+
 def _video_ids_stmt(listing_ids: list[uuid.UUID]):  # type: ignore[no-untyped-def]
     """The query behind `_video_listing_ids`, split out so it can be asserted
     on without a database."""
@@ -290,6 +339,7 @@ def _summarise(
     listing: Listing,
     ratings: dict[uuid.UUID, tuple[float, int]] | None = None,
     video_ids: set[uuid.UUID] | None = None,
+    availability: dict[uuid.UUID, tuple[int, int]] | None = None,
 ) -> PublicListingSummary:
     photos = sorted(listing.photos, key=lambda p: p.display_order)
     cover = next((p for p in photos if p.is_cover), None) or (photos[0] if photos else None)
@@ -303,6 +353,7 @@ def _summarise(
         price = float(listing.price) if listing.price is not None else None
         price_period = None
     rating, review_count = (ratings or {}).get(listing.id, (None, 0))
+    beds_available, beds_total = _card_availability(listing, availability)
     type_data = listing.type_data or {}
     return PublicListingSummary(
         id=str(listing.id),
@@ -325,6 +376,8 @@ def _summarise(
         bedroom_count=_as_int(type_data.get("bedroom_count")),
         bathroom_count=_as_float(type_data.get("bathroom_count")),
         drive_min_nile=_as_int(type_data.get("drive_min_nile")),
+        beds_available=beds_available,
+        beds_total=beds_total,
     )
 
 
@@ -354,12 +407,18 @@ async def _paginate(
     listing_ids = [r.id for r in rows]
     ratings = await _rating_map(db, listing_ids)
     video_ids = await _video_listing_ids(db, listing_ids)
+    # Only off-campus listings carry bed inventory. Narrowing the ids here means
+    # the rent/sales/short-let lanes skip the round trip entirely (the map
+    # returns early on an empty list) instead of grouping over nothing.
+    availability = await _availability_map(
+        db, [r.id for r in rows if r.category == ListingCategory.OFF_CAMPUS]
+    )
     return SearchResponse(
         category=category,
         total=total,
         page=page,
         page_size=page_size,
-        results=[_summarise(r, ratings, video_ids) for r in rows],
+        results=[_summarise(r, ratings, video_ids, availability) for r in rows],
         hidden_unknown_drive=hidden_unknown_drive,
     )
 
