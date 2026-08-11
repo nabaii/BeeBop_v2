@@ -29,7 +29,7 @@ import {
   type ResultListingSummary,
 } from '@/lib/ai-search';
 import type { ListingCategory, PhotoView } from '@/lib/listings';
-import { getFeaturedListings, search, type PublicListingSummary } from '@/lib/search';
+import { search, type PublicListingSummary } from '@/lib/search';
 import { useCyclingPlaceholder, useStreamedText } from '@/lib/use-motion';
 import type { SearchSeedFilters } from '@/stores/search';
 import { useSearch } from '@/stores/search';
@@ -54,16 +54,16 @@ const PLACEHOLDER_EXAMPLES = [
 // Homepage discovery rows. Defined at module scope so each fetcher is a stable
 // reference — ListingCarousel keys its load effect on it. Every row hides itself
 // when its dataset is empty, so a thin category never leaves a broken shell.
+//
+// Student accommodation only for launch: the cross-category "Popular listings"
+// row and the sale/rent rows are deliberately cut so the home page can't send a
+// seeker into a vertical we aren't running yet. The other `seeAllHref` values
+// stay in the union as the ready-made destinations for when they come back.
 const HOME_CAROUSELS: ReadonlyArray<{
   title: string;
   fetcher: () => Promise<PublicListingSummary[]>;
   seeAllHref: '/browse' | '/browse/off-campus' | '/browse/sales' | '/browse/rent';
 }> = [
-  {
-    title: 'Popular listings',
-    fetcher: () => getFeaturedListings(50).catch(() => getFeaturedListings(12)),
-    seeAllHref: '/browse',
-  },
   {
     title: 'Off-campus near Nile',
     fetcher: () =>
@@ -71,18 +71,6 @@ const HOME_CAROUSELS: ReadonlyArray<{
         .offCampus({ institution: 'Nile University', page_size: 12 })
         .then((r) => r.results),
     seeAllHref: '/browse/off-campus',
-  },
-  {
-    title: 'Properties for sale',
-    fetcher: () =>
-      search.sales({ page_size: 12, sort: 'newest' }).then((r) => r.results),
-    seeAllHref: '/browse/sales',
-  },
-  {
-    title: 'Properties for rent',
-    fetcher: () =>
-      search.rent({ page_size: 12, sort: 'newest' }).then((r) => r.results),
-    seeAllHref: '/browse/rent',
   },
 ];
 
